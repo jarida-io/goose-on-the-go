@@ -24,3 +24,6 @@ export { INITIAL_USERS } from './user';
 export type { Message, MessageRole, SessionSummary, ChatState } from './chat';
 export type { VoiceState, VoiceSession } from './voice';
 export type { AppSettings } from './settings';
+
+export type { PairingPayload } from './pairing';
+export { InvalidPairingCodeError, parsePairingPayload } from './pairing';

@@ -32,6 +32,7 @@ export const PROFILE_NAV: NavGroup[] = [
   {
     group: 'INTEGRATIONS',
     items: [
+      { id: 'connectDesktop', label: 'Connect Desktop', icon: 'camera', route: '/(stack)/connect-desktop' },
       { id: 'appManagement', label: 'App Integrations', icon: 'link', route: '/(stack)/app-management' },
       { id: 'mcpServers', label: 'MCP Servers', icon: 'globe', route: '/(stack)/mcp-servers' },
     ],

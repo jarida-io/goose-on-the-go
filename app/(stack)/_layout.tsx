@@ -36,6 +36,15 @@ export default function StackLayout() {
       <Stack.Screen name="privacy" options={{ title: 'Privacy & Licenses' }} />
       <Stack.Screen name="home-management" options={{ title: 'Home Management' }} />
       <Stack.Screen name="pond-pairing" options={{ title: 'Pond Pairing' }} />
+      <Stack.Screen
+        name="connect-desktop"
+        options={{
+          title: 'Connect Desktop',
+          headerTransparent: true,
+          headerTintColor: Brand.white,
+          headerTitleStyle: { color: Brand.white, fontFamily: 'Quicksand', fontWeight: '700' },
+        }}
+      />
     </Stack>
   );
 }
