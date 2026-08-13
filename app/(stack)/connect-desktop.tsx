@@ -12,19 +12,32 @@ import {
   type BarcodeScanningResult,
 } from 'expo-camera';
 
+import * as Crypto from 'expo-crypto';
+import Constants from 'expo-constants';
+
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
 import { useServer } from '@/providers/server-provider';
 import { useHaptics } from '@/hooks/use-haptics';
 import { api } from '@/services/api-client';
 import { Storage } from '@/services/storage';
-import { parsePairingPayload, InvalidPairingCodeError } from '@/models/pairing';
+import { pairDevice } from '@/services/handshake';
+import { parsePairingPayload } from '@/models/pairing';
 import { Brand, Grey, JaridaPurple, Semantic } from '@/constants/colors';
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
 
 type ScanState = 'scanning' | 'connecting' | 'success' | 'error';
+
+/** Stable per-install client ID, created on first pairing. */
+async function getClientId(): Promise<string> {
+  const existing = await Storage.get('clientId');
+  if (existing) return existing;
+  const id = Crypto.randomUUID();
+  await Storage.set('clientId', id);
+  return id;
+}
 
 export default function ConnectDesktopScreen() {
   const router = useRouter();
@@ -47,31 +60,30 @@ export default function ConnectDesktopScreen() {
 
       try {
         const payload = parsePairingPayload(data);
+        const result = await pairDevice(payload, {
+          clientId: await getClientId(),
+          clientVersion: Constants.expoConfig?.version ?? '0.0.0',
+          deviceName: Constants.deviceName ?? null,
+        });
+
         api.setBaseUrl(payload.serverUrl);
-        api.setToken(payload.token);
-
-        const health = await api.health();
-        if (!health.ok) {
-          throw new Error('Couldn’t reach Goose In A Pond on that address.');
-        }
-
+        api.setToken(result.sessionToken);
         server.setServerUrl(payload.serverUrl);
-        server.setToken(payload.token);
+        server.setToken(result.sessionToken);
         server.setOnline(true);
         await Storage.set('serverUrl', payload.serverUrl);
-        await Storage.set('token', payload.token);
+        await Storage.set('token', result.sessionToken);
+        if (result.refreshToken) {
+          await Storage.set('refreshToken', result.refreshToken);
+        }
 
-        setDeviceName(payload.deviceName ?? null);
+        setDeviceName(result.hostname);
         setState('success');
         haptics.success();
       } catch (err) {
-        const reason =
-          err instanceof InvalidPairingCodeError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Something went wrong while connecting.';
-        setMessage(reason);
+        setMessage(
+          err instanceof Error ? err.message : 'Something went wrong while connecting.',
+        );
         setState('error');
         haptics.error();
       }

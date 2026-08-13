@@ -3,6 +3,8 @@
  * Mirrors the desktop client's interface; actual HTTP calls will be wired up later.
  */
 
+import { timeoutSignal } from '@/services/http';
+
 export class PondApiClient {
   private baseUrl: string;
   private token: string | null = null;
@@ -30,7 +32,7 @@ export class PondApiClient {
     try {
       const res = await fetch(`${this.baseUrl}/health`, {
         headers: this.headers(),
-        signal: AbortSignal.timeout(3000),
+        signal: timeoutSignal(3000),
       });
       return { ok: res.ok, latencyMs: Date.now() - start };
     } catch {

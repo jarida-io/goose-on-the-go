@@ -1,16 +1,18 @@
 /**
  * Pairing payload — decoded from the QR code shown on Goose In A Pond desktop.
  *
- * Desktop encodes either a JSON object or a URL/URI whose query string
- * carries the same fields, so both are accepted:
- *   {"url":"http://192.168.1.5:4000","token":"...","name":"Jerry's Mac"}
- *   goosepond://pair?url=http://192.168.1.5:4000&token=...&name=...
+ * Desktop encodes: pond://pair?host=<hostname>.local&port=<port>&code=<6-digit>
+ * The code is a short-lived secret proved via the two-phase handshake
+ * (see services/handshake.ts) — it is never sent over the wire.
  */
 
 export interface PairingPayload {
+  /** Base URL of the pond server, e.g. http://gooses-mac.local:4000 */
   serverUrl: string;
-  token: string;
-  deviceName?: string;
+  /** Hostname the hub is advertised as (for display) */
+  host: string;
+  /** Single-use 6-digit pairing code */
+  code: string;
 }
 
 export class InvalidPairingCodeError extends Error {
@@ -20,34 +22,21 @@ export class InvalidPairingCodeError extends Error {
   }
 }
 
-function fromFields(get: (key: string) => string | null): PairingPayload {
-  const serverUrl = get('url') ?? get('serverUrl');
-  const token = get('token');
-  if (!serverUrl || !token) {
-    throw new InvalidPairingCodeError();
-  }
-  return {
-    serverUrl: serverUrl.replace(/\/+$/, ''),
-    token,
-    deviceName: get('name') ?? get('deviceName') ?? undefined,
-  };
-}
-
 /** Parses raw QR code text into a pairing payload. Throws `InvalidPairingCodeError` if malformed. */
 export function parsePairingPayload(raw: string): PairingPayload {
-  const trimmed = raw.trim();
-
+  let url: URL;
   try {
-    const json = JSON.parse(trimmed);
-    return fromFields((key) => (typeof json[key] === 'string' ? json[key] : null));
-  } catch {
-    // Not JSON — fall through to URL parsing below.
-  }
-
-  try {
-    const url = new URL(trimmed);
-    return fromFields((key) => url.searchParams.get(key));
+    url = new URL(raw.trim());
   } catch {
     throw new InvalidPairingCodeError();
   }
+
+  const host = url.searchParams.get('host');
+  const port = url.searchParams.get('port');
+  const code = url.searchParams.get('code');
+  if (url.protocol !== 'pond:' || !host || !port || !code) {
+    throw new InvalidPairingCodeError();
+  }
+
+  return { serverUrl: `http://${host}:${port}`, host, code };
 }

@@ -5,6 +5,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 
+import { timeoutSignal } from '@/services/http';
+
 interface ServerHealth {
   online: boolean;
   latencyMs: number | null;
@@ -24,7 +26,7 @@ export function useServerHealth(serverUrl: string) {
     setChecking(true);
     try {
       const start = Date.now();
-      const res = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) });
+      const res = await fetch(`${serverUrl}/health`, { signal: timeoutSignal(3000) });
       const latency = Date.now() - start;
       if (res.ok) {
         setHealth({ online: true, latencyMs: latency, uptime: null });
