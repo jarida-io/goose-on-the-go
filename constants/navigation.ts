@@ -59,6 +59,18 @@ export const PROFILE_NAV: NavGroup[] = [
       { id: 'privacy', label: 'Privacy & Licenses', icon: 'shield', route: '/(stack)/privacy' },
     ],
   },
+  // Dev-only: mock/real backend toggle per screen (issue #21). Discoverable
+  // in dev builds without a code change; absent entirely from production.
+  ...(__DEV__
+    ? [
+        {
+          group: 'DEVELOPER',
+          items: [
+            { id: 'developer', label: 'Backend Mode', icon: 'cpu', route: '/(stack)/developer' },
+          ],
+        },
+      ]
+    : []),
 ];
 
 /** Shortcut items for the home screen carousel */

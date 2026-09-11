@@ -9,6 +9,7 @@ const KEYS = {
   token: '@goose/token',
   lastScreen: '@goose/last-screen',
   settings: '@goose/settings',
+  devScreenModes: '@goose/dev-screen-modes',
 } as const;
 
 type StorageKey = keyof typeof KEYS;
