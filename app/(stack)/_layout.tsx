@@ -36,6 +36,7 @@ export default function StackLayout() {
       <Stack.Screen name="privacy" options={{ title: 'Privacy & Licenses' }} />
       <Stack.Screen name="home-management" options={{ title: 'Home Management' }} />
       <Stack.Screen name="pond-pairing" options={{ title: 'Pond Pairing' }} />
+      <Stack.Screen name="developer" options={{ title: 'Developer' }} />
     </Stack>
   );
 }
