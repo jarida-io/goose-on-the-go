@@ -1,5 +1,9 @@
 /**
- * Jarida Design System — Spacing (4pt grid)
+ * Jarida Design System — Spacing (8pt grid, 4px half-step)
+ *
+ * Matches @jarida/ink's SPACE scale for every step ink defines (see
+ * docs/DESIGN-SYSTEM.md's token audit); 7xl/8xl are GOTG-specific additions
+ * beyond ink's ceiling.
  */
 
 export const Spacing = {

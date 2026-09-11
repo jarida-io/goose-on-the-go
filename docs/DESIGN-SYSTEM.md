@@ -79,7 +79,7 @@ semibold: 600
 bold:     700
 ```
 
-## Spacing (4pt Grid)
+## Spacing (8pt grid, 4px half-step)
 ```
 xs:   4     Tight gaps
 sm:   8     Default gap
@@ -88,6 +88,11 @@ lg:   16    Section padding
 xl:   20    Large spacing
 2xl:  24    Section margins
 3xl:  32    Screen-level padding
+4xl:  40
+5xl:  48
+6xl:  64
+7xl:  80    GOTG-specific, beyond @jarida/ink's scale
+8xl:  96    GOTG-specific, beyond @jarida/ink's scale
 ```
 
 ## Border Radii
@@ -109,6 +114,49 @@ md:   Elevated card (elevation 4)
 lg:   Modal/overlay (elevation 8)
 brand: Purple glow (purple shadow)
 ```
+
+## Token Audit vs. `@jarida/ink` (issue #20)
+
+Recorded ahead of the `@jarida/ink` adoption work (#17) so the two known
+discrepancies are a deliberate call, not something that just drifts.
+
+### Brand mark vs. UI accent
+
+Ink deliberately splits the **brand mark** (`PURPLE.500 = #8C4BFF`, 4.42:1 on
+its light background — reserved for the ink-plate/edge ramp) from the **live
+UI accent** it actually uses on interactive elements
+(`ACCENTS.Purple[0] = #7C3AED`, 5.47:1). The gap exists because the mark's
+contrast margin is too thin to safely carry a text label; the accent's isn't.
+
+GOTG's `JaridaPurple` ramp is value-for-value identical to ink's `PURPLE`
+ramp, but GOTG uses `JaridaPurple[500]` (#8C4BFF) as `tint` — i.e. as the
+live interactive accent (buttons, `borderBrand`, `tabIconSelected`) — which
+is exactly the conflation ink split apart. (GOTG already avoids the sharpest
+edge of this today by using the darker `JaridaPurple[600]` for `textBrand`
+rather than 500.)
+
+**Decision: diverge, deliberately.** Keep `#8C4BFF` as GOTG's single
+interactive accent for now rather than adopting ink's `#7C3AED` split.
+Reasoning: `#8C4BFF` is GOTG/GIAP's brand identity color across the app icon,
+splash screen, and marketing, not just in-app chrome — swapping the running
+accent to `#7C3AED` ahead of the actual ink adoption (#17) would be a
+cosmetic change with no functional benefit yet. Revisit this when #17 lands
+and the app moves onto ink's token set wholesale; at that point, re-evaluate
+whether `#8C4BFF`-as-accent should become a documented, permanent divergence
+from ink's default semantics or be dropped in favor of `#7C3AED`.
+
+### Spacing scale shape
+
+No real incompatibility: GOTG's `Spacing` values (4, 8, 12, 16, 20, 24, 32,
+40, 48, 64) are numerically identical to `@jarida/ink`'s `SPACE` scale for
+every step ink defines — this app's spacing was never a pure 4pt grid, it
+already has ink's 8pt-with-4px-half-step shape. The `constants/spacing.ts`
+doc comment calling it a "4pt grid" was inaccurate and is corrected above.
+GOTG additionally defines two larger steps (`7xl: 80`, `8xl: 96`) that ink
+doesn't have named equivalents for — these don't conflict with ink's scale
+and can be kept as GOTG-specific extensions past ink's ceiling.
+
+**Decision: no change needed.** The scales are compatible as-is.
 
 ## Role Colors
 Used for model role assignment chips:
