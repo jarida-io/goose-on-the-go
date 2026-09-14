@@ -69,9 +69,9 @@ export function useChat() {
         ? {
             id: String(nextId.current++),
             role: 'assistant',
-            // Real chat streaming (POST /chat/stream, SSE) lands with issue #9.
-            // The toggle is wired ahead of that so it's a config flip, not a rewrite.
-            content: 'Real backend mode is on, but chat streaming isn’t wired up yet (see issue #9). Flip back to mock in Developer settings.',
+            // Real chat streaming lands separately. The toggle is wired
+            // ahead of that so it's a config flip, not a rewrite.
+            content: 'Real backend mode is on, but chat streaming isn’t wired up yet. Flip back to mock in Developer settings.',
             timestamp: Date.now(),
           }
         : {

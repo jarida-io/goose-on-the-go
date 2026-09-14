@@ -66,7 +66,7 @@ export const PROFILE_NAV: NavGroup[] = [
         {
           group: 'DEVELOPER',
           items: [
-            { id: 'developer', label: 'Backend Mode', icon: 'cpu', route: '/(stack)/developer' },
+            { id: 'developer', label: 'Developer Mode', icon: 'cpu', route: '/(stack)/developer' },
           ],
         },
       ]
