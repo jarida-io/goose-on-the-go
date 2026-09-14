@@ -25,7 +25,8 @@ import {
   type TextInputProps,
 } from 'react-native';
 
-import { Brand, Grey, JaridaPurple } from '@/constants/colors';
+import { Brand, Grey, AccentPurple } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Radii } from '@/constants/radii';
 import { Spacing } from '@/constants/spacing';
@@ -72,7 +73,7 @@ export function GInput({
   const inputContainerStyle: ViewStyle = {
     backgroundColor: isBordered ? Brand.white : Grey[100],
     borderWidth: isBordered ? 1 : focused ? 1 : 0,
-    borderColor: focused ? JaridaPurple[500] : isBordered ? Grey[300] : 'transparent',
+    borderColor: focused ? AccentPurple : isBordered ? Grey[300] : 'transparent',
   };
 
   return (
@@ -83,7 +84,7 @@ export function GInput({
           <GIcon
             name={startIcon}
             size={16}
-            color={focused ? JaridaPurple[500] : Grey[400]}
+            color={focused ? AccentPurple : Grey[400]}
           />
         )}
         <TextInput

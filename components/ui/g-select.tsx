@@ -28,7 +28,8 @@ import {
   View,
 } from 'react-native';
 
-import { Brand, Grey, JaridaPurple } from '@/constants/colors';
+import { Brand, Grey, JaridaPurple, AccentPurple } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Radii } from '@/constants/radii';
 import { Spacing } from '@/constants/spacing';
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
   listContent: {
     paddingVertical: Spacing.sm,

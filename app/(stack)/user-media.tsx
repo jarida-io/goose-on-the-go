@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -101,7 +102,7 @@ export default function UserMediaScreen() {
             ].map((item, i) => (
               <View key={i} style={styles.analysedCard}>
                 <View style={{ marginRight: Spacing.md }}>
-                  <GIcon name={item.icon} size={22} color={JaridaPurple[500]} />
+                  <GIcon name={item.icon} size={22} color={AccentPurple} />
                 </View>
                 <View style={styles.analysedInfo}>
                   <Text style={styles.analysedLabel}>{item.label}</Text>
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.pill,
     backgroundColor: Grey[100],
   },
-  tabActive: { backgroundColor: JaridaPurple[500] },
+  tabActive: { backgroundColor: AccentPurple },
   tabText: {
     fontFamily: FontFamily.body,
     fontSize: FontSize.sm,

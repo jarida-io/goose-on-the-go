@@ -20,7 +20,8 @@ import {
 } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { Brand, JaridaPurple, Grey } from '@/constants/colors';
+import { Brand, JaridaPurple, AccentPurple, Grey } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'absolute',

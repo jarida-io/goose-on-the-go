@@ -26,7 +26,8 @@ import {
   View,
 } from 'react-native';
 
-import { Grey, JaridaPurple, Brand } from '@/constants/colors';
+import { Grey, AccentPurple, Brand } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Shadows } from '@/constants/shadows';
 import { Spacing } from '@/constants/spacing';
@@ -179,7 +180,7 @@ const styles = StyleSheet.create({
     left: 0,
     height: TRACK_HEIGHT,
     borderRadius: Radii.pill,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
   },
   thumb: {
     position: 'absolute',

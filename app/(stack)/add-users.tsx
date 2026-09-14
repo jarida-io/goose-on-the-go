@@ -15,7 +15,8 @@ import {
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -36,7 +37,7 @@ const USERS: HouseholdUser[] = [
 ];
 
 const ROLE_COLORS: Record<string, string> = {
-  Owner: JaridaPurple[500],
+  Owner: AccentPurple,
   Admin: Semantic.info,
   Member: Semantic.success,
   Guest: Grey[500],
@@ -137,7 +138,7 @@ export default function AddUsersScreen() {
         </View>
       ) : (
         <Pressable style={styles.addBtn} onPress={() => setShowInvite(true)}>
-          <GIcon name="plus" size={16} color={JaridaPurple[500]} />
+          <GIcon name="plus" size={16} color={AccentPurple} />
           <Text style={styles.addBtnText}>Invite Member</Text>
         </Pressable>
       )}
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
 
   /* Invite card */

@@ -14,7 +14,8 @@ import {
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -79,7 +80,7 @@ export default function PhotoUploadScreen() {
 
         {state === 'analysing' && (
           <View style={styles.analysingWrap}>
-            <GIcon name="search" size={28} color={JaridaPurple[500]} />
+            <GIcon name="search" size={28} color={AccentPurple} />
             <Text style={styles.analysingTitle}>Analysing...</Text>
             <View style={styles.progressBar}>
               <View style={styles.progressFill} />
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
   progressFill: {
     width: '65%',
     height: '100%',
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     borderRadius: 3,
   },
   analysingDesc: {

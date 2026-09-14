@@ -11,7 +11,8 @@ import { Tabs } from 'expo-router';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { GIcon } from '@/components/ui/g-icon';
-import { JaridaPurple, Grey, Brand } from '@/constants/colors';
+import { AccentPurple, Grey, Brand } from '@/constants/colors';
+
 import type { IconName } from '@/constants/icons';
 
 /** Tab icon with active pill indicator */
@@ -44,7 +45,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: JaridaPurple[500],
+        tabBarActiveTintColor: AccentPurple,
         tabBarInactiveTintColor: Grey[400],
         tabBarLabelStyle: styles.tabLabel,
         tabBarStyle: styles.tabBar,
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
   },
   activePill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     borderRadius: 15,
   },
 });

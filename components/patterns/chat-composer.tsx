@@ -6,7 +6,8 @@ import React, { useState } from 'react';
 import { View, TextInput, Pressable, Text, StyleSheet } from 'react-native';
 import { GIcon } from '@/components/ui/g-icon';
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
-import { JaridaPurple, Grey } from '@/constants/colors';
+import { AccentPurple, Grey } from '@/constants/colors';
+
 import { Radii } from '@/constants/radii';
 import { Spacing } from '@/constants/spacing';
 
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: Radii.md,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     alignItems: 'center',
     justifyContent: 'center',
   },

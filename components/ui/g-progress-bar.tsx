@@ -16,7 +16,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Grey, JaridaPurple, Semantic } from '@/constants/colors';
+import { Grey, AccentPurple, Semantic } from '@/constants/colors';
+
 import { Radii } from '@/constants/radii';
 import { Spacing } from '@/constants/spacing';
 
@@ -43,7 +44,7 @@ export interface GProgressBarProps {
 
 const COLOR_MAP: Record<GProgressBarColor, string> = {
   default: Grey[700],
-  secondary: JaridaPurple[500],
+  secondary: AccentPurple,
   success: Semantic.success,
 };
 

@@ -7,20 +7,29 @@ All design tokens are in `constants/`. Import from individual files or the barre
 ### Brand
 | Token | Value | Usage |
 |-------|-------|-------|
-| `Brand.purple` | `#8C4BFF` | Primary brand, CTAs, active states |
+| `Brand.purple` | `#8C4BFF` | Brand mark only (see Accent below for CTAs/active states) |
 | `Brand.charcoal` | `#1C1C1C` | Primary text, headings |
 | `Brand.white` | `#FFFFFF` | Backgrounds, text on brand |
 
-### Purple Scale
+### Accent
+| Token | Value | Usage |
+|-------|-------|-------|
+| `Accent.base` | `#7C3AED` | CTAs, active states, links, borders — matches `@jarida/ink`'s `ACCENTS.Purple[0]` |
+| `Accent.pressed` | `#6D28D9` | Pressed/active interaction state |
+| `Accent.soft` | `rgba(124, 58, 237, 0.11)` | Selected background tint |
+| `Accent.softer` | `rgba(124, 58, 237, 0.06)` | Quietest "this one" mark |
+| `AccentPurple` | `#7C3AED` | Flat alias for `Accent.base` |
+
+### Purple Scale (brand mark ramp — not the interactive accent)
 ```
-50:  #F4ECFF    Soft backgrounds, hover states
+50:  #F4ECFF    Soft brand-tinted backgrounds
 100: #E6D6FF    Light borders
 200: #CFB0FF    Focus rings
 300: #B386FF    Decorative
 400: #9D63FF    Secondary active
-500: #8C4BFF    Brand primary ★
-600: #7636E6    Brand hover, text accent
-700: #5D23C2    Deep accent, active text
+500: #8C4BFF    Brand mark ★ (see Accent for interactive color)
+600: #7636E6    Deep brand tint
+700: #5D23C2    Deep accent
 800: #421593    Dark surfaces
 900: #2A0C66    Darkest
 ```
@@ -112,7 +121,7 @@ xs:   Subtle lift (elevation 1)
 sm:   Card default (elevation 2)
 md:   Elevated card (elevation 4)
 lg:   Modal/overlay (elevation 8)
-brand: Purple glow (purple shadow)
+brand: Accent glow (accent-colored shadow)
 ```
 
 ## Token Audit vs. `@jarida/ink` (issue #20)
@@ -129,21 +138,22 @@ UI accent** it actually uses on interactive elements
 contrast margin is too thin to safely carry a text label; the accent's isn't.
 
 GOTG's `JaridaPurple` ramp is value-for-value identical to ink's `PURPLE`
-ramp, but GOTG uses `JaridaPurple[500]` (#8C4BFF) as `tint` — i.e. as the
-live interactive accent (buttons, `borderBrand`, `tabIconSelected`) — which
-is exactly the conflation ink split apart. (GOTG already avoids the sharpest
-edge of this today by using the darker `JaridaPurple[600]` for `textBrand`
-rather than 500.)
+ramp. GOTG previously used `JaridaPurple[500]` (#8C4BFF) as `tint` — i.e. as
+the live interactive accent (buttons, `borderBrand`, `tabIconSelected`) —
+which was exactly the conflation ink split apart.
 
-**Decision: diverge, deliberately.** Keep `#8C4BFF` as GOTG's single
-interactive accent for now rather than adopting ink's `#7C3AED` split.
-Reasoning: `#8C4BFF` is GOTG/GIAP's brand identity color across the app icon,
-splash screen, and marketing, not just in-app chrome — swapping the running
-accent to `#7C3AED` ahead of the actual ink adoption (#17) would be a
-cosmetic change with no functional benefit yet. Revisit this when #17 lands
-and the app moves onto ink's token set wholesale; at that point, re-evaluate
-whether `#8C4BFF`-as-accent should become a documented, permanent divergence
-from ink's default semantics or be dropped in favor of `#7C3AED`.
+**Decision: align with ink.** Interactive elements now use the new `Accent`
+token (`Accent.base = #7C3AED`, matching `ACCENTS.Purple[0]`) instead of
+`JaridaPurple[500]`. `JaridaPurple`/`Brand.purple` (`#8C4BFF`) remain defined
+as the brand mark ramp, matching ink's own mark/accent split, but are no
+longer used for CTAs, borders, active tab icons, or `textBrand` — those all
+route through `Accent` now (see `constants/colors.ts`). This was swept across
+the app: every `JaridaPurple[500]`/hardcoded `#8C4BFF` interactive usage was
+repointed to `AccentPurple`/`Accent.base`. Not yet touched: the other
+`JaridaPurple` ramp steps (50/200/400/600/700, used for hover/soft/border
+variants) still use brand-purple-derived shades rather than accent-derived
+ones — a full remap of those crosses into the actual `@jarida/ink` component
+adoption (#17) and is scoped there, not here.
 
 ### Spacing scale shape
 
@@ -161,7 +171,7 @@ and can be kept as GOTG-specific extensions past ink's ceiling.
 ## Role Colors
 Used for model role assignment chips:
 ```
-chat:  #8C4BFF  (purple)
+chat:  #7C3AED  (accent purple)
 think: #F5A524  (amber)
 task:  #17C964  (green)
 asr:   #0072F5  (blue)

@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -106,7 +107,7 @@ export default function McpServersScreen() {
 
       {/* Add server button */}
       <Pressable style={styles.addBtn}>
-        <GIcon name="plus" size={18} color={JaridaPurple[500]} />
+        <GIcon name="plus" size={18} color={AccentPurple} />
         <Text style={styles.addBtnText}>Add MCP Server</Text>
       </Pressable>
 
@@ -234,6 +235,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
 });

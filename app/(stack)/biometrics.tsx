@@ -15,7 +15,8 @@ import {
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
 import { GSwitch } from '@/components/ui/g-switch';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -94,7 +95,7 @@ export default function BiometricsScreen() {
         <View key={method.id} style={styles.methodCard}>
           <View style={styles.methodHeader}>
             <View style={{ marginRight: Spacing.md }}>
-              <GIcon name={method.icon} size={28} color={JaridaPurple[500]} />
+              <GIcon name={method.icon} size={28} color={AccentPurple} />
             </View>
             <View style={styles.methodInfo}>
               <Text style={styles.methodTitle}>{method.title}</Text>
@@ -114,7 +115,7 @@ export default function BiometricsScreen() {
                   <Text style={[styles.statusText, { color: Semantic.success }]}>Enrolled</Text>
                 </View>
                 <Pressable style={styles.reEnrollBtn}>
-                  <GIcon name="refresh" size={14} color={JaridaPurple[500]} />
+                  <GIcon name="refresh" size={14} color={AccentPurple} />
                   <Text style={styles.reEnrollText}>Re-enroll</Text>
                 </Pressable>
               </View>
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
 
   /* Enrolling */
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
   progressFill: {
     width: '60%',
     height: '100%',
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     borderRadius: 3,
   },
   enrollingText: {

@@ -18,7 +18,8 @@
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Grey, JaridaPurple } from '@/constants/colors';
+import { Grey, AccentPurple } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   circleSelected: {
-    borderColor: JaridaPurple[500],
+    borderColor: AccentPurple,
   },
   circleUnselected: {
     borderColor: Grey[300],
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
     width: DOT_SIZE,
     height: DOT_SIZE,
     borderRadius: DOT_SIZE / 2,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
   },
 
   textContainer: {

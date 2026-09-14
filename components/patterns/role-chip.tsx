@@ -5,7 +5,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
-import { JaridaPurple, Grey } from '@/constants/colors';
+import { JaridaPurple, AccentPurple, Grey } from '@/constants/colors';
+
 import { Radii } from '@/constants/radii';
 import { Spacing } from '@/constants/spacing';
 
@@ -16,7 +17,7 @@ interface RoleChipProps {
 }
 
 const barColors: Record<string, string> = {
-  secondary: JaridaPurple[500],
+  secondary: AccentPurple,
   warning: '#F5A524',
   success: '#17C964',
   primary: '#0072F5',
@@ -34,7 +35,7 @@ const headColors: Record<string, string> = {
 export const RoleChip = React.memo(function RoleChip({ role, model, color }: RoleChipProps) {
   return (
     <View style={styles.container}>
-      <View style={[styles.bar, { backgroundColor: barColors[color] ?? JaridaPurple[500] }]} />
+      <View style={[styles.bar, { backgroundColor: barColors[color] ?? AccentPurple }]} />
       <View style={styles.body}>
         <Text style={[styles.role, { color: headColors[color] ?? Grey[600] }]}>{role}</Text>
         <Text style={styles.model} numberOfLines={1}>{model}</Text>

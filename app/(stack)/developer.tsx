@@ -15,7 +15,8 @@ import { GInput } from '@/components/ui/g-input';
 import { GSwitch } from '@/components/ui/g-switch';
 import { ServerStatus } from '@/components/patterns/server-status';
 import { useServer, MIGRATION_SCREENS, type MigrationScreen } from '@/providers/server-provider';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radii.md,

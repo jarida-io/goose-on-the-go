@@ -15,7 +15,8 @@ import {
 
 import { GSlider } from '@/components/ui/g-slider';
 import { AI_MODELS, type AIModel } from '@/models/model';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   modelCardSelected: {
-    borderColor: JaridaPurple[500],
+    borderColor: AccentPurple,
     borderWidth: 2,
   },
   modelCardHeader: {
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
     backgroundColor: Grey[200],
   },
   ratingDotFilled: {
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
   },
 
   /* Selected indicator */

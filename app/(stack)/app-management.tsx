@@ -16,7 +16,8 @@ import {
 
 import { GSwitch } from '@/components/ui/g-switch';
 import { GIcon } from '@/components/ui/g-icon';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -55,7 +56,7 @@ const AppCard = React.memo(function AppCard({
     <View style={styles.appCard}>
       <View style={styles.appHeader}>
         <View style={{ marginRight: Spacing.md }}>
-          <GIcon name={app.icon} size={24} color={JaridaPurple[500]} />
+          <GIcon name={app.icon} size={24} color={AccentPurple} />
         </View>
         <View style={styles.appInfo}>
           <Text style={styles.appName}>{app.name}</Text>
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
 
   /* Category */

@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { JaridaPurple, Grey } from '@/constants/colors';
+import { AccentPurple, Grey } from '@/constants/colors';
 
 interface VuMeterProps {
   level: number;
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   barLit: {
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
   },
   barDim: {
     backgroundColor: Grey[200],

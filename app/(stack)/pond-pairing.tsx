@@ -15,7 +15,8 @@ import {
 import { useRouter } from 'expo-router';
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -62,7 +63,7 @@ function StepIndicator({ current }: { current: Step }) {
 function FindStep({ onNext }: { onNext: () => void }) {
   return (
     <View style={styles.stepContent}>
-      <GIcon name="search" size={28} color={JaridaPurple[500]} />
+      <GIcon name="search" size={28} color={AccentPurple} />
       <Text style={styles.stepTitle}>Searching for Pond devices...</Text>
       <Text style={styles.stepDesc}>
         Make sure your Pond device is powered on and within Bluetooth range.
@@ -84,7 +85,7 @@ function WifiStep({ onNext }: { onNext: () => void }) {
   const [password, setPassword] = useState('');
   return (
     <View style={styles.stepContent}>
-      <GIcon name="wifi" size={28} color={JaridaPurple[500]} />
+      <GIcon name="wifi" size={28} color={AccentPurple} />
       <Text style={styles.stepTitle}>Connect to WiFi</Text>
       <Text style={styles.stepDesc}>
         Enter your home WiFi credentials so Pond can connect to the internet.
@@ -122,7 +123,7 @@ function NameStep({ onNext }: { onNext: () => void }) {
   const [name, setName] = useState('');
   return (
     <View style={styles.stepContent}>
-      <GIcon name="edit" size={28} color={JaridaPurple[500]} />
+      <GIcon name="edit" size={28} color={AccentPurple} />
       <Text style={styles.stepTitle}>Name Your Device</Text>
       <Text style={styles.stepDesc}>
         Give your Pond device a friendly name so you can identify it later.
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  stepDotActive: { backgroundColor: JaridaPurple[500] },
+  stepDotActive: { backgroundColor: AccentPurple },
   stepDotDone: { backgroundColor: Semantic.success },
   stepNumber: {
     fontFamily: FontFamily.heading,

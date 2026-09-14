@@ -19,7 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GIcon } from '@/components/ui/g-icon';
 import { GSwitch } from '@/components/ui/g-switch';
 import { DEVICE_ROOMS, type Device } from '@/models/device';
-import { Grey, JaridaPurple, Brand } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -108,7 +109,7 @@ export default function DevicesTab() {
           style={styles.addDeviceBtn}
           onPress={() => router.push('/(stack)/pond-pairing')}
         >
-          <GIcon name="plus" size={20} color={JaridaPurple[500]} />
+          <GIcon name="plus" size={20} color={AccentPurple} />
           <Text style={styles.addDeviceText}>Add Pond device</Text>
         </Pressable>
 
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: Grey[100],
   },
   roomTabActive: {
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
   },
   roomTabText: {
     fontFamily: FontFamily.body,
@@ -262,6 +263,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
 });

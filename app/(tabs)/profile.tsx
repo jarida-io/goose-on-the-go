@@ -18,7 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
 import { PROFILE_NAV, type NavItem, type NavGroup } from '@/constants/navigation';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -49,7 +50,7 @@ const NavRow = React.memo(function NavRow({
       onPress={handlePress}
     >
       <View style={styles.rowLeft}>
-        <GIcon name={item.icon} size={16} color="#8C4BFF" />
+        <GIcon name={item.icon} size={16} color={AccentPurple} />
         <Text style={styles.rowLabel}>{item.label}</Text>
       </View>
       <GIcon name="chevron" size={16} color={Grey[400]} />
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 4,

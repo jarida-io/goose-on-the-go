@@ -6,7 +6,7 @@
  * or from individual token files for tree-shaking.
  */
 
-export { Colors, LightColors, DarkColors, JaridaPurple, Grey, Brand, Semantic, RoleColors, type ThemeColors } from './colors';
+export { Colors, LightColors, DarkColors, JaridaPurple, Accent, AccentPurple, Grey, Brand, Semantic, RoleColors, type ThemeColors } from './colors';
 export { FontFamily, FontSize, FontWeight, LineHeight, LetterSpacing } from './typography';
 export { Spacing } from './spacing';
 export { Radii } from './radii';
