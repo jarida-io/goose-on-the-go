@@ -36,6 +36,11 @@ export function GSwitch({
         trackColor={{ false: Grey[300], true: JaridaPurple[500] }}
         thumbColor={Brand.white}
         ios_backgroundColor={Grey[300]}
+        // react-native-web-only prop, undeclared in RN's types: without it,
+        // the "on" thumb falls back to RNW's own default (a teal-green),
+        // since native Switch has no separate on/off thumb color for RNW to
+        // inherit a value from.
+        {...{ activeThumbColor: Brand.white }}
       />
       {label && (
         <Text style={[styles.label, disabled && styles.labelDisabled]}>

@@ -9,6 +9,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Redirect } from 'expo-router';
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GInput } from '@/components/ui/g-input';
@@ -32,16 +33,33 @@ const SCREEN_LABELS: Record<MigrationScreen, string> = {
 };
 
 export default function DeveloperScreen() {
+  // Not linked from the You-tab menu in production (see constants/navigation.ts),
+  // but the route itself still exists — refuse to render it outside dev builds
+  // too, so a direct link/deep link can't reach it either. Kept in a separate
+  // component (rather than an early return here) so the hooks below always
+  // run in a consistent order for whichever component actually renders.
+  if (!__DEV__) {
+    return <Redirect href="/(tabs)" />;
+  }
+  return <DeveloperScreenContent />;
+}
+
+function DeveloperScreenContent() {
   const { serverUrl, setServerUrl, online, checkHealth, screenModes, setScreenMode } = useServer();
   const [urlDraft, setUrlDraft] = useState(serverUrl);
   const [checking, setChecking] = useState(false);
 
   const handleTestConnection = useCallback(async () => {
     setChecking(true);
-    setServerUrl(urlDraft);
-    await checkHealth();
+    // setServerUrl already performs and awaits its own health check when the
+    // URL actually changes; only fire a separate one to retest the same URL.
+    if (urlDraft !== serverUrl) {
+      await setServerUrl(urlDraft);
+    } else {
+      await checkHealth();
+    }
     setChecking(false);
-  }, [urlDraft, setServerUrl, checkHealth]);
+  }, [urlDraft, serverUrl, setServerUrl, checkHealth]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

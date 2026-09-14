@@ -4,7 +4,8 @@
  *
  * Provides `serverUrl`, `online`, and `token` along with their setters.
  * `online` is driven by a real `/health` check against `PondApiClient` rather
- * than a manual setter.
+ * than a manual setter. The automatic check only runs in dev builds — the
+ * mock/real toggle it supports isn't reachable in production yet either.
  */
 
 import React, {
@@ -13,6 +14,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
@@ -27,6 +29,11 @@ const DEFAULT_SERVER_URL = 'http://127.0.0.1:4000';
  * PondApiClient as its backing endpoints land (see issues #9–#15). Kept as an
  * explicit list rather than a boolean so migration work lands screen by
  * screen instead of one coordinated cutover.
+ *
+ * There's no automatic enforcement tying this list to actual behavior: each
+ * consuming view-model (e.g. use-chat.ts) must check `isScreenReal(screen)`
+ * itself. A screen can be flagged "Real" here while its view-model still
+ * silently returns mock data if it forgets to check.
  */
 export const MIGRATION_SCREENS = [
   'chat',
@@ -54,7 +61,8 @@ interface ServerContextValue {
   online: boolean;
   /** Auth token for server communication (null = unauthenticated) */
   token: string | null;
-  setServerUrl: (url: string) => void;
+  /** Sets the server URL and awaits a fresh /health check against it */
+  setServerUrl: (url: string) => Promise<boolean>;
   setToken: (token: string | null) => void;
   /** Re-run the /health check against the current serverUrl */
   checkHealth: () => Promise<boolean>;
@@ -74,35 +82,55 @@ export function ServerProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [screenModes, setScreenModes] = useState<ScreenModes>(DEFAULT_SCREEN_MODES);
 
-  // Load persisted dev screen modes once on mount.
+  // Guards against an out-of-order response (e.g. two health checks in
+  // flight at once) overwriting `online` with a stale result.
+  const healthCheckSeqRef = useRef(0);
+  const checkHealth = useCallback(async () => {
+    const seq = ++healthCheckSeqRef.current;
+    const result = await api.health();
+    if (seq === healthCheckSeqRef.current) {
+      setOnline(result.ok);
+    }
+    return result.ok;
+  }, []);
+
+  // Load persisted dev screen modes once on mount. `setScreenMode` awaits
+  // this promise before persisting, so an early toggle (before this resolves)
+  // can't clobber other screens' already-saved modes.
+  const loadScreenModesRef = useRef<Promise<ScreenModes | null> | undefined>(undefined);
   useEffect(() => {
-    Storage.getJSON<ScreenModes>('devScreenModes').then((saved) => {
+    loadScreenModesRef.current = Storage.getJSON<ScreenModes>('devScreenModes');
+    loadScreenModesRef.current.then((saved) => {
       if (saved) setScreenModes((prev) => ({ ...prev, ...saved }));
     });
   }, []);
 
-  const checkHealth = useCallback(async () => {
-    const result = await api.health();
-    setOnline(result.ok);
-    return result.ok;
-  }, []);
-
-  // Re-check health whenever the server URL changes.
+  // Dev builds only — the toggle this drives isn't reachable in production.
   useEffect(() => {
+    if (!__DEV__) return;
     checkHealth();
-  }, [serverUrl, checkHealth]);
-
-  const handleSetServerUrl = useCallback((url: string) => {
-    const clean = url.replace(/\/+$/, ''); // strip trailing slashes
-    api.setBaseUrl(clean);
-    setServerUrlState(clean);
+    // Only re-run for an explicit serverUrl change from outside setServerUrl
+    // (e.g. a future pairing flow setting api's base URL directly is out of
+    // scope today); setServerUrl itself already awaits its own check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleSetServerUrl = useCallback(
+    async (url: string) => {
+      const clean = url.replace(/\/+$/, ''); // strip trailing slashes
+      api.setBaseUrl(clean);
+      setServerUrlState(clean);
+      return checkHealth();
+    },
+    [checkHealth],
+  );
 
   useEffect(() => {
     api.setToken(token);
   }, [token]);
 
-  const setScreenMode = useCallback((screen: MigrationScreen, useReal: boolean) => {
+  const setScreenMode = useCallback(async (screen: MigrationScreen, useReal: boolean) => {
+    await loadScreenModesRef.current;
     setScreenModes((prev) => {
       const next = { ...prev, [screen]: useReal };
       Storage.setJSON('devScreenModes', next);
