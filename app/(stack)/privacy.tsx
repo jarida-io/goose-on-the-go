@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -59,7 +60,7 @@ function ExpandableSection({ section }: { section: PrivacySection }) {
     >
       <View style={styles.sectionHeader}>
         <View style={{ marginRight: Spacing.md }}>
-          <GIcon name={section.icon} size={16} color={JaridaPurple[500]} />
+          <GIcon name={section.icon} size={16} color={AccentPurple} />
         </View>
         <Text style={styles.sectionTitle}>{section.title}</Text>
         <View style={expanded ? { transform: [{ rotate: '180deg' }] } : undefined}>

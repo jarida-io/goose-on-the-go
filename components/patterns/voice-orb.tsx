@@ -13,7 +13,8 @@ import Animated, {
   Easing,
   cancelAnimation,
 } from 'react-native-reanimated';
-import { JaridaPurple, Grey } from '@/constants/colors';
+import { AccentPurple, Grey } from '@/constants/colors';
+
 import type { VoiceState } from '@/models/voice';
 
 interface VoiceOrbProps {
@@ -94,10 +95,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: JaridaPurple[500],
+    shadowColor: AccentPurple,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 20,

@@ -20,7 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
 import type { Message } from '@/models/chat';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -187,7 +188,7 @@ export default function ChatScreen() {
               maxLength={4000}
             />
             <Pressable style={styles.micBtn}>
-              <GIcon name="voice" size={18} color={JaridaPurple[500]} />
+              <GIcon name="voice" size={18} color={AccentPurple} />
             </Pressable>
           </View>
           <Pressable
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.lg,
   },
   bubbleUser: {
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     borderBottomRightRadius: Radii.xs,
   },
   bubbleAssistant: {
@@ -405,7 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendBtnActive: { backgroundColor: JaridaPurple[500] },
+  sendBtnActive: { backgroundColor: AccentPurple },
   sendBtnInactive: { backgroundColor: Grey[200] },
 
   /* Footer */

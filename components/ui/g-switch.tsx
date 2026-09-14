@@ -10,7 +10,8 @@
 import React from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
-import { Brand, Grey, JaridaPurple } from '@/constants/colors';
+import { Brand, Grey, AccentPurple } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 
@@ -33,7 +34,7 @@ export function GSwitch({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: Grey[300], true: JaridaPurple[500] }}
+        trackColor={{ false: Grey[300], true: AccentPurple }}
         thumbColor={Brand.white}
         ios_backgroundColor={Grey[300]}
       />

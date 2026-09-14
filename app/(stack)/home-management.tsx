@@ -15,7 +15,8 @@ import {
 import { useRouter } from 'expo-router';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -72,7 +73,7 @@ export default function HomeManagementScreen() {
       {rooms.map((room) => (
         <View key={room.id} style={styles.roomCard}>
           <View style={{ marginRight: Spacing.md }}>
-            <GIcon name={room.icon} size={20} color={JaridaPurple[500]} />
+            <GIcon name={room.icon} size={20} color={AccentPurple} />
           </View>
           <View style={styles.roomInfo}>
             <Text style={styles.roomName}>{room.name}</Text>
@@ -92,7 +93,7 @@ export default function HomeManagementScreen() {
 
       {/* Add room */}
       <Pressable style={styles.addBtn}>
-        <GIcon name="plus" size={16} color={JaridaPurple[500]} />
+        <GIcon name="plus" size={16} color={AccentPurple} />
         <Text style={styles.addBtnText}>Add Room</Text>
       </Pressable>
 
@@ -120,7 +121,7 @@ export default function HomeManagementScreen() {
         style={styles.addBtn}
         onPress={() => router.push('/(stack)/pond-pairing')}
       >
-        <GIcon name="plus" size={16} color={JaridaPurple[500]} />
+        <GIcon name="plus" size={16} color={AccentPurple} />
         <Text style={styles.addBtnText}>Pair New Pond Device</Text>
       </Pressable>
 
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
 
   /* Pond device */

@@ -15,7 +15,8 @@ import {
 
 import { GIcon } from '@/components/ui/g-icon';
 import { SAMPLE_LOGS, type LogEntry, type LogType } from '@/models/log';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.pill,
     backgroundColor: Grey[100],
   },
-  tabActive: { backgroundColor: JaridaPurple[500] },
+  tabActive: { backgroundColor: AccentPurple },
   tabText: {
     fontFamily: FontFamily.body,
     fontSize: FontSize.sm,

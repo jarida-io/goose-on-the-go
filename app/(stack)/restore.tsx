@@ -13,7 +13,8 @@ import {
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -120,7 +121,7 @@ export default function RestoreScreen() {
 
       {state === 'progress' && (
         <View style={styles.progressWrap}>
-          <GIcon name="refresh" size={28} color="#8C4BFF" />
+          <GIcon name="refresh" size={28} color={AccentPurple} />
           <Text style={styles.progressTitle}>Restoring...</Text>
           <Text style={styles.progressDesc}>
             Transferring data to your Pond device. Do not disconnect power.
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   backupCardSelected: {
-    borderColor: JaridaPurple[500],
+    borderColor: AccentPurple,
     borderWidth: 2,
     backgroundColor: JaridaPurple[50] + '40',
   },
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
   },
   backupInfo: { flex: 1 },
   backupDate: {
@@ -300,14 +301,14 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     borderRadius: 4,
   },
   progressPercent: {
     fontFamily: FontFamily.heading,
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
   progressSteps: { gap: Spacing.sm, alignSelf: 'flex-start', width: '100%' },
   progressStepRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

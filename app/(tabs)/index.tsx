@@ -21,7 +21,8 @@ import { GIcon } from '@/components/ui/g-icon';
 import { GSwitch } from '@/components/ui/g-switch';
 import { HOME_DEVICES } from '@/models/device';
 import { HOME_SHORTCUTS } from '@/constants/navigation';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -117,7 +118,7 @@ export default function HomeScreen() {
             onChangeText={setAskText}
           />
           <Pressable style={styles.askMicBtn} onPress={handleMicPress}>
-            <GIcon name="mic" size={18} color={JaridaPurple[500]} />
+            <GIcon name="mic" size={18} color={AccentPurple} />
           </Pressable>
         </Pressable>
 
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
 
   /* Right Now cards */

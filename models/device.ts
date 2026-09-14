@@ -17,7 +17,7 @@ export const HOME_DEVICES: Device[] = [
   { label: 'Living Room', icon: 'light', detail: '2 on', color: '#F59E0B', idx: 0 },
   { label: 'Thermostat', icon: 'thermo', detail: '72\u00B0F', color: '#1C63D1', idx: 1 },
   { label: 'Front Door', icon: 'lock', detail: 'Locked', color: '#1F8A3C', idx: 2 },
-  { label: 'Speaker', icon: 'speaker', detail: 'Playing', color: '#8C4BFF', idx: 3 },
+  { label: 'Speaker', icon: 'speaker', detail: 'Playing', color: '#7C3AED', idx: 3 },
 ];
 
 export const DEVICE_ROOMS: Room[] = [

@@ -7,7 +7,7 @@
 import { Stack } from 'expo-router';
 import React from 'react';
 
-import { Brand, Grey, JaridaPurple } from '@/constants/colors';
+import { Brand, Grey, AccentPurple } from '@/constants/colors';
 
 export default function StackLayout() {
   return (
@@ -15,7 +15,7 @@ export default function StackLayout() {
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: Brand.white },
-        headerTintColor: JaridaPurple[500],
+        headerTintColor: AccentPurple,
         headerTitleStyle: { color: Grey[900], fontFamily: 'Quicksand', fontWeight: '700' },
         headerShadowVisible: false,
         headerBackButtonDisplayMode: 'minimal',

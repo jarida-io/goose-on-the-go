@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 
 import { GSwitch } from '@/components/ui/g-switch';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     borderRadius: Radii.lg,
   },
-  dayItemActive: { backgroundColor: JaridaPurple[500] },
+  dayItemActive: { backgroundColor: AccentPurple },
   dayLabel: {
     fontFamily: FontFamily.body,
     fontSize: FontSize.xs,
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor: Grey[300],
     zIndex: 1,
   },
-  lineDotRoutine: { backgroundColor: JaridaPurple[500] },
+  lineDotRoutine: { backgroundColor: AccentPurple },
   line: {
     flex: 1,
     width: 2,

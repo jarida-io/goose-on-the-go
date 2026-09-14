@@ -24,7 +24,8 @@ import {
   View,
 } from 'react-native';
 
-import { Brand, Grey, JaridaPurple } from '@/constants/colors';
+import { Brand, Grey, AccentPurple } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Radii } from '@/constants/radii';
 import { Spacing } from '@/constants/spacing';
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
     left: Spacing.md,
     right: Spacing.md,
     height: 2,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
     borderRadius: 1,
   },
 
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
   },
   activeSolidTab: {
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: AccentPurple,
   },
 
   // Text
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
   },
   activeUnderlinedLabel: {
-    color: JaridaPurple[500],
+    color: AccentPurple,
   },
   activeSolidLabel: {
     color: Brand.white,

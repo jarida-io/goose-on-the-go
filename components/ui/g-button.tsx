@@ -19,7 +19,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Grey, JaridaPurple, Semantic, Brand } from '@/constants/colors';
+import { Grey, JaridaPurple, AccentPurple, Semantic, Brand } from '@/constants/colors';
+
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Radii } from '@/constants/radii';
 import { Spacing } from '@/constants/spacing';
@@ -64,7 +65,7 @@ interface VariantStyle {
 }
 
 const VARIANT_STYLES: Record<GButtonVariant, VariantStyle> = {
-  primary: { bg: JaridaPurple[500], text: Brand.white },
+  primary: { bg: AccentPurple, text: Brand.white },
   secondary: { bg: JaridaPurple[50], text: JaridaPurple[700] },
   ghost: { bg: 'transparent', text: Grey[700] },
   danger: { bg: Semantic.danger, text: Brand.white },
