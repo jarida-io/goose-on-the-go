@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { GButton } from '@/components/ui/g-button';
+import { InkButton } from '@jarida/ink/native';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
@@ -108,14 +108,13 @@ export default function RestoreScreen() {
             </Pressable>
           ))}
 
-          <GButton
+          <InkButton
             variant="primary"
-            size="lg"
             onPress={handleRestore}
             disabled={!selectedBackup}
           >
             Restore from Backup
-          </GButton>
+          </InkButton>
         </>
       )}
 
@@ -166,9 +165,9 @@ export default function RestoreScreen() {
           <Text style={styles.completeDesc}>
             Your Pond device has been restored successfully. All settings, memories, and device configurations are back.
           </Text>
-          <GButton variant="primary" size="lg" onPress={handleDone}>
+          <InkButton variant="primary" onPress={handleDone}>
             Done
-          </GButton>
+          </InkButton>
         </View>
       )}
 

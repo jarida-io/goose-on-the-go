@@ -110,25 +110,24 @@ How to add, modify, and remove components in the Goose on The Go UI library.
 ### Primitives (components/ui/)
 | Component | Props | Description |
 |-----------|-------|-------------|
-| GButton | variant, size, startIcon, endIcon, loading, disabled | Primary action button |
-| GCard | variant (default/elevated) | Surface container |
-| GChip | variant (6 colors), size, startIcon | Status badge |
 | GIcon | name, size, color, fill | SVG icon from IconPaths registry |
-| GInput | label, variant (bordered/flat), startIcon | Text input |
-| GTextArea | label, variant, minLines, maxLines | Multi-line input |
-| GTabs | tabs, activeKey, onTabChange, variant | Tab bar |
-| GSeparator | — | Divider line |
-| GRadioGroup | options, value, onValueChange, orientation | Radio options |
-| GSlider | value, onValueChange, min, max, label | Range slider |
-| GProgressBar | value, color, size, label | Progress indicator |
-| GSelect | options, selectedKey, onSelectionChange, label | Modal picker |
 
-`GSwitch`, `GSkeleton`, and `GEmptyState` have been replaced by
-`@jarida/ink/native`'s `InkSwitch`, `InkSkeleton`, and `InkEmptyState`
-(issue #17, phase 1 — leaf primitives). Import them directly from
-`@jarida/ink/native` rather than `components/ui/` — those files are deleted
-and won't be re-added. The remaining primitives above are scheduled for the
-same migration in later phases; see issue #17 for the full mapping.
+Every other primitive that used to live here has been migrated to
+`@jarida/ink/native` (issue #17): `GSwitch`/`GSkeleton`/`GEmptyState` in
+phase 1, and `GButton`/`GCard`/`GChip`/`GInput`/`GTextArea`/`GTabs`/
+`GSeparator`/`GRadioGroup`/`GSlider`/`GProgressBar`/`GSelect` in phase 2
+(the last two — `GCard`/`GChip`/`GInput`/`GTextArea`/`GTabs`/`GSeparator`/
+`GRadioGroup`/`GProgressBar`/`GSelect` had no consumers in the app and were
+simply deleted rather than swapped at call sites). Import their `Ink*`
+replacements directly from `@jarida/ink/native` — those `components/ui/g-*`
+files are deleted and won't be re-added. `GIcon` is the one remaining
+exception, tracked by a separate icon-registry issue.
+
+`InkButton` has no `size` prop (one fixed size) and only 3 variants
+(`primary`/`quiet`/`danger`) versus the old `GButton`'s 5 — the former
+`secondary` and `ghost` variants both now map to `quiet`. Its `icon` prop
+accepts any `ReactElement`, so pass an existing `<GIcon .../>` directly
+rather than adopting ink's separate icon-name registry.
 
 ### Patterns (components/patterns/)
 | Component | Props | Description |

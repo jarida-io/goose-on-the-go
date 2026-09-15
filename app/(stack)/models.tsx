@@ -13,7 +13,7 @@ import {
   Pressable,
 } from 'react-native';
 
-import { GSlider } from '@/components/ui/g-slider';
+import { InkSlider } from '@jarida/ink/native';
 import { AI_MODELS, type AIModel } from '@/models/model';
 import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
@@ -97,10 +97,14 @@ export default function AIModelsScreen() {
     >
       {/* Temperature slider */}
       <View style={styles.sliderCard}>
-        <GSlider
+        <View style={styles.sliderHeader}>
+          <Text style={styles.sliderLabel}>Temperature</Text>
+          <Text style={styles.sliderValue}>{temperature.toFixed(1)}</Text>
+        </View>
+        <InkSlider
           label="Temperature"
           value={temperature}
-          onValueChange={setTemperature}
+          onChange={setTemperature}
           min={0}
           max={2}
           step={0.1}
@@ -141,6 +145,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Grey[200],
     marginBottom: Spacing.lg,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  sliderLabel: {
+    fontFamily: FontFamily.body,
+    fontSize: FontSize.sm,
+    color: Grey[600],
+  },
+  sliderValue: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Brand.charcoal,
   },
 
   /* Context window */

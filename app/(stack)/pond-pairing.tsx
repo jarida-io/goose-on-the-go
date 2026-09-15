@@ -14,7 +14,7 @@ import {
 
 import { useRouter } from 'expo-router';
 import { GIcon } from '@/components/ui/g-icon';
-import { GButton } from '@/components/ui/g-button';
+import { InkButton } from '@jarida/ink/native';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
@@ -72,9 +72,9 @@ function FindStep({ onNext }: { onNext: () => void }) {
         <View style={styles.foundDot} />
         <Text style={styles.foundText}>Pond Hub v2 found</Text>
       </View>
-      <GButton variant="primary" size="lg" onPress={onNext}>
+      <InkButton variant="primary" onPress={onNext}>
         Connect
-      </GButton>
+      </InkButton>
     </View>
   );
 }
@@ -111,9 +111,9 @@ function WifiStep({ onNext }: { onNext: () => void }) {
           secureTextEntry
         />
       </View>
-      <GButton variant="primary" size="lg" onPress={onNext}>
+      <InkButton variant="primary" onPress={onNext}>
         Connect to WiFi
-      </GButton>
+      </InkButton>
     </View>
   );
 }
@@ -138,9 +138,9 @@ function NameStep({ onNext }: { onNext: () => void }) {
           placeholderTextColor={Grey[400]}
         />
       </View>
-      <GButton variant="primary" size="lg" onPress={onNext}>
+      <InkButton variant="primary" onPress={onNext}>
         Save Name
-      </GButton>
+      </InkButton>
     </View>
   );
 }
@@ -154,9 +154,9 @@ function CompleteStep({ onDone }: { onDone: () => void }) {
       <Text style={styles.stepDesc}>
         Your Pond device is connected and ready. Goose can now control your smart home devices.
       </Text>
-      <GButton variant="primary" size="lg" onPress={onDone}>
+      <InkButton variant="primary" onPress={onDone}>
         Go to Home
-      </GButton>
+      </InkButton>
     </View>
   );
 }
