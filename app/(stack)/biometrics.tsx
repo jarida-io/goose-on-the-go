@@ -14,7 +14,7 @@ import {
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
-import { GSwitch } from '@/components/ui/g-switch';
+import { InkSwitch } from '@jarida/ink/native';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
@@ -101,9 +101,9 @@ export default function BiometricsScreen() {
               <Text style={styles.methodTitle}>{method.title}</Text>
               <Text style={styles.methodDesc}>{method.description}</Text>
             </View>
-            <GSwitch
-              value={method.enabled}
-              onValueChange={() => toggleMethod(method.id)}
+            <InkSwitch
+              checked={method.enabled}
+              onChange={() => toggleMethod(method.id)}
             />
           </View>
 

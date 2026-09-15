@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { GSwitch } from '@/components/ui/g-switch';
+import { InkSwitch } from '@jarida/ink/native';
 import { DEVICE_ROOMS, type Device } from '@/models/device';
 import { Grey, JaridaPurple, AccentPurple, Brand } from '@/constants/colors';
 
@@ -36,7 +36,7 @@ const DeviceCard = React.memo(function DeviceCard({ item }: { item: Device }) {
         <View style={[styles.deviceIconWrap, { backgroundColor: item.color + '18' }]}>
           <GIcon name={item.icon} size={17} color={on ? item.color : '#B5B5B5'} />
         </View>
-        <GSwitch value={on} onValueChange={setOn} />
+        <InkSwitch checked={on} onChange={setOn} />
       </View>
       <Text style={styles.deviceLabel} numberOfLines={1}>{item.label}</Text>
       <Text style={styles.deviceDetail}>{item.detail}</Text>

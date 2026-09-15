@@ -11,7 +11,7 @@ import {
   Pressable,
 } from 'react-native';
 
-import { GSwitch } from '@/components/ui/g-switch';
+import { InkSwitch } from '@jarida/ink/native';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
@@ -64,7 +64,7 @@ const TimelineRow = React.memo(function TimelineRow({
             <Text style={styles.eventDetail}>{item.detail}</Text>
           </View>
           {isRoutine && (
-            <GSwitch value={item.enabled} onValueChange={() => onToggle(index)} />
+            <InkSwitch checked={item.enabled} onChange={() => onToggle(index)} />
           )}
         </View>
         {!isRoutine && (

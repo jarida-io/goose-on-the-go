@@ -116,15 +116,19 @@ How to add, modify, and remove components in the Goose on The Go UI library.
 | GIcon | name, size, color, fill | SVG icon from IconPaths registry |
 | GInput | label, variant (bordered/flat), startIcon | Text input |
 | GTextArea | label, variant, minLines, maxLines | Multi-line input |
-| GSwitch | value, onValueChange, label | Toggle switch |
 | GTabs | tabs, activeKey, onTabChange, variant | Tab bar |
 | GSeparator | — | Divider line |
 | GRadioGroup | options, value, onValueChange, orientation | Radio options |
 | GSlider | value, onValueChange, min, max, label | Range slider |
 | GProgressBar | value, color, size, label | Progress indicator |
 | GSelect | options, selectedKey, onSelectionChange, label | Modal picker |
-| GSkeleton | width, height, borderRadius | Loading placeholder |
-| GEmptyState | icon, title, message, action | Empty content |
+
+`GSwitch`, `GSkeleton`, and `GEmptyState` have been replaced by
+`@jarida/ink/native`'s `InkSwitch`, `InkSkeleton`, and `InkEmptyState`
+(issue #17, phase 1 — leaf primitives). Import them directly from
+`@jarida/ink/native` rather than `components/ui/` — those files are deleted
+and won't be re-added. The remaining primitives above are scheduled for the
+same migration in later phases; see issue #17 for the full mapping.
 
 ### Patterns (components/patterns/)
 | Component | Props | Description |

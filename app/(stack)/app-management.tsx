@@ -14,7 +14,7 @@ import {
   TextInput,
 } from 'react-native';
 
-import { GSwitch } from '@/components/ui/g-switch';
+import { InkSwitch } from '@jarida/ink/native';
 import { GIcon } from '@/components/ui/g-icon';
 import { Grey, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
@@ -62,7 +62,7 @@ const AppCard = React.memo(function AppCard({
           <Text style={styles.appName}>{app.name}</Text>
           <Text style={styles.appDesc}>{app.description}</Text>
         </View>
-        <GSwitch value={app.enabled} onValueChange={() => onToggle(app.id)} />
+        <InkSwitch checked={app.enabled} onChange={() => onToggle(app.id)} />
       </View>
 
       {/* API key row */}
