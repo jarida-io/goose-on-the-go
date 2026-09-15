@@ -99,6 +99,7 @@ export default function MemoriesScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
         contentContainerStyle={styles.tabsRow}
       >
         {CATEGORY_TABS.map((tab) => (
@@ -130,6 +131,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Grey[50] },
 
   /* Tabs */
+  // Pins this ScrollView's own height to its content instead of letting it
+  // compete for leftover flex space with the list below — without this,
+  // filtering to a category with fewer results frees up vertical space
+  // that gets redistributed into the tab pills instead of staying blank,
+  // stretching them tall.
+  tabsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   tabsRow: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,

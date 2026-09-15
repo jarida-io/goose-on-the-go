@@ -73,6 +73,7 @@ export default function DevicesTab() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
         contentContainerStyle={styles.tabsRow}
       >
         {ROOM_TABS.map((tab) => (
@@ -160,6 +161,15 @@ const styles = StyleSheet.create({
   },
 
   /* Room tabs */
+  // Pins this ScrollView's own height to its content instead of letting it
+  // compete for leftover flex space in the column layout below — without
+  // this, filtering to a room with fewer devices frees up vertical space
+  // that gets redistributed into the tab pills instead of staying blank,
+  // stretching them tall.
+  tabsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   tabsRow: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
