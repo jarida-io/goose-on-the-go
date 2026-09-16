@@ -100,7 +100,7 @@ export default function ProfileHub() {
             <Text style={styles.profileName}>Jerry Ochieng</Text>
             <Text style={styles.profileEmail}>jerryochieng178@gmail.com</Text>
             <View style={styles.proBadge}>
-              <Text style={styles.proBadgeText}>Jarida Pro</Text>
+              <Text style={styles.proBadgeText}>Jarida Team</Text>
             </View>
           </View>
 

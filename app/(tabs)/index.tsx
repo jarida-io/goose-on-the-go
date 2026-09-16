@@ -19,7 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GSwitch } from '@/components/ui/g-switch';
-import { HOME_DEVICES } from '@/models/device';
+import { deviceIcon, deviceColor, type Device } from '@/models/device';
+import { useDevices } from '@/view-models/use-devices';
 import { HOME_SHORTCUTS } from '@/constants/navigation';
 import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
@@ -50,22 +51,20 @@ function StatusChip({ label, color, bg }: { label: string; color: string; bg: st
   );
 }
 
-const DeviceGridItem = React.memo(function DeviceGridItem({
-  item,
-}: {
-  item: (typeof HOME_DEVICES)[number];
-}) {
-  const [on, setOn] = useState(true);
+const DeviceGridItem = React.memo(function DeviceGridItem({ item }: { item: Device }) {
+  const [on, setOn] = useState(item.on);
+  const icon = deviceIcon(item.kind);
+  const color = deviceColor(item.kind);
   return (
     <View style={styles.deviceCard}>
       <View style={styles.deviceCardTop}>
-        <View style={[styles.deviceIconWrap, { backgroundColor: item.color + '18' }]}>
-          <GIcon name={item.icon} size={17} color={on ? item.color : '#B5B5B5'} />
+        <View style={[styles.deviceIconWrap, { backgroundColor: color + '18' }]}>
+          <GIcon name={icon} size={17} color={on ? color : '#B5B5B5'} />
         </View>
         <GSwitch value={on} onValueChange={setOn} />
       </View>
-      <Text style={styles.deviceLabel} numberOfLines={1}>{item.label}</Text>
-      <Text style={styles.deviceDetail}>{item.detail}</Text>
+      <Text style={styles.deviceLabel} numberOfLines={1}>{item.name}</Text>
+      {item.detail && <Text style={styles.deviceDetail}>{item.detail}</Text>}
     </View>
   );
 });
@@ -73,6 +72,8 @@ const DeviceGridItem = React.memo(function DeviceGridItem({
 export default function HomeScreen() {
   const router = useRouter();
   const [askText, setAskText] = useState('');
+  const { devices } = useDevices();
+  const homeDevices = devices.slice(0, 4);
 
   const handleMicPress = useCallback(() => {
     // Will trigger listening overlay in future
@@ -176,8 +177,8 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         <View style={styles.devicesGrid}>
-          {HOME_DEVICES.map((d) => (
-            <DeviceGridItem key={d.idx} item={d} />
+          {homeDevices.map((d) => (
+            <DeviceGridItem key={d.id} item={d} />
           ))}
         </View>
 

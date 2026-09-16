@@ -1,32 +1,68 @@
-/** Schedule types — Goose On The Go v2 design */
+/** Schedule types — real pond-infra-scheduler backend shapes */
 
-export type EventType = 'routine' | 'calendar' | 'mcp';
+import type { TriggerAction, TriggerCondition, TriggerSource } from './trigger';
 
-export interface ScheduleEvent {
-  time: string;
+export type TaskKind =
+  | { type: 'agent_prompt'; prompt: string }
+  | { type: 'webhook'; webhook_url: string }
+  | {
+      type: 'sensor_trigger';
+      source: TriggerSource;
+      condition?: TriggerCondition;
+      actions: TriggerAction[];
+      cooldown_secs?: number;
+    };
+
+export interface Schedule {
+  id: string;
   label: string;
-  icon: string;
-  type: EventType;
-  duration: string;
+  cron: string;
+  fire_at: string | null;
+  timezone: string;
+  kind: TaskKind;
+  paused: boolean;
+  currently_running: boolean;
+  last_run: string | null;
+  next_run: string | null;
+  created_at: string;
 }
 
-export interface Routine {
-  label: string;
-  detail: string;
-  enabled: boolean;
+export interface ScheduleRun {
+  id: string;
+  schedule_id: string;
+  status: 'running' | 'completed' | 'failed';
+  result: string | null;
+  error: string | null;
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number | null;
 }
 
-export const SAMPLE_EVENTS: ScheduleEvent[] = [
-  { time: '07:00', label: 'Morning routine', icon: 'sun', type: 'routine', duration: '45m' },
-  { time: '09:00', label: 'Team standup', icon: 'calendar', type: 'calendar', duration: '30m' },
-  { time: '12:30', label: 'Lunch delivery (Glovo)', icon: 'package', type: 'mcp', duration: '\u2014' },
-  { time: '18:00', label: 'Evening lights scene', icon: 'light', type: 'routine', duration: 'Ongoing' },
-  { time: '21:00', label: 'Night routine', icon: 'moon', type: 'routine', duration: '15m' },
-];
+export interface ScheduleResultEvent {
+  schedule_id: string;
+  schedule_label: string;
+  run_id: string;
+  status: 'running' | 'completed' | 'failed';
+  result?: string | null;
+  error?: string | null;
+  duration_ms?: number | null;
+}
 
-export const SAMPLE_ROUTINES: Routine[] = [
-  { label: 'Morning', detail: 'Weekdays \u00B7 7:00 AM', enabled: true },
-  { label: 'Evening', detail: 'Daily \u00B7 6:00 PM', enabled: true },
-  { label: 'Night', detail: 'Daily \u00B7 9:00 PM', enabled: true },
-  { label: 'Weekend lazy', detail: 'Sat\u2013Sun \u00B7 9:30 AM', enabled: false },
-];
+export interface CreateScheduleInput {
+  id?: string;
+  name: string;
+  cron: string;
+  prompt?: string;
+  timezone?: string;
+  kind?: TaskKind;
+  once?: boolean;
+}
+
+export interface UpdateScheduleInput {
+  name?: string;
+  cron?: string;
+  timezone?: string;
+  prompt?: string;
+  fire_at?: string;
+  once?: boolean;
+}

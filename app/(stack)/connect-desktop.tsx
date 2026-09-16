@@ -19,7 +19,6 @@ import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
 import { useServer } from '@/providers/server-provider';
 import { useHaptics } from '@/hooks/use-haptics';
-import { api } from '@/services/api-client';
 import { Storage } from '@/services/storage';
 import { pairDevice } from '@/services/handshake';
 import { parsePairingPayload } from '@/models/pairing';
@@ -66,8 +65,6 @@ export default function ConnectDesktopScreen() {
           deviceName: Constants.deviceName ?? null,
         });
 
-        api.setBaseUrl(payload.serverUrl);
-        api.setToken(result.sessionToken);
         server.setServerUrl(payload.serverUrl);
         server.setToken(result.sessionToken);
         server.setOnline(true);

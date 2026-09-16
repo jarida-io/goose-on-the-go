@@ -1,11 +1,27 @@
 /** Device types — Goose On The Go v2 design */
 
+import type { IconName } from '@/constants/icons';
+
+export type DeviceKind =
+  | 'light'
+  | 'thermostat'
+  | 'lock'
+  | 'speaker'
+  | 'camera'
+  | 'switch'
+  | 'sensor'
+  | 'other';
+
+/** A single smart-home device as reported by the paired Pond desktop. */
 export interface Device {
-  label: string;
-  icon: string;
-  detail: string;
-  color: string;
-  idx: number;
+  id: string;
+  name: string;
+  kind: DeviceKind;
+  /** Room name as configured on desktop, or null if unassigned. */
+  room: string | null;
+  on: boolean;
+  /** Human-readable status, e.g. "72°F" or "Locked" — desktop-supplied. */
+  detail: string | null;
 }
 
 export interface Room {
@@ -13,24 +29,53 @@ export interface Room {
   devices: Device[];
 }
 
-export const HOME_DEVICES: Device[] = [
-  { label: 'Living Room', icon: 'light', detail: '2 on', color: '#F59E0B', idx: 0 },
-  { label: 'Thermostat', icon: 'thermo', detail: '72\u00B0F', color: '#1C63D1', idx: 1 },
-  { label: 'Front Door', icon: 'lock', detail: 'Locked', color: '#1F8A3C', idx: 2 },
-  { label: 'Speaker', icon: 'speaker', detail: 'Playing', color: '#8C4BFF', idx: 3 },
-];
+const KIND_ICON: Record<DeviceKind, IconName> = {
+  light: 'light',
+  thermostat: 'thermo',
+  lock: 'lock',
+  speaker: 'speaker',
+  camera: 'camera',
+  switch: 'power',
+  sensor: 'activity',
+  other: 'device',
+};
 
-export const DEVICE_ROOMS: Room[] = [
-  { name: 'Living Room', devices: [
-    { label: 'Ceiling Light', icon: 'light', detail: '80%', color: '#F59E0B', idx: 0 },
-    { label: 'Smart TV', icon: 'camera', detail: 'Netflix', color: '#1C63D1', idx: 1 },
-  ]},
-  { name: 'Bedroom', devices: [
-    { label: 'Bedside Lamp', icon: 'light', detail: '40%', color: '#F59E0B', idx: 2 },
-    { label: 'Thermostat', icon: 'thermo', detail: '68\u00B0F', color: '#1C63D1', idx: 3 },
-  ]},
-  { name: 'Entrance', devices: [
-    { label: 'Front Door', icon: 'lock', detail: 'Locked', color: '#1F8A3C', idx: 4 },
-    { label: 'Doorbell Cam', icon: 'camera', detail: 'Live', color: '#C8383B', idx: 5 },
-  ]},
-];
+const KIND_COLOR: Record<DeviceKind, string> = {
+  light: '#F59E0B',
+  thermostat: '#1C63D1',
+  lock: '#1F8A3C',
+  speaker: '#8C4BFF',
+  camera: '#C8383B',
+  switch: '#1C63D1',
+  sensor: '#8C4BFF',
+  other: '#6B7280',
+};
+
+export function deviceIcon(kind: DeviceKind): IconName {
+  return KIND_ICON[kind] ?? KIND_ICON.other;
+}
+
+export function deviceColor(kind: DeviceKind): string {
+  return KIND_COLOR[kind] ?? KIND_COLOR.other;
+}
+
+const UNASSIGNED_ROOM = 'Other';
+
+/** Groups a flat device list into rooms, in order of first appearance. */
+export function groupDevicesByRoom(devices: Device[]): Room[] {
+  const rooms: Room[] = [];
+  const byName = new Map<string, Room>();
+
+  for (const device of devices) {
+    const name = device.room ?? UNASSIGNED_ROOM;
+    let room = byName.get(name);
+    if (!room) {
+      room = { name, devices: [] };
+      byName.set(name, room);
+      rooms.push(room);
+    }
+    room.devices.push(device);
+  }
+
+  return rooms;
+}

@@ -1,7 +1,7 @@
 /** Models barrel export — Goose On The Go v2 */
 
-export type { Device, Room } from './device';
-export { HOME_DEVICES, DEVICE_ROOMS } from './device';
+export type { Device, DeviceKind, Room } from './device';
+export { deviceIcon, deviceColor, groupDevicesByRoom } from './device';
 
 export type { MemoryFragment, MemoryCategory } from './memory';
 export { SAMPLE_MEMORIES } from './memory';
@@ -15,8 +15,16 @@ export { SAMPLE_LOGS } from './log';
 export type { MCPApp, MCPServer } from './mcp';
 export { INITIAL_APPS, INITIAL_SERVERS } from './mcp';
 
-export type { ScheduleEvent, Routine, EventType } from './schedule';
-export { SAMPLE_EVENTS, SAMPLE_ROUTINES } from './schedule';
+export type {
+  Schedule,
+  ScheduleRun,
+  ScheduleResultEvent,
+  TaskKind,
+  CreateScheduleInput,
+  UpdateScheduleInput,
+} from './schedule';
+export type { RuleView, RuleInput } from './rule';
+export type { TriggerSource, TriggerCondition, TriggerAction } from './trigger';
 
 export type { HouseholdUser } from './user';
 export { INITIAL_USERS } from './user';

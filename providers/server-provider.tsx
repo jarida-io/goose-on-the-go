@@ -9,10 +9,14 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type PropsWithChildren,
 } from 'react';
+
+import { api } from '@/services/api-client';
+import { Storage } from '@/services/storage';
 
 const DEFAULT_SERVER_URL = 'http://127.0.0.1:4000';
 
@@ -36,9 +40,40 @@ export function ServerProvider({ children }: PropsWithChildren) {
   const [online, setOnline] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
+  // Sync the shared API client singleton SYNCHRONOUSLY whenever serverUrl/token
+  // change, rather than via a reactive useEffect — an effect-based sync races
+  // consumer hooks that gate on `online && token` from context: React fires a
+  // descendant's effects (e.g. a view-model's fetch-on-mount effect) before an
+  // ancestor's own effects in the same commit, so a hook could see truthy
+  // `online`/`token` from context and call `api.listSchedules()` before this
+  // provider's own sync effect had run, sending the request with no token yet
+  // attached. Calling api.setBaseUrl/setToken inline, before the state update
+  // that consumers react to, closes that window entirely.
   const handleSetServerUrl = useCallback((url: string) => {
-    setServerUrl(url.replace(/\/+$/, '')); // strip trailing slashes
+    const normalized = url.replace(/\/+$/, ''); // strip trailing slashes
+    api.setBaseUrl(normalized);
+    setServerUrl(normalized);
   }, []);
+
+  const handleSetToken = useCallback((t: string | null) => {
+    api.setToken(t);
+    setToken(t);
+  }, []);
+
+  // Restore a previously-paired desktop on app launch.
+  useEffect(() => {
+    (async () => {
+      const [storedUrl, storedToken] = await Promise.all([
+        Storage.get('serverUrl'),
+        Storage.get('token'),
+      ]);
+      if (storedUrl && storedToken) {
+        handleSetServerUrl(storedUrl);
+        handleSetToken(storedToken);
+        setOnline(true);
+      }
+    })();
+  }, [handleSetServerUrl, handleSetToken]);
 
   const value = useMemo<ServerContextValue>(
     () => ({
@@ -46,10 +81,10 @@ export function ServerProvider({ children }: PropsWithChildren) {
       online,
       token,
       setServerUrl: handleSetServerUrl,
-      setToken,
+      setToken: handleSetToken,
       setOnline,
     }),
-    [serverUrl, online, token, handleSetServerUrl],
+    [serverUrl, online, token, handleSetServerUrl, handleSetToken],
   );
 
   return <ServerContext.Provider value={value}>{children}</ServerContext.Provider>;

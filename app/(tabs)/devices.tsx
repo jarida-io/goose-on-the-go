@@ -5,7 +5,7 @@
  * and "Add Pond device" button at bottom.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,42 +18,50 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GSwitch } from '@/components/ui/g-switch';
-import { DEVICE_ROOMS, type Device } from '@/models/device';
+import { GSkeleton } from '@/components/ui/g-skeleton';
+import { GEmptyState } from '@/components/ui/g-empty-state';
+import { GButton } from '@/components/ui/g-button';
+import { deviceIcon, deviceColor, type Device } from '@/models/device';
+import { useDevices } from '@/view-models/use-devices';
+import { useServer } from '@/providers/server-provider';
 import { Grey, JaridaPurple, Brand } from '@/constants/colors';
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
 
-const ROOM_TABS = ['All', 'Living Room', 'Bedroom', 'Entrance'];
-
 /** Device card with color-coded toggle */
 const DeviceCard = React.memo(function DeviceCard({ item }: { item: Device }) {
-  const [on, setOn] = useState(true);
+  const [on, setOn] = useState(item.on);
+  const icon = deviceIcon(item.kind);
+  const color = deviceColor(item.kind);
   return (
     <View style={styles.deviceCard}>
       <View style={styles.deviceCardTop}>
-        <View style={[styles.deviceIconWrap, { backgroundColor: item.color + '18' }]}>
-          <GIcon name={item.icon} size={17} color={on ? item.color : '#B5B5B5'} />
+        <View style={[styles.deviceIconWrap, { backgroundColor: color + '18' }]}>
+          <GIcon name={icon} size={17} color={on ? color : '#B5B5B5'} />
         </View>
         <GSwitch value={on} onValueChange={setOn} />
       </View>
-      <Text style={styles.deviceLabel} numberOfLines={1}>{item.label}</Text>
-      <Text style={styles.deviceDetail}>{item.detail}</Text>
+      <Text style={styles.deviceLabel} numberOfLines={1}>{item.name}</Text>
+      {item.detail && <Text style={styles.deviceDetail}>{item.detail}</Text>}
     </View>
   );
 });
 
 export default function DevicesTab() {
   const router = useRouter();
+  const { online } = useServer();
+  const { rooms, devices, loading, error, refetch } = useDevices();
   const [activeRoom, setActiveRoom] = useState('All');
+
+  const roomTabs = ['All', ...rooms.map((r) => r.name)];
 
   /** Filter rooms based on selected tab */
   const filteredRooms = activeRoom === 'All'
-    ? DEVICE_ROOMS
-    : DEVICE_ROOMS.filter((r) => r.name === activeRoom);
+    ? rooms
+    : rooms.filter((r) => r.name === activeRoom);
 
-  /** Total device count */
-  const totalDevices = DEVICE_ROOMS.reduce((sum, r) => sum + r.devices.length, 0);
+  const totalDevices = devices.length;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -61,7 +69,9 @@ export default function DevicesTab() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Devices</Text>
-          <Text style={styles.headerSubtitle}>{totalDevices} devices</Text>
+          <Text style={styles.headerSubtitle}>
+            {online ? `${totalDevices} devices` : 'Not connected'}
+          </Text>
         </View>
         <Pressable style={styles.manageBtn}>
           <Text style={styles.manageBtnText}>Manage</Text>
@@ -69,35 +79,79 @@ export default function DevicesTab() {
       </View>
 
       {/* Room filter tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsRow}
-      >
-        {ROOM_TABS.map((tab) => (
-          <Pressable
-            key={tab}
-            style={[styles.roomTab, activeRoom === tab && styles.roomTabActive]}
-            onPress={() => setActiveRoom(tab)}
-          >
-            <Text style={[styles.roomTabText, activeRoom === tab && styles.roomTabTextActive]}>
-              {tab}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {online && rooms.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsRow}
+        >
+          {roomTabs.map((tab) => (
+            <Pressable
+              key={tab}
+              style={[styles.roomTab, activeRoom === tab && styles.roomTabActive]}
+              onPress={() => setActiveRoom(tab)}
+            >
+              <Text style={[styles.roomTabText, activeRoom === tab && styles.roomTabTextActive]}>
+                {tab}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Room-grouped device grids */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {filteredRooms.map((room) => (
+        {!online && (
+          <GEmptyState
+            icon="device"
+            title="No desktop connected"
+            message="Scan the QR code on Goose In A Pond desktop to see its registered devices here."
+            action={
+              <GButton variant="primary" onPress={() => router.push('/(stack)/connect-desktop')}>
+                Connect Desktop
+              </GButton>
+            }
+          />
+        )}
+
+        {online && loading && (
+          <View style={styles.deviceGrid}>
+            {[0, 1, 2, 3].map((i) => (
+              <GSkeleton key={i} width="47%" height={92} borderRadius={Radii.xl} />
+            ))}
+          </View>
+        )}
+
+        {online && !loading && error && (
+          <GEmptyState
+            icon="warn"
+            title="Couldn’t load devices"
+            message={error}
+            action={
+              <GButton variant="secondary" onPress={refetch}>
+                Try Again
+              </GButton>
+            }
+          />
+        )}
+
+        {online && !loading && !error && devices.length === 0 && (
+          <GEmptyState
+            icon="device"
+            title="No devices yet"
+            message="This Pond desktop doesn’t have any devices registered."
+          />
+        )}
+
+        {online && !loading && !error && filteredRooms.map((room) => (
           <View key={room.name} style={styles.roomSection}>
             <Text style={styles.roomLabel}>{room.name.toUpperCase()}</Text>
             <View style={styles.deviceGrid}>
               {room.devices.map((d) => (
-                <DeviceCard key={d.idx} item={d} />
+                <DeviceCard key={d.id} item={d} />
               ))}
             </View>
           </View>
