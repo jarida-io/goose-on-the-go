@@ -347,31 +347,128 @@ export interface ModelMemoryStatus {
 }
 
 // ── Schedules ─────────────────────────────────────────────────
+//
+// The Pond's own scheduler types (`pond-core/src/user_data/domain/schedule.rs`),
+// serialised as-is. One table holds both kinds of task: cron and one-off
+// schedules, and sensor-triggered rules, which are stored with the cron
+// `@event` and a `sensor_trigger` kind. `GET /schedules` returns both;
+// `GET /rules` returns only the rules, reshaped as `Rule`.
+
+/** Where a rule listens. `device_id` and `signal` narrow it; omitted matches any. */
+export interface TriggerSource {
+  kind: 'sensor' | 'camera' | 'device';
+  device_id?: string;
+  signal?: string;
+}
+
+/**
+ * `op` and `value` go together: the Pond rejects one without the other, since
+ * a half condition would fire on every reading. `after`/`before` are "HH:MM".
+ */
+export interface TriggerCondition {
+  op?: 'gt' | 'gte' | 'lt' | 'lte' | 'eq';
+  value?: number;
+  after?: string;
+  before?: string;
+}
+
+export type TriggerAction =
+  | { type: 'agent_prompt'; prompt: string }
+  | { type: 'device_power'; device_id: string; on: boolean }
+  | { type: 'notify'; title: string; body: string };
+
+export type TaskKind =
+  | { type: 'agent_prompt'; prompt: string }
+  | { type: 'webhook'; webhook_url: string }
+  | {
+      type: 'sensor_trigger';
+      source: TriggerSource;
+      condition?: TriggerCondition;
+      actions: TriggerAction[];
+      cooldown_secs?: number;
+    };
 
 export interface Schedule {
   id: string;
-  name: string;
-  label?: string;
+  label: string;
+  /** Six fields, seconds first; `@once` for a one-shot, `@event` for a rule. */
   cron: string;
   /** Set when this is a one-shot: fires once at this instant, then never again. */
-  fire_at?: string | null;
-  prompt: string;
-  enabled: boolean;
+  fire_at: string | null;
+  timezone: string;
+  kind: TaskKind;
+  paused: boolean;
+  currently_running: boolean;
+  last_run: string | null;
+  next_run: string | null;
+  created_at: string;
+}
+
+/** `POST /schedules`. `name` is the label; `once` removes it after its first run. */
+export interface CreateScheduleRequest {
+  id?: string;
+  name: string;
+  cron: string;
+  prompt?: string;
   timezone?: string;
-  last_run?: string;
-  next_run?: string;
-  created_at?: string;
+  kind?: TaskKind;
+  once?: boolean;
+}
+
+/** `PUT /schedules/{id}`. Absent fields are left as they are. */
+export interface UpdateScheduleRequest {
+  name?: string;
+  cron?: string;
+  timezone?: string;
+  prompt?: string;
+  fire_at?: string;
+  once?: boolean;
 }
 
 export interface ScheduleRun {
   id: string;
   schedule_id: string;
   status: 'running' | 'completed' | 'failed';
-  result?: string;
-  error?: string;
+  result: string | null;
+  error: string | null;
   started_at: string;
-  finished_at?: string;
-  duration_ms?: number;
+  finished_at: string | null;
+  duration_ms: number | null;
+}
+
+/** One frame of `GET /schedules/events`: a run starting or finishing. */
+export interface ScheduleResultEvent {
+  schedule_id: string;
+  schedule_label: string;
+  run_id: string;
+  status: ScheduleRun['status'];
+  result?: string | null;
+  error?: string | null;
+  duration_ms?: number | null;
+}
+
+/** A sensor-triggered rule as `GET /rules` presents it. */
+export interface Rule {
+  id: string;
+  name: string;
+  paused: boolean;
+  currently_running: boolean;
+  created_at: string;
+  last_fired: string | null;
+  cooldown_secs: number;
+  source: TriggerSource;
+  condition?: TriggerCondition;
+  actions: TriggerAction[];
+}
+
+/** `POST /rules` and `PUT /rules/{id}`. A rule needs at least one action. */
+export interface RuleRequest {
+  id?: string;
+  name: string;
+  source: TriggerSource;
+  condition?: TriggerCondition;
+  actions: TriggerAction[];
+  cooldown_secs?: number;
 }
 
 // ── Logs and activity ─────────────────────────────────────────

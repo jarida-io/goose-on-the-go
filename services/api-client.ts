@@ -53,8 +53,13 @@ import type {
   NowPlayingResponse,
   OAuthProvider,
   Profile,
+  CreateScheduleRequest,
+  Rule,
+  RuleRequest,
   Schedule,
+  ScheduleResultEvent,
   ScheduleRun,
+  UpdateScheduleRequest,
   SessionMessage,
   SessionSummary,
   SuggestionList,
@@ -77,12 +82,20 @@ import { MODEL_CATEGORIES } from './types';
 export class ApiError extends Error {
   readonly status: number;
   readonly retryAfterSecs: number | null;
+  /**
+   * The Pond's own `{"error": "..."}` sentence, when it sent one. A 400 from
+   * the scheduler says which field was wrong ("invalid cron expression", "a
+   * rule needs at least one action"), which a form can show where a status
+   * code could not. English, from the server: not for general display.
+   */
+  readonly detail: string | null;
 
-  constructor(message: string, status: number, retryAfterSecs: number | null) {
+  constructor(message: string, status: number, retryAfterSecs: number | null, detail: string | null = null) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.retryAfterSecs = retryAfterSecs;
+    this.detail = detail;
   }
 
   /** True when retrying later could plausibly succeed. */
@@ -191,6 +204,16 @@ async function parseBody<T>(res: Response): Promise<T | undefined> {
   const text = await res.text();
   if (text.length === 0) return undefined;
   return JSON.parse(text) as T;
+}
+
+/** The `error` string of a refusal's JSON body, or null for any other body. */
+async function errorDetail(res: Response): Promise<string | null> {
+  try {
+    const body = (await parseBody<{ error?: unknown }>(res)) ?? {};
+    return typeof body.error === 'string' && body.error.trim() ? body.error : null;
+  } catch {
+    return null;
+  }
 }
 
 
@@ -500,6 +523,7 @@ export class PondApiClient {
         `${init.method ?? 'GET'} ${path} → ${res.status}`,
         res.status,
         parseRetryAfter(res),
+        await errorDetail(res),
       );
     }
     return (await parseBody<T>(res)) as T;
@@ -910,8 +934,12 @@ export class PondApiClient {
     return collection<Schedule>(res, 'schedules');
   }
 
-  createSchedule(req: Omit<Schedule, 'id'>): Promise<Schedule> {
+  createSchedule(req: CreateScheduleRequest): Promise<Schedule> {
     return this.post<Schedule>('/api/v1/schedules', req);
+  }
+
+  updateSchedule(id: string, req: UpdateScheduleRequest): Promise<Schedule> {
+    return this.put<Schedule>(`/api/v1/schedules/${encodeURIComponent(id)}`, req);
   }
 
   deleteSchedule(id: string): Promise<void> {
@@ -935,6 +963,65 @@ export class PondApiClient {
       `/api/v1/schedules/${encodeURIComponent(id)}/runs?limit=${limit}`,
     );
     return collection<ScheduleRun>(res, 'runs');
+  }
+
+  /**
+   * Runs starting and finishing, as the scheduler reports them. Resolves when
+   * the stream ends, whichever way; the caller decides whether to reopen it
+   * or fall back to polling.
+   *
+   * The Pond counts this against the four streams it will hold open, so a
+   * screen that leaves must abort `signal` rather than abandon the stream.
+   */
+  async streamScheduleEvents(
+    onEvent: (event: ScheduleResultEvent) => void,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const res = await this.open('/api/v1/schedules/events', {
+      headers: { Accept: 'text/event-stream' },
+      signal,
+    });
+    await readSse(
+      res,
+      (event) => {
+        try {
+          onEvent(JSON.parse(event.data) as ScheduleResultEvent);
+        } catch {
+          // A frame that is not JSON carries nothing to act on.
+        }
+      },
+      { idleMs: STREAM_IDLE_MS },
+    );
+  }
+
+  // ── Rules ───────────────────────────────────────────────────
+  //
+  // Sensor-triggered automations. They live in the scheduler's table but have
+  // their own routes, and no run-now: a rule fires when a reading matches.
+
+  async listRules(): Promise<Rule[]> {
+    const res = await this.request<{ rules?: Rule[] } | Rule[]>('/api/v1/rules');
+    return collection<Rule>(res, 'rules');
+  }
+
+  createRule(req: RuleRequest): Promise<Rule> {
+    return this.post<Rule>('/api/v1/rules', req);
+  }
+
+  updateRule(id: string, req: RuleRequest): Promise<Rule> {
+    return this.put<Rule>(`/api/v1/rules/${encodeURIComponent(id)}`, req);
+  }
+
+  deleteRule(id: string): Promise<void> {
+    return this.del<void>(`/api/v1/rules/${encodeURIComponent(id)}`);
+  }
+
+  pauseRule(id: string): Promise<void> {
+    return this.post<void>(`/api/v1/rules/${encodeURIComponent(id)}/pause`, {});
+  }
+
+  resumeRule(id: string): Promise<void> {
+    return this.post<void>(`/api/v1/rules/${encodeURIComponent(id)}/resume`, {});
   }
 
   // ── Logs and activity ───────────────────────────────────────
