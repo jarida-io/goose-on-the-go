@@ -34,7 +34,7 @@ export function parsePairingPayload(raw: string): PairingPayload {
   const host = url.searchParams.get('host');
   const port = url.searchParams.get('port');
   const code = url.searchParams.get('code');
-  if (url.protocol !== 'pond:' || !host || !port || !code) {
+  if (url.protocol !== 'pond:' || !host || !port || !code || !/^\d+$/.test(port)) {
     throw new InvalidPairingCodeError();
   }
 
