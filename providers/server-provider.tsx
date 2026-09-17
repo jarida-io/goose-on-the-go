@@ -105,6 +105,15 @@ export function ServerProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
+  // Mirrors `screenModes` for reading the latest value synchronously inside
+  // `setScreenMode` (a ref, not the state itself, so a toggle right after
+  // another one doesn't read a stale closure while the first is still
+  // in flight).
+  const screenModesRef = useRef(screenModes);
+  useEffect(() => {
+    screenModesRef.current = screenModes;
+  }, [screenModes]);
+
   // Dev builds only — the toggle this drives isn't reachable in production.
   useEffect(() => {
     if (!__DEV__) return;
@@ -130,12 +139,15 @@ export function ServerProvider({ children }: PropsWithChildren) {
   }, [token]);
 
   const setScreenMode = useCallback(async (screen: MigrationScreen, useReal: boolean) => {
-    await loadScreenModesRef.current;
-    setScreenModes((prev) => {
-      const next = { ...prev, [screen]: useReal };
-      Storage.setJSON('devScreenModes', next);
-      return next;
-    });
+    try {
+      await loadScreenModesRef.current;
+    } catch {
+      // Storage read failed — nothing to merge in, proceed with current state.
+    }
+    const next = { ...screenModesRef.current, [screen]: useReal };
+    screenModesRef.current = next;
+    setScreenModes(next);
+    Storage.setJSON('devScreenModes', next);
   }, []);
 
   const isScreenReal = useCallback(

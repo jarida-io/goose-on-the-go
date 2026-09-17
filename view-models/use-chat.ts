@@ -29,7 +29,7 @@ const SEED_MESSAGES: Message[] = [
 ];
 
 export function useChat() {
-  const { screenModes } = useServer();
+  const { isScreenReal } = useServer();
   const [messages, setMessages] = useState<Message[]>(() => SEED_MESSAGES);
   const [streaming, setStreaming] = useState(false);
   const [sessionId] = useState<string | null>('session-1');
@@ -37,10 +37,10 @@ export function useChat() {
 
   // Read fresh at delivery time (not send time) so a reply always reflects
   // whatever the toggle is when it actually lands, not when it was sent.
-  const screenModesRef = useRef(screenModes);
+  const isScreenRealRef = useRef(isScreenReal);
   useEffect(() => {
-    screenModesRef.current = screenModes;
-  }, [screenModes]);
+    isScreenRealRef.current = isScreenReal;
+  }, [isScreenReal]);
 
   const pendingTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   useEffect(() => {
@@ -65,7 +65,7 @@ export function useChat() {
     const timeoutId = setTimeout(() => {
       pendingTimeoutsRef.current.delete(timeoutId);
 
-      const reply: Message = screenModesRef.current.chat
+      const reply: Message = isScreenRealRef.current('chat')
         ? {
             id: String(nextId.current++),
             role: 'assistant',

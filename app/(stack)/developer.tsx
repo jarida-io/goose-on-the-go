@@ -45,16 +45,21 @@ export default function DeveloperScreen() {
 }
 
 function DeveloperScreenContent() {
-  const { serverUrl, setServerUrl, online, checkHealth, screenModes, setScreenMode } = useServer();
+  const { serverUrl, setServerUrl, online, checkHealth, isScreenReal, setScreenMode } = useServer();
   const [urlDraft, setUrlDraft] = useState(serverUrl);
   const [checking, setChecking] = useState(false);
 
   const handleTestConnection = useCallback(async () => {
+    // Mirrors the trailing-slash cleanup setServerUrl applies internally, so
+    // this comparison (and the draft resync below) line up with what actually
+    // ends up in `serverUrl` instead of drifting after the first change.
+    const clean = urlDraft.replace(/\/+$/, '');
     setChecking(true);
     // setServerUrl already performs and awaits its own health check when the
     // URL actually changes; only fire a separate one to retest the same URL.
-    if (urlDraft !== serverUrl) {
-      await setServerUrl(urlDraft);
+    if (clean !== serverUrl) {
+      await setServerUrl(clean);
+      setUrlDraft(clean);
     } else {
       await checkHealth();
     }
@@ -96,11 +101,11 @@ function DeveloperScreenContent() {
             <View style={styles.screenRowLeft}>
               <Text style={styles.screenLabel}>{SCREEN_LABELS[screen]}</Text>
               <Text style={styles.screenModeText}>
-                {screenModes[screen] ? 'Real backend' : 'Mock data'}
+                {isScreenReal(screen) ? 'Real backend' : 'Mock data'}
               </Text>
             </View>
             <GSwitch
-              value={screenModes[screen]}
+              value={isScreenReal(screen)}
               onValueChange={(value) => setScreenMode(screen, value)}
             />
           </View>
