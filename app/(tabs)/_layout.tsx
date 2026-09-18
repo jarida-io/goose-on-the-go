@@ -20,11 +20,13 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   return (
     <View style={styles.iconWrap}>
       {focused && <View style={styles.activePill} />}
-      <GIcon
-        name={name}
-        size={22}
-        color={focused ? Brand.white : Grey[400]}
-      />
+      <View style={styles.iconOnTop}>
+        <GIcon
+          name={name}
+          size={22}
+          color={focused ? Brand.white : Grey[400]}
+        />
+      </View>
     </View>
   );
 }
@@ -130,5 +132,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: AccentPurple,
     borderRadius: 15,
+  },
+  /* CSS paints position:absolute siblings (activePill) after static ones
+     regardless of DOM order, so without this the pill covers the icon —
+     zIndex only takes effect on a positioned element, hence 'relative'. */
+  iconOnTop: {
+    position: 'relative',
+    zIndex: 1,
   },
 });
