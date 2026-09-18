@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { GButton } from '@/components/ui/g-button';
+import { InkButton } from '@jarida/ink/native';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
@@ -130,9 +130,9 @@ export default function PhotoUploadScreen() {
             </View>
           ))}
 
-          <GButton variant="secondary" size="md" onPress={handleReset}>
+          <InkButton variant="quiet" onPress={handleReset}>
             Upload Another
-          </GButton>
+          </InkButton>
         </>
       )}
 

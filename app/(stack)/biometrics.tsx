@@ -13,8 +13,7 @@ import {
 } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { GButton } from '@/components/ui/g-button';
-import { InkSwitch } from '@jarida/ink/native';
+import { InkButton, InkSwitch } from '@jarida/ink/native';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
@@ -127,13 +126,12 @@ export default function BiometricsScreen() {
                 <Text style={styles.enrollingText}>Enrolling...</Text>
               </View>
             ) : (
-              <GButton
-                variant="secondary"
-                size="sm"
+              <InkButton
+                variant="quiet"
                 onPress={() => startEnrollment(method.id)}
               >
                 Start Enrollment
-              </GButton>
+              </InkButton>
             )}
           </View>
 

@@ -10,9 +10,8 @@ import {
   ScrollView,
 } from 'react-native';
 
-import { InkSwitch } from '@jarida/ink/native';
+import { InkSwitch, InkButton } from '@jarida/ink/native';
 import { GIcon } from '@/components/ui/g-icon';
-import { GButton } from '@/components/ui/g-button';
 import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
@@ -65,9 +64,9 @@ export default function BackupScreen() {
             </View>
           </View>
         </View>
-        <GButton variant="primary" size="md" startIcon="download">
+        <InkButton variant="primary" icon={<GIcon name="download" size={16} color={Brand.white} />}>
           Backup Now
-        </GButton>
+        </InkButton>
       </View>
 
       {/* Settings toggles */}
