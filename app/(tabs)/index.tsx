@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
-import { GSwitch } from '@/components/ui/g-switch';
+import { InkSwitch } from '@jarida/ink/native';
 import { HOME_DEVICES } from '@/models/device';
 import { HOME_SHORTCUTS } from '@/constants/navigation';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
@@ -63,7 +63,7 @@ const DeviceGridItem = React.memo(function DeviceGridItem({
         <View style={[styles.deviceIconWrap, { backgroundColor: item.color + '18' }]}>
           <GIcon name={item.icon} size={17} color={on ? item.color : '#B5B5B5'} />
         </View>
-        <GSwitch value={on} onValueChange={setOn} />
+        <InkSwitch checked={on} onChange={setOn} />
       </View>
       <Text style={styles.deviceLabel} numberOfLines={1}>{item.label}</Text>
       <Text style={styles.deviceDetail}>{item.detail}</Text>

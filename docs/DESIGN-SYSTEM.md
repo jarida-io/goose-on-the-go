@@ -155,6 +155,11 @@ variants) still use brand-purple-derived shades rather than accent-derived
 ones — a full remap of those crosses into the actual `@jarida/ink` component
 adoption (#17) and is scoped there, not here.
 
+This decision already pays off in #17's first migrated component: `InkSwitch`
+takes no color prop and is styled entirely from ink's own theme, which
+defaults to `ACCENTS.Purple[0]` — the same value as `Accent.base` above — so
+it needed zero per-instance overrides to match.
+
 ### Spacing scale shape
 
 No real incompatibility: GOTG's `Spacing` values (4, 8, 12, 16, 20, 24, 32,

@@ -13,13 +13,10 @@ export { GButton, type GButtonProps, type GButtonVariant, type GButtonSize } fro
 export { GCard, type GCardProps, type GCardVariant } from './g-card';
 export { GChip, type GChipProps, type GChipVariant, type GChipSize } from './g-chip';
 export { GInput, type GInputProps, type GInputVariant } from './g-input';
-export { GSwitch, type GSwitchProps } from './g-switch';
 export { GSeparator, type GSeparatorProps } from './g-separator';
 export { GTabs, type GTabsProps, type GTabItem, type GTabsVariant } from './g-tabs';
 export { GTextArea, type GTextAreaProps, type GTextAreaVariant } from './g-text-area';
 export { GRadioGroup, type GRadioGroupProps, type GRadioOption, type GRadioOrientation } from './g-radio-group';
 export { GSlider, type GSliderProps } from './g-slider';
 export { GProgressBar, type GProgressBarProps, type GProgressBarColor, type GProgressBarSize } from './g-progress-bar';
-export { GSkeleton, type GSkeletonProps } from './g-skeleton';
-export { GEmptyState, type GEmptyStateProps } from './g-empty-state';
 export { GSelect, type GSelectProps, type GSelectOption } from './g-select';

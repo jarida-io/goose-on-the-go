@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 
-import { GSwitch } from '@/components/ui/g-switch';
+import { InkSwitch } from '@jarida/ink/native';
 import { GIcon } from '@/components/ui/g-icon';
 import { GButton } from '@/components/ui/g-button';
 import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
@@ -78,7 +78,7 @@ export default function BackupScreen() {
             <Text style={styles.settingTitle}>Automatic Backup</Text>
             <Text style={styles.settingDesc}>Weekly at 3:00 AM</Text>
           </View>
-          <GSwitch value={autoBackup} onValueChange={setAutoBackup} />
+          <InkSwitch checked={autoBackup} onChange={setAutoBackup} />
         </View>
         <View style={styles.divider} />
         <View style={styles.settingRow}>
@@ -86,7 +86,7 @@ export default function BackupScreen() {
             <Text style={styles.settingTitle}>Include Media</Text>
             <Text style={styles.settingDesc}>Photos, videos, and analysis</Text>
           </View>
-          <GSwitch value={includeMedia} onValueChange={setIncludeMedia} />
+          <InkSwitch checked={includeMedia} onChange={setIncludeMedia} />
         </View>
         <View style={styles.divider} />
         <View style={styles.settingRow}>
@@ -94,7 +94,7 @@ export default function BackupScreen() {
             <Text style={styles.settingTitle}>Include Memories</Text>
             <Text style={styles.settingDesc}>AI memories and preferences</Text>
           </View>
-          <GSwitch value={includeMemories} onValueChange={setIncludeMemories} />
+          <InkSwitch checked={includeMemories} onChange={setIncludeMemories} />
         </View>
         <View style={styles.divider} />
         <View style={styles.settingRow}>
@@ -102,7 +102,7 @@ export default function BackupScreen() {
             <Text style={styles.settingTitle}>Encrypt Backup</Text>
             <Text style={styles.settingDesc}>AES-256 encryption</Text>
           </View>
-          <GSwitch value={encryptBackup} onValueChange={setEncryptBackup} />
+          <InkSwitch checked={encryptBackup} onChange={setEncryptBackup} />
         </View>
       </View>
 
