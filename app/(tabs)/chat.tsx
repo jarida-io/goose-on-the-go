@@ -20,19 +20,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
 import type { Message } from '@/models/chat';
+import { useChat } from '@/view-models/use-chat';
 import { Grey, JaridaPurple, AccentPurple, Brand, Semantic } from '@/constants/colors';
 
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
-
-
-/** Sample messages for the demo */
-const SAMPLE_MESSAGES: Message[] = [
-  { id: '1', role: 'assistant', content: 'Good morning! I\'ve started your morning routine \u2014 lights are warming up, thermostat set to 72\u00B0F, and your coffee maker is brewing.', timestamp: Date.now() - 300000 },
-  { id: '2', role: 'user', content: 'Thanks! Can you also check if there are any packages arriving today?', timestamp: Date.now() - 240000 },
-  { id: '3', role: 'assistant', content: 'You have 2 packages expected today:\n\n1. Amazon \u2014 arriving by 2 PM\n2. Glovo grocery order \u2014 arriving by 4 PM\n\nWant me to send a notification when they\'re nearby?', timestamp: Date.now() - 180000 },
-];
 
 const SUGGESTED_PROMPTS = [
   'Turn off all lights',
@@ -79,37 +72,16 @@ const TypingDots = React.memo(function TypingDots() {
 });
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState<Message[]>(SAMPLE_MESSAGES);
+  const { data, actions } = useChat();
+  const { messages, streaming: isTyping } = data;
   const [draft, setDraft] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef<FlatList<Message>>(null);
 
   const handleSend = useCallback(() => {
     if (!draft.trim()) return;
-    const newMsg: Message = {
-      id: String(Date.now()),
-      role: 'user',
-      content: draft.trim(),
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, newMsg]);
+    actions.send(draft);
     setDraft('');
-    setIsTyping(true);
-
-    // Simulate response
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: String(Date.now() + 1),
-          role: 'assistant',
-          content: 'I\'ll take care of that right away!',
-          timestamp: Date.now(),
-        },
-      ]);
-      setIsTyping(false);
-    }, 1500);
-  }, [draft]);
+  }, [draft, actions]);
 
   const handleSuggestedPrompt = useCallback((prompt: string) => {
     setDraft(prompt);
@@ -146,7 +118,7 @@ export default function ChatScreen() {
               </View>
             </View>
           </View>
-          <Pressable style={styles.newChatBtn}>
+          <Pressable style={styles.newChatBtn} onPress={actions.newConversation}>
             <GIcon name="plus" size={18} color={Grey[600]} />
           </Pressable>
         </View>
