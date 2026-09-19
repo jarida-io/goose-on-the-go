@@ -1,6 +1,6 @@
-/** Alternate simulator-only bundle entry. The production app never imports this file. */
+/** Alternate native test bundle entry. The production app never imports this file. */
 import React, { useEffect, useState } from 'react';
-import { AppState, Text, ScrollView } from 'react-native';
+import { AppState, Text, ScrollView, Platform } from 'react-native';
 import { registerRootComponent } from 'expo';
 import { fetch as expoFetch } from 'expo/fetch';
 import { configurePondTrust } from '@/services/pond-trust';
@@ -41,11 +41,11 @@ function xhr(path: string, base = origin): Promise<string> {
 }
 
 async function run(): Promise<Result[]> {
-  assert(origin.startsWith('https://127.0.0.1:'), 'Only the local simulator fixture is allowed');
+  assert(origin.startsWith('https://127.0.0.1:'), 'Only the local native test fixture is allowed');
   await configurePondTrust([{ url: origin, pin }]);
   let previous = await loadPairedProfile();
   // Simulator Keychain items can survive uninstall; discard only a prior test run's identity.
-  if (previous.saved?.identity.id === 'simulator-fixture' && previous.saved.identity.pin !== pin) {
+  if (previous.saved && ['simulator-fixture', 'native-fixture'].includes(previous.saved.identity.id) && previous.saved.identity.pin !== pin) {
     await SecureStorage.remove('pondIdentity');
     previous = { saved: null, upgrade: false };
   }
@@ -104,13 +104,13 @@ async function run(): Promise<Result[]> {
     await check('cleared trust blocks retained clients', () => rejected(() => xhr('/cleared')));
     await configurePondTrust([{ url: origin, pin }]);
     await check('secure profile commits atomically', async () => {
-      const saved: SavedPond = { identity: { id: 'simulator-fixture', pin, session: 'scratch-fixture', refresh: 'scratch-refresh' },
+      const saved: SavedPond = { identity: { id: 'native-fixture', pin, session: 'scratch-fixture', refresh: 'scratch-refresh' },
         profile: { version: 2, host: '127.0.0.1', port: Number(new URL(origin).port), localUrls: [origin] } };
       await commitPairedProfile(null, saved);
       assert((await loadPairedProfile()).saved?.identity.pin === pin, 'Secure profile was not saved');
       assert(await SecureStorage.get('pondIdentity'), 'SecureStore is unavailable');
     });
-    await check('scene background and foreground preserve pinned transport', async () => {
+    await check('background and foreground preserve pinned transport', async () => {
       await new Promise<void>((resolve, reject) => {
         let background = false;
         const timeout = setTimeout(() => { subscription.remove(); reject(new Error('AppState resume timed out')); }, 15_000);
@@ -131,7 +131,7 @@ async function run(): Promise<Result[]> {
       const pond = await configResponse.json() as { url: string; pin: string; code: string };
       await configurePondTrust([{ url: origin, pin }, { url: pond.url, pin: pond.pin }]);
       const client = new PondApiClient(pond.url);
-      const paired = await client.pair({ clientId: 'ios-scratch-phone', pairingCode: pond.code, deviceName: 'iOS transport verification' });
+      const paired = await client.pair({ clientId: `${Platform.OS}-scratch-phone`, pairingCode: pond.code, deviceName: `${Platform.OS} transport verification` });
       assert(paired.accepted && paired.session_token, 'Scratch Pond pairing failed');
       const refreshed = await client.handshakeRefresh();
       assert(refreshed?.accepted && refreshed.session_token, 'Scratch Pond refresh failed');
@@ -141,7 +141,7 @@ async function run(): Promise<Result[]> {
       await new Promise<void>((resolve, reject) => {
         const stream = new XMLHttpRequest();
         const timeout = setTimeout(() => { stream.abort(); reject(new Error('Scratch Pond SSE timed out')); }, 25_000);
-        stream.open('GET', pond.url + '/api/v1/notifications/stream?device_id=ios-scratch-phone');
+        stream.open('GET', pond.url + `/api/v1/notifications/stream?device_id=${Platform.OS}-scratch-phone`);
         stream.setRequestHeader('X-Pond-Transport', '1');
         stream.setRequestHeader('Authorization', authorization);
         stream.onprogress = () => {

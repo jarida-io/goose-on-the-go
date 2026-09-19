@@ -110,6 +110,45 @@ The runner builds a separate `io.jarida.gooseonthego.transporttests` bundle usin
 an alternate JS entry. Xcode ad-hoc simulator signing supplies isolated Keychain
 entitlements. This never uses production app data or device signing keys.
 
+The same runner supports a USB-connected Android device with Java 17 and the
+Android SDK's `adb` on `PATH`:
+
+```sh
+JAVA_HOME=$(/usr/libexec/java_home -v 17) python3 tests/native-ios/app_integration.py --platform android --device <adb-serial> --pond-lan
+```
+
+`--pond-lan` sends real pairing, REST, refresh, and SSE requests directly to the
+scratch Pond's advertised LAN address. The phone must share that LAN with the
+Mac. Only the certificate-failure fixtures use temporary USB port forwarding.
+Omitting the option forwards the scratch Pond through USB too; that mode does
+not establish direct-LAN pairing or any cellular/VPN behavior.
+
+The test-only Gradle initializer builds a Release APK with the separate
+`io.jarida.gooseonthego.transporttests` application ID and the existing debug
+signing configuration. The runner verifies the packaged ID before installation,
+clears only that test app's data, and tests a second process launch without
+clearing it. Production app data and signing keys are untouched. Only this run's
+USB mappings are removed during cleanup. The generated Release APK is a test
+artifact; rebuild without the initializer before distributing the normal app.
+
+On 2026-09-20, all 17 checks also passed on a physical Samsung Galaxy A57
+(SM-A576B, Android 16) using that isolated Release APK. Real pairing,
+authenticated REST, refresh, and SSE connected directly over home Wi-Fi to the
+Mac's scratch Pond. The USB fixtures verified both native HTTP clients and SSE,
+incorrect pins before HTTP, expired certificates, hostname mismatch, redirects,
+plaintext refusal, cleared trust, notification deduplication, foreground resume,
+and SecureStore persistence across process restart. Fixture assertions confirmed
+that rejected requests and redirect destinations received no HTTP request.
+The production package's version and installation timestamps were unchanged;
+the test APK contained no generated Firebase app ID, API key, or sender ID.
+Temporary forwarding and scratch servers were removed successfully afterward.
+
+The physical run used a freshly compiled Pond W2 server. All 140 JavaScript tests
+and typechecking also passed; lint retained the same 19 existing warnings.
+This evidence does not cover the Jetson runtime, cellular/VPN transitions,
+another Wi-Fi network, or physical iPhone behavior. Full UI re-pairing and
+cancellation remain distinct from the native/API harness checks.
+
 ### Xcode 27 compatibility
 
 The config plugin aligns dependency resource-bundle targets with the app's iOS

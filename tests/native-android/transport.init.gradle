@@ -1,0 +1,36 @@
+// Test-only application identity and JS entry; production Gradle files are untouched.
+gradle.beforeProject { project ->
+    if (project.path != ':app') return
+    project.plugins.withId('com.android.application') {
+        project.extensions.getByName('androidComponents').finalizeDsl { android ->
+            android.defaultConfig.applicationId = 'io.jarida.gooseonthego.transporttests'
+            android.buildTypes.release.signingConfig = android.signingConfigs.debug
+        }
+    }
+    project.plugins.withId('com.facebook.react') {
+        project.afterEvaluate {
+            def entry = System.getenv('ENTRY_FILE')
+            if (!entry) throw new GradleException('The transport test requires ENTRY_FILE')
+            project.extensions.getByName('react').entryFile.set(new File(project.rootDir.parentFile, entry))
+            project.tasks.named('createBundleReleaseJsAndAssets').configure { task ->
+                // Each run creates new fixture listeners and a new public-key pin.
+                ['EXPO_PUBLIC_POND_TEST_ORIGIN', 'EXPO_PUBLIC_POND_TEST_PIN',
+                 'EXPO_PUBLIC_POND_TEST_EXPIRED_ORIGIN'].each { name ->
+                    task.inputs.property(name, System.getenv(name) ?: '')
+                }
+            }
+        }
+    }
+    project.plugins.withId('com.google.gms.google-services') {
+        project.afterEvaluate {
+            project.tasks.matching { it.name == 'processReleaseGoogleServices' }.configureEach { task ->
+                // REST/SSE tests never enroll with the production Firebase project.
+                // A distinct output directory also excludes stale generated IDs.
+                task.googleServicesJsonFiles.set([])
+                def strategies = task.missingGoogleServicesStrategy.get().getClass().enumConstants
+                task.missingGoogleServicesStrategy.set(strategies.find { it.name() == 'IGNORE' })
+                task.outputDirectory.set(project.layout.buildDirectory.dir('generated/transportTests/googleServices'))
+            }
+        }
+    }
+}
