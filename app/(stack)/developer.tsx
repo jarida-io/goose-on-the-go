@@ -9,10 +9,11 @@
 
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 
-import { InkInput, InkSwitch } from '@jarida/ink/native';
+import { InkSwitch } from '@jarida/ink/native';
 
+import { useTranslation } from 'react-i18next';
 import { GIcon } from '@/components/ui/g-icon';
 import { ServerStatus } from '@/components/patterns/server-status';
 import { useServer, MIGRATION_SCREENS, type MigrationScreen } from '@/providers/server-provider';
@@ -44,37 +45,23 @@ export default function DeveloperScreen() {
 }
 
 function DeveloperScreenContent() {
-  const { serverUrl, setServerUrl, online, checkHealth, isScreenReal, setScreenMode } = useServer();
-  const [urlDraft, setUrlDraft] = useState(serverUrl);
+  const { serverUrl, online, checkHealth, isScreenReal, setScreenMode } = useServer();
   const [checking, setChecking] = useState(false);
-
+  const { t } = useTranslation();
+  const router = useRouter();
   const handleTestConnection = useCallback(async () => {
-    // Mirrors the trailing-slash cleanup setServerUrl applies internally, so
-    // this comparison (and the draft resync below) line up with what actually
-    // ends up in `serverUrl` instead of drifting after the first change.
-    const clean = urlDraft.replace(/\/+$/, '');
     setChecking(true);
-    // setServerUrl already performs and awaits its own health check when the
-    // URL actually changes; only fire a separate one to retest the same URL.
-    if (clean !== serverUrl) {
-      setServerUrl(clean);
-      setUrlDraft(clean);
-    }
-    // `setServerUrl` here only records the address; the probe is always ours.
-    await checkHealth();
-    setChecking(false);
-  }, [urlDraft, serverUrl, setServerUrl, checkHealth]);
+    try { await checkHealth(); } finally { setChecking(false); }
+  }, [checkHealth]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>Server connection</Text>
       <View style={styles.card}>
-        <InkInput
-          label="Pond server URL"
-          value={urlDraft}
-          onChange={setUrlDraft}
-          placeholder="http://pond.local:4000"
-        />
+        <Text style={styles.screenLabel}>{serverUrl || t('connection.unpaired')}</Text>
+        <Pressable onPress={() => router.push('/(stack)/pond-pairing')}>
+          <Text style={styles.sectionHint}>{t('connection.changePond')}</Text>
+        </Pressable>
         <View style={styles.connectionRow}>
           <ServerStatus online={online} />
           <Pressable style={styles.testButton} onPress={handleTestConnection} disabled={checking}>

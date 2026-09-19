@@ -1,3 +1,5 @@
+import i18n from '@/services/i18n';
+import { normalizeHttpsUrl, validPin } from '@/models/connection';
 /**
  * PondPairingScreen — 4-step pairing wizard:
  *   0. Find the GIAP server: discovered over mDNS, scanned from the QR, or typed
@@ -25,21 +27,15 @@ import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
 import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
-import { ApiError, api } from '@/services/api-client';
+import { ApiError } from '@/services/api-client';
 import { useServer } from '@/providers/server-provider';
 import { getInstallId } from '@/services/install-id';
 import { takePairingPayload } from '@/services/pairing-handoff';
-import { findPondByHost, type DiscoveredPond } from '@/services/discovery';
+import { type DiscoveredPond } from '@/services/discovery';
 import { useDiscovery } from '@/view-models/use-discovery';
 
 type Step = 0 | 1 | 2 | 3;
 const STEP_LABELS = ['Find Pond', 'Pairing Code', 'Name Device', 'Complete'];
-
-/** The port from a normalised base URL, defaulting to http's 80 as URL does. */
-function portOf(url: string): number {
-  const parsed = new URL(url);
-  return Number(parsed.port) || 80;
-}
 
 /** Step indicator */
 function StepIndicator({ current }: { current: Step }) {
@@ -98,19 +94,8 @@ function ScanLink({ onPress }: { onPress: () => void }) {
  * Pond on the LAN actually serves.
  */
 export function normalizeServerUrl(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-  let parsed: URL;
-  try {
-    parsed = new URL(withScheme);
-  } catch {
-    return null;
-  }
-  if (!parsed.hostname) return null;
-
-  return `${parsed.protocol}//${parsed.host}`.replace(/\/+$/, '');
+  try { return normalizeHttpsUrl(raw.trim().includes('://') ? raw.trim() : `https://${raw.trim()}`); }
+  catch { return null; }
 }
 
 /**
@@ -156,30 +141,9 @@ function DiscoverStep({
   onScan: () => void;
 }) {
   const { data, error, actions } = useDiscovery();
-  const [picking, setPicking] = useState<string | null>(null);
-  const [pickError, setPickError] = useState<string | null>(null);
-
-  // An advertisement is not a running server. mDNS records outlive the process
-  // that registered them, so a restarted hub leaves an entry that resolves and
-  // answers nothing — probe before advancing, exactly as manual entry does.
-  const pick = useCallback(
-    async (pond: DiscoveredPond) => {
-      setPicking(pond.id);
-      setPickError(null);
-      api.setBaseUrl(pond.url);
-      const { ok } = await api.health();
-      setPicking(null);
-
-      if (!ok) {
-        setPickError(
-          `${pond.name} is advertising itself but did not answer at ${pond.address}:${pond.port}. It may have been restarted — search again.`,
-        );
-        return;
-      }
-      onNext(pond.url);
-    },
-    [onNext],
-  );
+  const picking: string | null = null;
+  const pickError: string | null = null;
+  const pick = (pond: DiscoveredPond) => onNext(pond.url);
 
   return (
     <StepBody>
@@ -256,9 +220,10 @@ function ServerStep({
   onScan,
 }: {
   initial: string;
-  onNext: (url: string) => void;
+  onNext: (url: string, pin: string) => Promise<void>;
   onScan: () => void;
 }) {
+  const [pin, setPin] = useState('');
   const [url, setUrl] = useState(initial);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -268,25 +233,15 @@ function ServerStep({
   // pairing rather than as a bad URL on the screen that asked for it.
   const submit = useCallback(async () => {
     const normalized = normalizeServerUrl(url);
-    if (!normalized) {
-      setError('That does not look like a server address. Try http://pond.local:4000');
+    if (!normalized || !validPin(pin.trim())) {
+      setError(i18n.t('pairing.invalid'));
       return;
     }
-
-    setChecking(true);
-    setError(null);
-    api.setBaseUrl(normalized);
-    const { ok } = await api.health();
-    setChecking(false);
-
-    if (!ok) {
-      setError(
-        `No Pond answered at ${normalized}. Check the address, and that the phone is on the same network.`,
-      );
-      return;
-    }
-    onNext(normalized);
-  }, [url, onNext]);
+    setChecking(true); setError(null);
+    try { await onNext(normalized, pin.trim()); }
+    catch (error) { setError(error instanceof Error ? error.message : i18n.t('pairing.failed')); }
+    finally { setChecking(false); }
+  }, [url, pin, onNext]);
 
   return (
     <StepBody>
@@ -305,12 +260,18 @@ function ServerStep({
             setUrl(t);
             setError(null);
           }}
-          placeholder="http://pond.local:4000"
+          placeholder="https://pond.local:4443"
           placeholderTextColor={Grey[400]}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!checking}
         />
+      </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>{i18n.t('pairing.fingerprint')}</Text>
+        <TextInput style={styles.textInput} value={pin} onChangeText={setPin}
+          placeholder="sha256/..." autoCapitalize="none" autoCorrect={false} editable={!checking} />
+        <Text style={styles.stepDesc}>{i18n.t('pairing.fingerprintHint')}</Text>
       </View>
       {error ? <Text style={styles.stepError}>{error}</Text> : null}
       <InkButton
@@ -511,7 +472,10 @@ function CompleteStep({
 
 export default function PondPairingScreen() {
   const router = useRouter();
-  const { serverUrl, setServerUrl, pair } = useServer();
+  const { serverUrl, stagePairing, cancelPairing, pair } = useServer();
+  const [manualUrl, setManualUrl] = useState(serverUrl);
+  const [pairingError, setPairingError] = useState<string | null>(null);
+  useEffect(() => () => { void cancelPairing(); }, [cancelPairing]);
   // Stable per-install client_id, hydrated from SecureStorage on mount. The
   // server uses this to recognize a returning device and revoke prior tokens
   // instead of creating a duplicate entry on every re-pair.
@@ -547,53 +511,15 @@ export default function PondPairingScreen() {
       const scanned = takePairingPayload();
       if (!scanned) return;
 
-      // Order matters: the mDNS name first because it survives a DHCP lease,
-      // the LAN address next because Android cannot resolve that name, and the
-      // tailnet address last because at home the LAN hop is direct and needs no
-      // VPN running. Away from home it is the only one that answers.
-      const candidates = [scanned.serverUrl, scanned.fallbackUrl, scanned.remoteUrl]
-        .map((u) => (u ? normalizeServerUrl(u) : null))
-        .filter((u): u is string => u !== null);
-      if (candidates.length === 0) return;
-
-      void (async () => {
-        let reached: string | null = null;
-        for (const candidate of candidates) {
-          api.setBaseUrl(candidate);
-          if ((await api.health()).ok) {
-            reached = candidate;
-            break;
-          }
-        }
-
-        // Nothing in the QR was reachable. That is the ordinary outcome on
-        // Android for a Pond whose server predates the `ip=` fix, or a desktop
-        // build packaged before it: the QR carries only a `.local` name, which
-        // this phone cannot resolve, and the code in it is perfectly good.
-        // Discovery already knows that hub's numeric address, so look it up by
-        // the name the QR did give rather than sending the user back a step.
-        if (!reached) {
-          const found = await findPondByHost(scanned.host, portOf(candidates[0]));
-          if (found) {
-            api.setBaseUrl(found.url);
-            if ((await api.health()).ok) reached = found.url;
-          }
-        }
-
-        // Fall back to showing the first candidate, so an unreachable Pond
-        // drops the user on the step that owns the address with something
-        // filled in, rather than failing later as a rejected code.
-        const chosen = reached ?? candidates[0];
-        api.setBaseUrl(chosen);
-        setServerUrl(chosen);
-        setCode(scanned.code);
-        // A scan that could not be reached returns to step 0 with the address
-        // already filled in, so show the field holding it rather than starting
-        // a search that would discard what the QR provided.
-        if (!reached) setManualEntry(true);
-        setStep(reached ? 2 : 0);
-      })();
-    }, [setServerUrl]),
+      let cancelled = false;
+      setPairingError(null);
+      void stagePairing(scanned.profile, scanned.pin).then(() => {
+        if (!cancelled) { setCode(scanned.code); setStep(2); }
+      }).catch((error) => {
+        if (!cancelled) setPairingError(error instanceof Error ? error.message : i18n.t('pairing.failed'));
+      });
+      return () => { cancelled = true; };
+    }, [stagePairing]),
   );
   const [completionState, setCompletionState] =
     useState<'pending' | 'ok' | 'error'>('pending');
@@ -622,19 +548,17 @@ export default function PondPairingScreen() {
         // A throw means the request never reached the verifier, so there is no
         // rejection_reason to explain — only an HTTP or transport failure.
         setCompletionState('error');
-        setCompletionReason(describeTransportFailure(e));
+        setCompletionReason(e instanceof ApiError && e.status === 403 ? i18n.t('pairing.lan') : describeTransportFailure(e));
       }
     },
     [code, pair],
   );
 
-  const onServerNext = useCallback(
-    (url: string) => {
-      setServerUrl(url);
-      setStep(1);
-    },
-    [setServerUrl],
-  );
+  const onServerNext = useCallback(async (url: string, pin: string) => {
+    const parsed = new URL(url);
+    await stagePairing({ version: 2, host: parsed.hostname, port: Number(parsed.port) || 443, localUrls: [url] }, pin);
+    setManualUrl(url); setStep(1);
+  }, [stagePairing]);
 
   const onCodeNext = useCallback((nextCode: string) => {
     setCode(nextCode);
@@ -646,12 +570,13 @@ export default function PondPairingScreen() {
   return (
     <GKeyboardView style={styles.container}>
       <StepIndicator current={step} />
+      {pairingError ? <Text style={styles.stepError}>{pairingError}</Text> : null}
       {step === 0 &&
         (manualEntry ? (
-          <ServerStep initial={serverUrl} onNext={onServerNext} onScan={openScanner} />
+          <ServerStep initial={manualUrl} onNext={onServerNext} onScan={openScanner} />
         ) : (
           <DiscoverStep
-            onNext={onServerNext}
+            onNext={(url) => { setManualUrl(url); setManualEntry(true); }}
             onManual={() => setManualEntry(true)}
             onScan={openScanner}
           />

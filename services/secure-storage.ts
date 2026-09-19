@@ -24,6 +24,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const KEYS = {
+  pondIdentity: 'goose.pondIdentity',
   sessionToken: 'goose.sessionToken',
   refreshToken: 'goose.refreshToken',
   /** Stable per-install identifier used as `client_id` in every handshake. */

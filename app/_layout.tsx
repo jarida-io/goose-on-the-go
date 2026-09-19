@@ -1,3 +1,4 @@
+import { ConnectionStatus } from '@/components/patterns/connection-status';
 /**
  * Root Layout — loads brand fonts, manages splash screen,
  * and wraps the app tree with ThemeProvider + ServerProvider.
@@ -104,6 +105,7 @@ export default function RootLayout() {
         <NotificationsProvider>
           <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <InkProvider>
+              <ConnectionStatus />
               <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="(stack)" options={{ headerShown: false }} />

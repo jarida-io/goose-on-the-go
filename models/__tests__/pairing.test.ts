@@ -13,14 +13,16 @@ import {
 } from '@/models/pairing';
 import { offerPairingPayload, takePairingPayload } from '@/services/pairing-handoff';
 
-const VALID = 'pond://pair?host=pond.local&port=4000&code=123456';
+const VALID = 'pond://pair?v=2&scheme=https&pin=sha256%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D&host=pond.local&port=4000&code=123456';
 
 describe('parsePairingPayload', () => {
   it('reads the shape the Pond dashboard emits', () => {
     expect(parsePairingPayload(VALID)).toEqual({
-      serverUrl: 'http://pond.local:4000',
+      serverUrl: 'https://pond.local:4000',
       host: 'pond.local',
       code: '123456',
+      pin: 'sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+      profile: { version: 2, host: 'pond.local', port: 4000, localUrls: ['https://pond.local:4000'], remoteUrl: undefined },
     });
   });
 
@@ -35,14 +37,14 @@ describe('parsePairingPayload', () => {
    */
   it('carries the LAN address as a fallback when the QR has one', () => {
     const payload = parsePairingPayload(
-      'pond://pair?host=pond.local&port=4000&code=123456&ip=192.168.1.2',
+      'pond://pair?v=2&scheme=https&pin=sha256%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D&host=pond.local&port=4000&code=123456&ip=192.168.1.2',
     );
 
-    expect(payload.serverUrl).toBe('http://pond.local:4000');
-    expect(payload.fallbackUrl).toBe('http://192.168.1.2:4000');
+    expect(payload.serverUrl).toBe('https://pond.local:4000');
+    expect(payload.fallbackUrl).toBe('https://192.168.1.2:4000');
   });
 
-  it('leaves the fallback undefined when an older pond sends no ip', () => {
+  it('leaves the fallback undefined when a v2 Pond has no LAN address', () => {
     expect(parsePairingPayload(VALID).fallbackUrl).toBeUndefined();
   });
 
@@ -53,9 +55,9 @@ describe('parsePairingPayload', () => {
   });
 
   it.each([
-    ['no host', 'pond://pair?port=4000&code=123456'],
-    ['no port', 'pond://pair?host=pond.local&code=123456'],
-    ['no code', 'pond://pair?host=pond.local&port=4000'],
+    ['no host', 'pond://pair?v=2&scheme=https&pin=sha256%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D&port=4000&code=123456'],
+    ['no port', 'pond://pair?v=2&scheme=https&pin=sha256%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D&host=pond.local&code=123456'],
+    ['no code', 'pond://pair?v=2&scheme=https&pin=sha256%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D&host=pond.local&port=4000'],
     ['not a URL', 'just some text'],
   ])('rejects a payload with %s', (_label, raw) => {
     expect(() => parsePairingPayload(raw)).toThrow(InvalidPairingCodeError);
@@ -67,7 +69,7 @@ describe('parsePairingPayload', () => {
    * only one of them catches a malformed code before it costs a challenge.
    */
   it.each(['12345', '1234567', 'abcdef'])('rejects the non-six-digit code %s', (code) => {
-    expect(() => parsePairingPayload(`pond://pair?host=p.local&port=4000&code=${code}`)).toThrow(
+    expect(() => parsePairingPayload(`pond://pair?v=2&scheme=https&pin=sha256%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D&host=p.local&port=4000&code=${code}`)).toThrow(
       InvalidPairingCodeError,
     );
   });
@@ -93,8 +95,8 @@ describe('the tailnet address', () => {
   it('is parsed from ts= when the Pond is on a tailnet', () => {
     const payload = parsePairingPayload(`${VALID}&ip=192.168.1.11&ts=100.101.102.103`);
 
-    expect(payload.remoteUrl).toBe('http://100.101.102.103:4000');
-    expect(payload.fallbackUrl).toBe('http://192.168.1.11:4000');
+    expect(payload.remoteUrl).toBe('https://100.101.102.103:4000');
+    expect(payload.fallbackUrl).toBe('https://192.168.1.11:4000');
   });
 
   it('is absent for a Pond that is not on a tailnet', () => {
@@ -105,10 +107,10 @@ describe('the tailnet address', () => {
 
   it('carries the same port as the rest of the payload', () => {
     const payload = parsePairingPayload(
-      'pond://pair?host=nano.local&port=8080&code=123456&ts=100.64.0.7',
+      'pond://pair?v=2&scheme=https&pin=sha256%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D&host=nano.local&port=8080&code=123456&ts=100.64.0.7',
     );
 
-    expect(payload.remoteUrl).toBe('http://100.64.0.7:8080');
+    expect(payload.remoteUrl).toBe('https://100.64.0.7:8080');
   });
 });
 

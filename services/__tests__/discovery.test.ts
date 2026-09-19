@@ -60,7 +60,7 @@ function resolved(overrides: Partial<Service> = {}): Service {
     host: 'nano.local.',
     port: 8080,
     addresses: ['192.168.1.7'],
-    txt: { v: '0.1.0' },
+    txt: { scheme: 'https', v: '0.1.0' },
     ...overrides,
   };
 }
@@ -76,7 +76,7 @@ describe('toPond', () => {
       name: 'Pond Hub @ nano',
       address: '192.168.1.7',
       port: 8080,
-      url: 'http://192.168.1.7:8080',
+      url: 'https://192.168.1.7:8080',
       version: '0.1.0',
       hostname: 'nano',
     });
@@ -99,8 +99,8 @@ describe('toPond', () => {
   });
 
   it('returns no version when the TXT record carries none', () => {
-    expect(toPond(resolved({ txt: {} }))?.version).toBeUndefined();
-    expect(toPond(resolved({ txt: { v: 7 } }))?.version).toBeUndefined();
+    expect(toPond(resolved({ txt: { scheme: 'https',} }))?.version).toBeUndefined();
+    expect(toPond(resolved({ txt: { scheme: 'https', v: 7 } }))?.version).toBeUndefined();
   });
 
   it('falls back to a generic name when the instance label is blank', () => {
@@ -220,7 +220,7 @@ describe('findPondByHost', () => {
       resolved({ host: 'Emmanueyugi4525.bbrouter', port: 4000, addresses: ['192.168.1.2'] }),
     );
 
-    await expect(pending).resolves.toMatchObject({ url: 'http://192.168.1.2:4000' });
+    await expect(pending).resolves.toMatchObject({ url: 'https://192.168.1.2:4000' });
   });
 
   it("matches when the router's domain differs from the server's own hostname", async () => {
@@ -234,7 +234,7 @@ describe('findPondByHost', () => {
       resolved({ host: 'nano.bbrouter', port: 8080, addresses: ['192.168.1.11'] }),
     );
 
-    await expect(pending).resolves.toMatchObject({ url: 'http://192.168.1.11:8080' });
+    await expect(pending).resolves.toMatchObject({ url: 'https://192.168.1.11:8080' });
   });
 
   it('will not take a different hub that happens to share the port', async () => {

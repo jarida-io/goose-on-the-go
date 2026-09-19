@@ -13,6 +13,8 @@
  */
 export function timeoutSignal(ms: number): AbortSignal {
   const controller = new AbortController();
-  setTimeout(() => controller.abort(), ms);
+  const timer = setTimeout(() => controller.abort(), ms);
+  // Node tests should not remain alive solely for a React Native request timer.
+  (timer as unknown as { unref?: () => void }).unref?.();
   return controller.signal;
 }

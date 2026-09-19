@@ -13,7 +13,9 @@
       "bundleIdentifier": "io.jarida.gooseonthego",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Goose On The Go looks for your Goose In A Pond server on this network so you do not have to type its address.",
-        "NSBonjourServices": ["_pond._tcp"]
+        "NSBonjourServices": [
+          "_pond._tcp"
+        ]
       }
     },
     "android": {
@@ -61,7 +63,8 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      "./plugins/with-pond-tls"
     ],
     "experiments": {
       "typedRoutes": true,

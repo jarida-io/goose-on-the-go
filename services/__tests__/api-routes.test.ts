@@ -1,3 +1,4 @@
+jest.mock('@/services/pond-trust', () => ({ assertPondTrust: jest.fn().mockResolvedValue(undefined) }));
 /**
  * The route wrappers, and the three things in `request()` every one of them
  * inherits: envelope unwrapping, empty-body tolerance, and one shared refresh.
@@ -40,7 +41,7 @@ describe('envelope unwrapping', () => {
    */
   it('returns the list from an enveloped collection', async () => {
     setFetch(async () => reply('{"devices":[{"id":"d1","name":"Lamp","is_online":true}]}'));
-    const api = new PondApiClient('http://pond.test:4000');
+    const api = new PondApiClient('https://pond.test:4000');
 
     await expect(api.listDevices()).resolves.toEqual([
       { id: 'd1', name: 'Lamp', is_online: true },
@@ -50,7 +51,7 @@ describe('envelope unwrapping', () => {
   /** Older ponds answer a bare array. Both shapes have to work. */
   it('returns the list when the server sends a bare array', async () => {
     setFetch(async () => reply('[{"id":"d1","name":"Lamp","is_online":true}]'));
-    const api = new PondApiClient('http://pond.test:4000');
+    const api = new PondApiClient('https://pond.test:4000');
 
     await expect(api.listDevices()).resolves.toHaveLength(1);
   });
@@ -63,14 +64,14 @@ describe('empty bodies', () => {
    */
   it('resolves a 204 instead of failing to parse it', async () => {
     setFetch(async () => reply('', { status: 204 }));
-    const api = new PondApiClient('http://pond.test:4000');
+    const api = new PondApiClient('https://pond.test:4000');
 
     await expect(api.deleteDevice('d1')).resolves.toBeUndefined();
   });
 
   it('resolves a 200 that carries no body', async () => {
     setFetch(async () => reply(''));
-    const api = new PondApiClient('http://pond.test:4000');
+    const api = new PondApiClient('https://pond.test:4000');
 
     await expect(api.pauseSchedule('s1')).resolves.toBeUndefined();
   });
@@ -101,7 +102,7 @@ describe('concurrent 401s', () => {
       return reply('{"devices":[]}');
     });
 
-    const api = new PondApiClient('http://pond.test:4000');
+    const api = new PondApiClient('https://pond.test:4000');
     api.setToken('stale');
     api.setRefreshToken('refresh-1');
 

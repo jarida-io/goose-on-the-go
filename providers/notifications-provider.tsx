@@ -1,3 +1,4 @@
+import { api } from '@/services/api-client';
 /**
  * NotificationsProvider — live server notifications for the paired Pond.
  *
@@ -30,7 +31,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import { getInstallId } from '@/services/install-id';
 import {
-  NotificationStream,
+  NotificationStream, NotificationDeduplicator,
   type ServerNotification,
 } from '@/services/notification-stream';
 import { registerPushToken, watchPushTokenRotation } from '@/services/push-token';
@@ -50,22 +51,26 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
 export function NotificationsProvider({ children }: PropsWithChildren) {
-  const { serverUrl, token } = useServer();
+  const { serverUrl, token, online, recover } = useServer();
+  const deduplicator = useMemo(() => new NotificationDeduplicator(), []);
   const [notifications, setNotifications] = useState<ServerNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const streamRef = useRef<NotificationStream | null>(null);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !serverUrl || !online) return;
     let cancelled = false;
 
     const startStream = async () => {
       const deviceId = await getInstallId();
-      if (cancelled) return;
+      if (cancelled || AppState.currentState !== 'active') return;
       const stream = new NotificationStream({
         baseUrl: serverUrl,
+        deduplicator,
         deviceId,
         token,
+        onDisconnect: () => { void recover(); },
+        onAuthFailure: () => { void api.refreshAuthentication().then((ok) => { if (ok) void recover(); else console.warn('[notifications] local pairing may be required'); }).catch(() => console.warn('[notifications] token refresh failed; not retrying rotation')); },
         onNotification: (n) => {
           setNotifications((prev) => [n, ...prev].slice(0, MAX_KEPT));
           setUnreadCount((prev) => prev + 1);
@@ -112,7 +117,7 @@ export function NotificationsProvider({ children }: PropsWithChildren) {
       streamRef.current?.stop();
       streamRef.current = null;
     };
-  }, [serverUrl, token]);
+  }, [serverUrl, token, online, recover, deduplicator]);
 
   const markAllRead = useCallback(() => setUnreadCount(0), []);
 

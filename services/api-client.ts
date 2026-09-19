@@ -1,3 +1,5 @@
+import { assertPondTrust, pondTrustFailed } from './pond-trust';
+import { normalizeHttpsUrl } from '@/models/connection';
 /**
  * PondApiClient — HTTP client for goose-in-a-pond.
  *
@@ -127,12 +129,17 @@ export class PondApiClient {
   /** The refresh every concurrent 401 waits on, rather than each starting its own. */
   private refreshInFlight: Promise<HandshakeResponse | null> | null = null;
 
-  constructor(baseUrl = 'http://127.0.0.1:4000') {
-    this.baseUrl = baseUrl.replace(/\/+$/, '');
+  private recovery: (() => Promise<string | null>) | null = null;
+  private identityEpoch = 0;
+  setRecovery(recover: (() => Promise<string | null>) | null) { this.recovery = recover; }
+  invalidateIdentity() { this.identityEpoch++; this.token = null; this.refreshToken = null; }
+
+  constructor(baseUrl = 'https://127.0.0.1:4443') {
+    this.baseUrl = normalizeHttpsUrl(baseUrl);
   }
 
   setBaseUrl(url: string) {
-    this.baseUrl = url.replace(/\/+$/, '');
+    this.baseUrl = normalizeHttpsUrl(url);
   }
 
   setToken(token: string | null) {
@@ -147,6 +154,19 @@ export class PondApiClient {
     this.onTokensRotated = cb;
   }
 
+  private async send(url: string, init: RequestInit): Promise<Response> {
+    const epoch = this.identityEpoch;
+    await assertPondTrust(new URL(url).origin);
+    if (epoch !== this.identityEpoch) throw new Error('Pond profile changed');
+    const headers = new Headers(init.headers);
+    headers.set('X-Pond-Transport', '1');
+    const response = await fetch(url, { ...init, headers, redirect: 'error',
+      signal: init.signal ?? timeoutSignal(REQUEST_TIMEOUT_MS) });
+    if (epoch !== this.identityEpoch) throw new Error('Pond profile changed');
+    if (response.status >= 300 && response.status < 400) throw new Error('Pond redirect rejected');
+    return response;
+  }
+
   private headers(): Record<string, string> {
     const h: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.token) h['Authorization'] = `Bearer ${this.token}`;
@@ -159,16 +179,16 @@ export class PondApiClient {
    * Never throws: an unreachable Pond is an expected state here, not an error,
    * so callers get `ok: false` rather than a rejection to handle.
    */
-  async health(): Promise<{ ok: boolean; latencyMs: number }> {
+  async health(): Promise<{ ok: boolean; latencyMs: number; trustFailure?: boolean }> {
     const start = Date.now();
     try {
-      const res = await fetch(`${this.baseUrl}/health`, {
-        headers: this.headers(),
+      const res = await this.send(`${this.baseUrl}/api/v1/health`, {
+        headers: {},
         signal: timeoutSignal(HEALTH_TIMEOUT_MS),
       });
       return { ok: res.ok, latencyMs: Date.now() - start };
     } catch {
-      return { ok: false, latencyMs: Date.now() - start };
+      return { ok: false, latencyMs: Date.now() - start, trustFailure: await pondTrustFailed(this.baseUrl).catch(() => true) };
     }
   }
 
@@ -178,7 +198,7 @@ export class PondApiClient {
     clientType?: string;
     clientVersion?: string;
   }): Promise<ChallengeResponse> {
-    const res = await fetch(`${this.baseUrl}/api/v1/handshake/init`, {
+    const res = await this.send(`${this.baseUrl}/api/v1/handshake/init`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify({
@@ -203,7 +223,7 @@ export class PondApiClient {
     mac: string;
     deviceName?: string;
   }): Promise<HandshakeResponse> {
-    const res = await fetch(`${this.baseUrl}/api/v1/handshake/verify`, {
+    const res = await this.send(`${this.baseUrl}/api/v1/handshake/verify`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify({
@@ -231,6 +251,7 @@ export class PondApiClient {
     pairingCode: string;
     deviceName?: string;
   }): Promise<HandshakeResponse> {
+    const epoch = this.identityEpoch;
     const init = await this.handshakeInit({ clientId: input.clientId });
     const challenge = fromBase64(init.challenge);
     const message = concat(challenge, utf8(input.clientId));
@@ -240,6 +261,7 @@ export class PondApiClient {
       mac,
       deviceName: input.deviceName,
     });
+    if (epoch !== this.identityEpoch) throw new Error('Pond profile changed');
     if (resp.accepted && resp.session_token) {
       this.token = resp.session_token;
       this.refreshToken = resp.refresh_token ?? null;
@@ -253,13 +275,15 @@ export class PondApiClient {
   /** Exchange the stored refresh token for a fresh pair. */
   async handshakeRefresh(): Promise<HandshakeResponse | null> {
     if (!this.refreshToken) return null;
-    const res = await fetch(`${this.baseUrl}/api/v1/handshake/refresh`, {
+    const epoch = this.identityEpoch;
+    const res = await this.send(`${this.baseUrl}/api/v1/handshake/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: this.refreshToken }),
     });
     if (!res.ok) return null;
     const body = (await res.json()) as HandshakeResponse;
+    if (epoch !== this.identityEpoch) throw new Error('Pond profile changed');
     if (body.accepted && body.session_token) {
       this.token = body.session_token;
       this.refreshToken = body.refresh_token ?? null;
@@ -273,7 +297,7 @@ export class PondApiClient {
   /** Revoke the current session token on the server. */
   async handshakeRevoke(): Promise<void> {
     if (!this.token) return;
-    await fetch(`${this.baseUrl}/api/v1/handshake/revoke`, {
+    await this.send(`${this.baseUrl}/api/v1/handshake/revoke`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify({ token: this.token }),
@@ -292,15 +316,24 @@ export class PondApiClient {
    * turning one recoverable expiry into a forced re-pair.
    */
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
+    if (!path.startsWith('/api/') || path.startsWith('//')) throw new Error('Invalid Pond API path');
+    const epoch = this.identityEpoch;
     const doFetch = () =>
-      fetch(url, {
+      this.send(`${this.baseUrl}${path}`, {
         ...init,
         headers: { ...this.headers(), ...(init.headers ?? {}) },
         signal: init.signal ?? timeoutSignal(REQUEST_TIMEOUT_MS),
       });
 
-    let res = await doFetch();
+    let res: Response;
+    try { res = await doFetch(); }
+    catch (error) {
+      if (init.signal?.aborted || epoch !== this.identityEpoch || !this.recovery) throw error;
+      const recovered = await this.recovery();
+      if (!recovered || epoch !== this.identityEpoch || !['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())) throw error;
+      this.setBaseUrl(recovered);
+      res = await doFetch();
+    }
     if (res.status === 401 && this.refreshToken) {
       const refreshed = await this.refreshOnce();
       if (refreshed?.accepted) res = await doFetch();
@@ -315,6 +348,9 @@ export class PondApiClient {
     }
     return (await parseBody<T>(res)) as T;
   }
+
+  /** Used by SSE without starting a competing token rotation. */
+  async refreshAuthentication(): Promise<boolean> { return !!(await this.refreshOnce())?.accepted; }
 
   /** Coalesce concurrent refreshes into the single in-flight attempt. */
   private refreshOnce(): Promise<HandshakeResponse | null> {

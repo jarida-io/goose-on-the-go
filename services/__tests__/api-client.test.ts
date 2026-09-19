@@ -1,3 +1,4 @@
+jest.mock('@/services/pond-trust', () => ({ assertPondTrust: jest.fn().mockResolvedValue(undefined) }));
 /**
  * Tests for the API client's error surface.
  *
@@ -72,7 +73,7 @@ describe('ApiError', () => {
 describe('request()', () => {
   it('throws an ApiError carrying the status and Retry-After', async () => {
     setFetch(stubFetch({ status: 429, headers: { 'Retry-After': '42' } }));
-    const client = new PondApiClient('http://pond.test');
+    const client = new PondApiClient('https://pond.test');
 
     const error: ApiError = await client
       .request('/api/v1/thing', { method: 'POST' })
@@ -90,7 +91,7 @@ describe('request()', () => {
 
   it('reports a null Retry-After when the header is absent', async () => {
     setFetch(stubFetch({ status: 503 }));
-    const client = new PondApiClient('http://pond.test');
+    const client = new PondApiClient('https://pond.test');
 
     const error = (await client.request('/api/v1/thing').catch((e) => e)) as ApiError;
 
@@ -108,7 +109,7 @@ describe('request()', () => {
       status: 429,
       headers: { 'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT' },
     }));
-    const client = new PondApiClient('http://pond.test');
+    const client = new PondApiClient('https://pond.test');
 
     const error = (await client.request('/api/v1/thing').catch((e) => e)) as ApiError;
 
@@ -117,7 +118,7 @@ describe('request()', () => {
 
   it('returns the parsed body on success', async () => {
     setFetch(stubFetch({ status: 200, body: { ok: true } }));
-    const client = new PondApiClient('http://pond.test');
+    const client = new PondApiClient('https://pond.test');
 
     await expect(client.request('/api/v1/thing')).resolves.toEqual({ ok: true });
   });

@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEYS = {
   serverUrl: '@goose/server-url',
+  connectionProfile: '@goose/connection-profile',
   lastScreen: '@goose/last-screen',
   settings: '@goose/settings',
   devScreenModes: '@goose/dev-screen-modes',

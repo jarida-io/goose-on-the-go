@@ -58,7 +58,7 @@ function firstIPv4(addresses: string[] | undefined): string | null {
 export function toPond(service: Service): DiscoveredPond | null {
   const address = firstIPv4(service.addresses);
   const port = service.port;
-  if (!address || !port) return null;
+  if (!address || !port || service.txt?.scheme !== 'https') return null;
 
   const version = typeof service.txt?.v === 'string' ? service.txt.v : undefined;
   return {
@@ -66,7 +66,7 @@ export function toPond(service: Service): DiscoveredPond | null {
     name: service.name?.trim() || 'Pond',
     address,
     port,
-    url: `http://${address}:${port}`,
+    url: `https://${address}:${port}`,
     version,
     hostname: normalizeHostname(service.host),
   };
