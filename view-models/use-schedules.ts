@@ -4,21 +4,22 @@
  * Live in two ways. `GET /schedules/events` says when a run starts and
  * finishes, which is what flips a card to "Running" and back; a poll on top
  * picks up what the stream does not carry, such as the next run the scheduler
- * worked out afterwards, and takes over entirely if the stream drops.
+ * worked out afterwards, and carries on alone while the stream is down.
  *
  * Behind the Developer toggle for `schedule`: on mock, the same cards render
  * `SAMPLE_SCHEDULES` and the actions change them locally.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { useServer } from '@/providers/server-provider';
 import { ApiError, api } from '@/services/api-client';
 import i18n from '@/services/i18n';
 import type { CreateScheduleRequest, Schedule } from '@/services/types';
-import { SAMPLE_SCHEDULES, deviceTimeZone, timedSchedules } from '@/models/schedule';
+import { SAMPLE_SCHEDULES, deviceTimeZone, isRule, timedSchedules } from '@/models/schedule';
 import { describeApiError } from './describe-error';
-import { useLive } from './use-live';
+import { MIN_POLL_MS, useLive } from './use-live';
 
 /** While something is running, its result is worth seeing promptly. */
 export const SCHEDULES_ACTIVE_MS = 5_000;
@@ -26,6 +27,10 @@ export const SCHEDULES_ACTIVE_MS = 5_000;
 export const SCHEDULES_STREAMING_MS = 60_000;
 /** With it down, the poll is all there is. */
 export const SCHEDULES_IDLE_MS = 30_000;
+/** How soon an event stream that ended is opened again, doubling while it keeps ending. */
+export const SCHEDULES_STREAM_RETRY_MS = 5_000;
+/** The longest wait between attempts; the poll covers the gap. */
+export const SCHEDULES_STREAM_RETRY_MAX_MS = 60_000;
 
 export interface UseSchedules {
   data: {
@@ -36,6 +41,12 @@ export interface UseSchedules {
   };
   loading: boolean;
   error: string | null;
+  /**
+   * A load failed and nothing has loaded from this source yet, so the list is
+   * unknown rather than empty. `error` can be null even so: an unreachable or
+   * refused Pond is the connection banner's to describe.
+   */
+  failed: boolean;
   actions: {
     refresh: () => Promise<void>;
     /** Resolves to why the Pond refused it, or null once it exists. */
@@ -66,6 +77,7 @@ export function useSchedules(): UseSchedules {
   const [all, setAll] = useState<Schedule[]>(() => (real ? [] : SAMPLE_SCHEDULES));
   const [loading, setLoading] = useState(real);
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [streamDown, setStreamDown] = useState(false);
   const live = streamDown ? 'poll' : 'stream';
 
@@ -78,14 +90,21 @@ export function useSchedules(): UseSchedules {
     setAll(real ? [] : SAMPLE_SCHEDULES);
     setLoading(real);
     setError(null);
+    setFailed(false);
     setStreamDown(false);
   }
 
   // Which source last loaded, so the first failure of a new one is reported.
   const loadedFrom = useRef<boolean | null>(null);
+  // Back from mock, the real source has loaded nothing into the emptied list.
+  useEffect(() => {
+    if (!real) loadedFrom.current = null;
+  }, [real]);
   // Bumped by every change made here. A read that began before one would put
   // back the list as it was, so its answer is dropped.
   const changes = useRef(0);
+  // How many reads are out, whoever asked; a finished run starts none while any is.
+  const reading = useRef(0);
   const allRef = useRef(all);
   useEffect(() => {
     allRef.current = all;
@@ -100,15 +119,19 @@ export function useSchedules(): UseSchedules {
         setError(null);
       }
       const startedAt = changes.current;
+      reading.current += 1;
       try {
         const list = await api.listSchedules();
         if (startedAt === changes.current) setAll(list);
         loadedFrom.current = real;
         setError(null);
+        setFailed(false);
       } catch (e) {
         if (loud || loadedFrom.current !== real) setError(describeScheduleError(e));
         else console.warn('[schedules] refresh failed; showing the last result', e instanceof ApiError ? e.status : 'network');
+        if (loadedFrom.current !== real) setFailed(true);
       } finally {
+        reading.current -= 1;
         setLoading(false);
       }
     },
@@ -124,30 +147,75 @@ export function useSchedules(): UseSchedules {
 
   useLive(() => load(false), delay, hydrated && real);
 
-  // The event stream. One attempt per mount: if it ends, the poll carries on
-  // alone rather than this reopening a stream the Pond may be refusing.
+  // The event stream, opened again whenever it ends. The Pond takes no stream
+  // permit for it, so asking again costs no chat stream; the backoff is only
+  // for a Pond that is not answering, and the poll covers the gap.
   useEffect(() => {
     if (!hydrated || !real) return;
     const controller = new AbortController();
-    api
-      .streamScheduleEvents((event) => {
-        const running = event.status === 'running';
-        setAll((current) =>
-          current.map((s) => (s.id === event.schedule_id ? { ...s, currently_running: running } : s)),
-        );
-        // A finished run moved last_run and next_run; the event carries neither.
-        if (!running) void load(false);
-      }, controller.signal)
-      .catch(() => undefined)
-      .finally(() => {
-        if (!controller.signal.aborted) setStreamDown(true);
-      });
-    return () => controller.abort();
+    const { signal } = controller;
+    let backoff = SCHEDULES_STREAM_RETRY_MS;
+    let reopen: ReturnType<typeof setTimeout> | null = null;
+    let followUp: ReturnType<typeof setTimeout> | null = null;
+    let lastFollowUp = 0;
+
+    // A finished run moved last_run and next_run; the event carries neither, so
+    // a read follows. Runs can finish in a burst, so those reads are coalesced
+    // to one per MIN_POLL_MS, and none starts while another read is out or
+    // while the app is not in front.
+    const readAfterRun = () => {
+      if (followUp) return;
+      followUp = setTimeout(
+        () => {
+          followUp = null;
+          if (signal.aborted || reading.current > 0 || AppState.currentState !== 'active') return;
+          lastFollowUp = Date.now();
+          void load(false);
+        },
+        Math.max(0, lastFollowUp + MIN_POLL_MS - Date.now()),
+      );
+    };
+
+    const open = () => {
+      reopen = null;
+      api
+        .streamScheduleEvents(
+          (event) => {
+            // Rule fires come down the same stream, and `all` holds the rules too.
+            if (!allRef.current.some((s) => s.id === event.schedule_id && !isRule(s))) return;
+            const running = event.status === 'running';
+            setAll((current) =>
+              current.map((s) => (s.id === event.schedule_id ? { ...s, currently_running: running } : s)),
+            );
+            if (!running) readAfterRun();
+          },
+          signal,
+          () => {
+            backoff = SCHEDULES_STREAM_RETRY_MS;
+            setStreamDown(false);
+          },
+        )
+        .catch(() => undefined)
+        .finally(() => {
+          if (signal.aborted) return;
+          setStreamDown(true);
+          reopen = setTimeout(open, backoff);
+          backoff = Math.min(backoff * 2, SCHEDULES_STREAM_RETRY_MAX_MS);
+        });
+    };
+    open();
+
+    return () => {
+      controller.abort();
+      if (reopen) clearTimeout(reopen);
+      if (followUp) clearTimeout(followUp);
+    };
   }, [hydrated, real, load]);
 
   const create = useCallback(
     async (req: Omit<CreateScheduleRequest, 'timezone'>) => {
-      const full: CreateScheduleRequest = { ...req, timezone: deviceTimeZone() };
+      // Only a one-off carries the zone; see deviceTimeZone for why.
+      const full: CreateScheduleRequest = req.once ? { ...req, timezone: deviceTimeZone() } : req;
       if (!real) {
         changes.current += 1;
         setAll((current) => [...current, mockSchedule(full)]);
@@ -182,16 +250,32 @@ export function useSchedules(): UseSchedules {
     [real],
   );
 
+  // Schedules whose run-now has not been answered. The Pond starts a run for
+  // every request, with no check for one already going, so a second tap in
+  // that window would start a second run.
+  const starting = useRef(new Set<string>());
+
+  /** Running from the tap rather than the answer, and put back if the Pond refuses. */
   const runNow = useCallback(
     async (schedule: Schedule) => {
-      if (!real) return;
+      if (!real || starting.current.has(schedule.id)) return;
+      starting.current.add(schedule.id);
       setError(null);
+      // A poll that began before the tap would read it as idle and put the card
+      // back, and so would one that began before the Pond took the request.
+      changes.current += 1;
+      setAll((current) => current.map((s) => (s.id === schedule.id ? { ...s, currently_running: true } : s)));
       try {
         await api.runScheduleNow(schedule.id);
-        // The stream will say when it starts; without one, the next poll will.
-        setAll((current) => current.map((s) => (s.id === schedule.id ? { ...s, currently_running: true } : s)));
+        changes.current += 1;
       } catch (e) {
+        changes.current += 1;
+        setAll((current) =>
+          current.map((s) => (s.id === schedule.id ? { ...s, currently_running: schedule.currently_running } : s)),
+        );
         setError(describeScheduleError(e));
+      } finally {
+        starting.current.delete(schedule.id);
       }
     },
     [real],
@@ -201,6 +285,7 @@ export function useSchedules(): UseSchedules {
     data: { schedules: timedSchedules(all), live },
     loading,
     error,
+    failed,
     actions: { refresh, create, setPaused, runNow },
   };
 }

@@ -967,20 +967,24 @@ export class PondApiClient {
 
   /**
    * Runs starting and finishing, as the scheduler reports them. Resolves when
-   * the stream ends, whichever way; the caller decides whether to reopen it
-   * or fall back to polling.
+   * the stream ends, whichever way; the caller decides whether to reopen it.
+   * `onOpen` is called once the Pond has accepted it, which is how a caller
+   * that reopens it knows it is back.
    *
-   * The Pond counts this against the four streams it will hold open, so a
-   * screen that leaves must abort `signal` rather than abandon the stream.
+   * The Pond takes no stream permit for this one, so holding it open costs no
+   * chat stream. A screen that leaves still aborts `signal`: an abandoned
+   * stream stays open and keeps delivering to a screen that is gone.
    */
   async streamScheduleEvents(
     onEvent: (event: ScheduleResultEvent) => void,
     signal?: AbortSignal,
+    onOpen?: () => void,
   ): Promise<void> {
     const res = await this.open('/api/v1/schedules/events', {
       headers: { Accept: 'text/event-stream' },
       signal,
     });
+    onOpen?.();
     await readSse(
       res,
       (event) => {

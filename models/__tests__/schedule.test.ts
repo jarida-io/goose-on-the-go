@@ -66,8 +66,20 @@ describe('cron', () => {
     expect(isSixFieldCron('0 9 * * 1-5')).toBe(false);
   });
 
-  it('pins a one-off to its second, minute, hour, day and month', () => {
-    expect(oneOffCron({ year: 2026, month: 12, day: 24 }, { hour: 18, minute: 5 })).toBe('0 5 18 24 12 *');
+  /** Anything but one literal second runs the agent several times a minute. */
+  it('takes a single second, 0 to 59, in the seconds field', () => {
+    expect(isSixFieldCron('30 0 9 * * *')).toBe(true);
+    expect(isSixFieldCron('59 0 9 * * *')).toBe(true);
+    expect(isSixFieldCron('*/15 * * * * *')).toBe(false);
+    expect(isSixFieldCron('* 0 9 * * *')).toBe(false);
+    expect(isSixFieldCron('0-30 0 9 * * *')).toBe(false);
+    expect(isSixFieldCron('0,30 0 9 * * *')).toBe(false);
+    expect(isSixFieldCron('60 0 9 * * *')).toBe(false);
+  });
+
+  /** Without the year, a date a year or more out would match a year early. */
+  it('pins a one-off to its second, minute, hour, day, month and year', () => {
+    expect(oneOffCron({ year: 2027, month: 12, day: 24 }, { hour: 18, minute: 5 })).toBe('0 5 18 24 12 * 2027');
   });
 });
 

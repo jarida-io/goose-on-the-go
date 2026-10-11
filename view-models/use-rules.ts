@@ -8,7 +8,7 @@
  * Behind the same Developer toggle as schedules.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useServer } from '@/providers/server-provider';
 import { ApiError, api } from '@/services/api-client';
@@ -25,6 +25,8 @@ export interface UseRules {
   data: { rules: Rule[] };
   loading: boolean;
   error: string | null;
+  /** A load failed and nothing has loaded yet: unknown, not empty. See useSchedules. */
+  failed: boolean;
   actions: {
     refresh: () => Promise<void>;
     /** Resolves to why the Pond refused it, or null once it exists. */
@@ -40,6 +42,7 @@ export function useRules(): UseRules {
   const [rules, setRules] = useState<Rule[]>(() => (real ? [] : SAMPLE_RULES));
   const [loading, setLoading] = useState(real);
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   // The Developer toggle swapping the source; see useSchedules.
   const [source, setSource] = useState(real);
@@ -48,9 +51,13 @@ export function useRules(): UseRules {
     setRules(real ? [] : SAMPLE_RULES);
     setLoading(real);
     setError(null);
+    setFailed(false);
   }
 
   const loadedFrom = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!real) loadedFrom.current = null;
+  }, [real]);
   const changes = useRef(0);
 
   const load = useCallback(
@@ -66,9 +73,11 @@ export function useRules(): UseRules {
         if (startedAt === changes.current) setRules(list);
         loadedFrom.current = real;
         setError(null);
+        setFailed(false);
       } catch (e) {
         if (loud || loadedFrom.current !== real) setError(describeScheduleError(e));
         else console.warn('[rules] refresh failed; showing the last result', e instanceof ApiError ? e.status : 'network');
+        if (loadedFrom.current !== real) setFailed(true);
       } finally {
         setLoading(false);
       }
@@ -115,7 +124,7 @@ export function useRules(): UseRules {
     [real],
   );
 
-  return { data: { rules }, loading, error, actions: { refresh, create, setPaused } };
+  return { data: { rules }, loading, error, failed, actions: { refresh, create, setPaused } };
 }
 
 function mockRule(req: RuleRequest): Rule {

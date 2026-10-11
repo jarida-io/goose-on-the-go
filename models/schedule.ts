@@ -39,29 +39,42 @@ export function timedSchedules(schedules: Schedule[]): Schedule[] {
  * The Pond's cron has six fields, seconds first (`sec min hour day month
  * weekday`). A five-field expression, the usual Unix shape, is refused with
  * "invalid cron expression", so the form checks the count before sending.
+ *
+ * The seconds field must also be one literal second, 0 to 59. A `*`, step,
+ * range or list there is valid cron that runs the agent several times a
+ * minute; a step of 15 runs it every 15 seconds.
  */
 export function isSixFieldCron(expr: string): boolean {
-  return expr.trim().split(/\s+/).length === 6;
+  const fields = expr.trim().split(/\s+/);
+  return fields.length === 6 && /^\d{1,2}$/.test(fields[0]) && Number(fields[0]) <= 59;
 }
 
 /**
  * The cron for a one-off at a date and time.
  *
  * `POST /schedules` takes no `fire_at`, so a one-off is a cron pinned to its
- * day and month, sent with `once: true`: the Pond runs it at the first match
- * and then removes it. Cron has no year, which is why the form only offers
- * dates from today on — a date already past this year would wait for next.
+ * day, month and year, sent with `once: true`: the Pond runs it at the first
+ * match and then removes it. The year is the optional seventh field the
+ * Pond's croner reads; without it a date a year or more out would match a
+ * year early.
  */
 export function oneOffCron(date: CivilDate, time: CivilTime): string {
-  return `0 ${time.minute} ${time.hour} ${date.day} ${date.month} *`;
+  return `0 ${time.minute} ${time.hour} ${date.day} ${date.month} * ${date.year}`;
 }
 
 /**
- * The phone's IANA time zone, which every schedule is created in.
+ * The phone's IANA time zone, which a one-off is created in.
  *
- * Without one the Pond assumes UTC, and "every day at 07:00" fires at 07:00
- * UTC — 10:00 in Nairobi. `expo-localization` is native, so a JS-only run
- * falls back to UTC rather than throwing.
+ * A one-off only. The Pond works a one-off's cron out into the instant it
+ * fires in this zone, so "the 24th at 18:05" is 18:05 here. A repeating
+ * schedule is sent without one: the Pond registers every repeat with
+ * `Job::new_async`, which fires in UTC whatever zone the schedule names, and
+ * the zone would move only the `next_run` it reports, so the card would
+ * promise a local time the job does not keep. Left in UTC, `next_run` is when
+ * it really fires. The real fix is the Pond's, `Job::new_async_tz`.
+ *
+ * `expo-localization` is native, so a JS-only run falls back to UTC rather
+ * than throwing.
  */
 export function deviceTimeZone(): string {
   try {

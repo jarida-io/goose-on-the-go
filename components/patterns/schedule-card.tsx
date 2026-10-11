@@ -41,6 +41,9 @@ export const ScheduleCard = React.memo(function ScheduleCard({
       ? formatScheduleTime(schedule.fire_at)
       : schedule.cron;
   const mono = !schedule.next_run && !schedule.fire_at;
+  // The Pond cannot resume a paused one-off: it re-parses the `@once`
+  // placeholder as a cron and answers 404, so a one-off gets no switch.
+  const oneOff = schedule.fire_at != null || schedule.cron === '@once';
 
   return (
     <InkCard style={schedule.paused ? styles.paused : undefined}>
@@ -68,20 +71,23 @@ export const ScheduleCard = React.memo(function ScheduleCard({
       </GPressable>
 
       <View style={styles.actions}>
-        <InkSwitch
-          label={schedule.paused ? t('schedule.card.paused') : t('schedule.card.enabled')}
-          checked={!schedule.paused}
-          onChange={(on) => {
-            void toggle();
-            onSetPaused(schedule, !on);
-          }}
-        />
+        {oneOff ? null : (
+          <InkSwitch
+            label={schedule.paused ? t('schedule.card.paused') : t('schedule.card.enabled')}
+            checked={!schedule.paused}
+            onChange={(on) => {
+              void toggle();
+              onSetPaused(schedule, !on);
+            }}
+          />
+        )}
         {canRun ? (
           <InkButton
             variant="quiet"
             icon="play"
             disabled={schedule.currently_running || schedule.paused}
             onPress={() => onRunNow(schedule)}
+            style={styles.runNow}
           >
             {t('schedule.card.runNow')}
           </InkButton>
@@ -102,4 +108,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: Spacing.md,
   },
+  // Keeps Run now on the right when a one-off has no switch beside it.
+  runNow: { marginLeft: 'auto' },
 });

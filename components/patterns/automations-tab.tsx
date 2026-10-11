@@ -14,7 +14,7 @@ import { Spacing } from '@/constants/spacing';
 
 export function AutomationsTab() {
   const { t } = useTranslation();
-  const { data, loading, error, actions } = useRules();
+  const { data, loading, error, failed, actions } = useRules();
   const [creating, setCreating] = useState(false);
 
   return (
@@ -27,16 +27,17 @@ export function AutomationsTab() {
 
       {loading ? <InkSpinner label={t('schedule.list.loading')} /> : null}
 
-      {error ? (
+      {/* A failed read with no sentence of its own still leaves the list unknown. */}
+      {error || failed ? (
         <View style={styles.notice}>
-          <InkNotice tone="danger">{error}</InkNotice>
+          <InkNotice tone="danger">{error ?? t('schedule.list.rulesFailed')}</InkNotice>
           <InkButton variant="quiet" icon="refresh" onPress={actions.refresh}>
             {t('common.retry')}
           </InkButton>
         </View>
       ) : null}
 
-      {!loading && !error && data.rules.length === 0 ? (
+      {!loading && !error && !failed && data.rules.length === 0 ? (
         <InkEmptyState icon="bolt" title={t('schedule.list.noRulesTitle')}>
           <InkText>{t('schedule.list.noRulesBody')}</InkText>
         </InkEmptyState>

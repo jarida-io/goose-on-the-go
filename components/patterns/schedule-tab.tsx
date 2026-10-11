@@ -20,7 +20,7 @@ export function ScheduleTab() {
   const { t } = useTranslation();
   const { isScreenReal } = useServer();
   const real = isScreenReal('schedule');
-  const { data, loading, error, actions } = useSchedules();
+  const { data, loading, error, failed, actions } = useSchedules();
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState<Schedule | null>(null);
 
@@ -38,9 +38,11 @@ export function ScheduleTab() {
 
       {loading ? <InkSpinner label={t('schedule.list.loading')} /> : null}
 
-      {error ? (
+      {/* A failed read can have no sentence of its own (the connection banner
+          already says why), but the list is still unknown and worth a retry. */}
+      {error || failed ? (
         <View style={styles.notice}>
-          <InkNotice tone="danger">{error}</InkNotice>
+          <InkNotice tone="danger">{error ?? t('schedule.list.schedulesFailed')}</InkNotice>
           <InkButton variant="quiet" icon="refresh" onPress={actions.refresh}>
             {t('common.retry')}
           </InkButton>
@@ -48,7 +50,7 @@ export function ScheduleTab() {
       ) : null}
 
       {/* A list that failed to load is unknown, not empty. */}
-      {!loading && !error && data.schedules.length === 0 ? (
+      {!loading && !error && !failed && data.schedules.length === 0 ? (
         <InkEmptyState icon="schedule" title={t('schedule.list.noSchedulesTitle')}>
           <InkText>{t('schedule.list.noSchedulesBody')}</InkText>
         </InkEmptyState>

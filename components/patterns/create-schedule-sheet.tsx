@@ -8,11 +8,12 @@
  */
 
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   InkButton,
   InkDatePicker,
+  InkFormField,
   InkInput,
   InkNotice,
   InkSegmented,
@@ -23,6 +24,7 @@ import {
 } from '@jarida/ink/native';
 import type { CivilDate, CivilTime } from '@jarida/ink';
 
+import { GKeyboardView } from '@/components/ui/g-keyboard-view';
 import { isSixFieldCron, oneOffCron } from '@/models/schedule';
 import { confirm, reject } from '@/services/haptics';
 import type { CreateScheduleRequest } from '@/services/types';
@@ -44,6 +46,7 @@ function todayCivil(): CivilDate {
 
 export function CreateScheduleSheet({ open, onClose, onCreate }: CreateScheduleSheetProps) {
   const { t } = useTranslation();
+  const { height } = useWindowDimensions();
   const [name, setName] = useState('');
   const [timing, setTiming] = useState<Timing>('once');
   const [date, setDate] = useState<CivilDate | null>(null);
@@ -53,7 +56,9 @@ export function CreateScheduleSheet({ open, onClose, onCreate }: CreateScheduleS
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const close = () => {
+  // Only a created schedule clears the form. A stray tap on the backdrop
+  // closes the sheet too, and it should not cost the draft.
+  const reset = () => {
     setName('');
     setTiming('once');
     setDate(null);
@@ -61,7 +66,7 @@ export function CreateScheduleSheet({ open, onClose, onCreate }: CreateScheduleS
     setCron('');
     setPrompt('');
     setError(null);
-    onClose();
+    setSubmitting(false);
   };
 
   /** The request, or the sentence that says what is missing. */
@@ -88,68 +93,96 @@ export function CreateScheduleSheet({ open, onClose, onCreate }: CreateScheduleS
     setError(null);
     setSubmitting(true);
     const refused = await onCreate(req);
-    setSubmitting(false);
     if (refused) {
+      setSubmitting(false);
       void reject();
       setError(refused);
       return;
     }
     void confirm();
-    close();
+    reset();
+    onClose();
   };
 
+  // Without `today` the calendar opens on its own default month, January 2026.
+  const today = todayCivil();
+
   return (
-    <InkSheet open={open} onClose={close} title={t('schedule.form.scheduleTitle')}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <InkInput
-          label={t('schedule.form.name')}
-          placeholder={t('schedule.form.schedulePlaceholder')}
-          value={name}
-          onChange={setName}
-        />
-
-        <InkSegmented
-          label={t('schedule.form.timing')}
-          value={timing}
-          options={[
-            { value: 'once', label: t('schedule.form.once') },
-            { value: 'repeat', label: t('schedule.form.repeat') },
-          ]}
-          onChange={setTiming}
-        />
-
-        {timing === 'once' ? (
-          <>
-            <InkDatePicker label={t('schedule.form.date')} value={date} onChange={setDate} min={todayCivil()} />
-            <InkTimePicker label={t('schedule.form.time')} value={time} onChange={setTime} />
-          </>
-        ) : (
-          <>
+    <InkSheet open={open} onClose={onClose} title={t('schedule.form.scheduleTitle')}>
+      {/* `InkSheet` has no height limit of its own. The bound includes the
+          keyboard's padding, so with the keyboard up the form scrolls in what
+          is left rather than pushing the sheet off the top of the window. */}
+      <GKeyboardView style={{ maxHeight: height * 0.7 }}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <InkFormField label={t('schedule.form.name')}>
             <InkInput
-              label={t('schedule.form.cron')}
-              placeholder="0 0 9 * * 1-5"
-              value={cron}
-              onChange={setCron}
+              label={t('schedule.form.name')}
+              placeholder={t('schedule.form.schedulePlaceholder')}
+              value={name}
+              onChange={setName}
             />
-            <InkText size="sm" tone="tertiary">{t('schedule.form.cronHint')}</InkText>
-          </>
-        )}
+          </InkFormField>
 
-        <InkTextArea
-          label={t('schedule.form.prompt')}
-          placeholder={t('schedule.form.promptPlaceholder')}
-          value={prompt}
-          onChange={setPrompt}
-          rows={3}
-          maxRows={6}
-        />
+          <InkFormField label={t('schedule.form.timing')}>
+            <InkSegmented
+              label={t('schedule.form.timing')}
+              value={timing}
+              options={[
+                { value: 'once', label: t('schedule.form.once') },
+                { value: 'repeat', label: t('schedule.form.repeat') },
+              ]}
+              onChange={setTiming}
+            />
+          </InkFormField>
 
-        {error ? <InkNotice tone="danger">{error}</InkNotice> : null}
+          {timing === 'once' ? (
+            <>
+              <InkFormField label={t('schedule.form.date')}>
+                <InkDatePicker
+                  label={t('schedule.form.date')}
+                  placeholder={t('schedule.form.datePlaceholder')}
+                  value={date}
+                  onChange={setDate}
+                  today={today}
+                  min={today}
+                />
+              </InkFormField>
+              <InkFormField label={t('schedule.form.time')}>
+                <InkTimePicker label={t('schedule.form.time')} value={time} onChange={setTime} />
+              </InkFormField>
+            </>
+          ) : (
+            <>
+              <InkFormField label={t('schedule.form.cron')}>
+                <InkInput
+                  label={t('schedule.form.cron')}
+                  placeholder="0 0 9 * * 1-5"
+                  value={cron}
+                  onChange={setCron}
+                />
+              </InkFormField>
+              <InkText size="sm" tone="tertiary">{t('schedule.form.cronHint')}</InkText>
+            </>
+          )}
 
-        <InkButton variant="primary" block disabled={submitting} onPress={submit}>
-          {t('schedule.form.create')}
-        </InkButton>
-      </ScrollView>
+          <InkFormField label={t('schedule.form.prompt')}>
+            <InkTextArea
+              label={t('schedule.form.prompt')}
+              placeholder={t('schedule.form.promptPlaceholder')}
+              value={prompt}
+              onChange={setPrompt}
+              rows={3}
+              maxRows={6}
+            />
+          </InkFormField>
+
+          {error ? <InkNotice tone="danger">{error}</InkNotice> : null}
+
+          <InkButton variant="primary" block disabled={submitting} onPress={submit}>
+            {t('schedule.form.create')}
+          </InkButton>
+        </ScrollView>
+      </GKeyboardView>
     </InkSheet>
   );
 }

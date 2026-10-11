@@ -18,6 +18,11 @@ export interface UseScheduleRuns {
   data: { runs: ScheduleRun[] };
   loading: boolean;
   error: string | null;
+  /**
+   * The read failed, so the history is unknown rather than empty. `error` can
+   * be null even so: an unreachable or refused Pond is the banner's to describe.
+   */
+  failed: boolean;
 }
 
 /** `scheduleId` null means the sheet is closed, and nothing is read. */
@@ -29,6 +34,7 @@ export function useScheduleRuns(scheduleId: string | null): UseScheduleRuns {
   const [runs, setRuns] = useState<ScheduleRun[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   // A different schedule's sheet starts empty, not showing the last one's runs.
   const [shown, setShown] = useState<string | null>(null);
@@ -36,6 +42,7 @@ export function useScheduleRuns(scheduleId: string | null): UseScheduleRuns {
     setShown(reading);
     setRuns([]);
     setError(null);
+    setFailed(false);
     setLoading(reading != null);
   }
 
@@ -45,10 +52,14 @@ export function useScheduleRuns(scheduleId: string | null): UseScheduleRuns {
     api
       .listScheduleRuns(reading, RUNS_LIMIT)
       .then((list) => {
-        if (current) setRuns(list);
+        if (!current) return;
+        setRuns(list);
+        setFailed(false);
       })
       .catch((e: unknown) => {
-        if (current) setError(describeScheduleError(e));
+        if (!current) return;
+        setError(describeScheduleError(e));
+        setFailed(true);
       })
       .finally(() => {
         if (current) setLoading(false);
@@ -58,5 +69,5 @@ export function useScheduleRuns(scheduleId: string | null): UseScheduleRuns {
     };
   }, [reading]);
 
-  return { data: { runs }, loading, error };
+  return { data: { runs }, loading, error, failed };
 }

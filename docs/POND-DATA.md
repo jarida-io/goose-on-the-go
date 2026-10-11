@@ -68,7 +68,7 @@ The Pond rate-limits per IP (600 requests a minute for API traffic), and a runaw
 | Devices | 15s | `DEVICES_MS` | Each read also fetches every switchable device's power state. |
 | Recent conversations | 30s | `RECENT_SESSIONS_MS` | |
 | Next routine | 60s | `ROUTINE_MS` | |
-| Schedules | 60s with the event stream up, 30s without it, 5s while one is running | `SCHEDULES_STREAMING_MS`, `SCHEDULES_IDLE_MS`, `SCHEDULES_ACTIVE_MS` | `GET /schedules/events` says when a run starts and ends; the poll picks up the next run the scheduler works out afterwards. One stream per visit to the screen, which counts against the four the Pond holds open. |
+| Schedules | 60s with the event stream up, 30s without it, 5s while one is running | `SCHEDULES_STREAMING_MS`, `SCHEDULES_IDLE_MS`, `SCHEDULES_ACTIVE_MS` | `GET /schedules/events` says when a run starts and ends; the poll picks up the next run the scheduler works out afterwards. A finished run is also followed by one read, at most one per `MIN_POLL_MS`, never while another read is out or the app is not in front, and only for a timed schedule, since rule fires share the stream. The Pond takes no stream permit for it, so a stream that ends is opened again, after 5s doubling to 60s (`SCHEDULES_STREAM_RETRY_MS`, `SCHEDULES_STREAM_RETRY_MAX_MS`). |
 | Rules | 30s | `RULES_MS` | The Pond has no event stream for rules. |
 | Household counts | 60s | `HOUSEHOLD_MS` | |
 | Profiles, models | 60s | `PROFILES_MS`, `MODELS_MS` | |
@@ -91,4 +91,4 @@ The loop is tested with fake timers (`view-models/__tests__/live.test.ts`): no o
 ## Known gaps
 
 - **Names need a profile.** With no household profiles, or a pairing code not bound to one, there is no name to show, and that is correct.
-- **Schedules are made in the phone's time zone.** `deviceTimeZone()` sends it with every new schedule; without one the Pond assumes UTC. A schedule made on the desktop keeps whatever zone it was given there.
+- **A repeating schedule runs in UTC.** The Pond registers every repeat with `Job::new_async`, which fires in UTC whatever zone the schedule names; the zone moves only the `next_run` it reports. So `deviceTimeZone()` goes with a one-off only, whose firing instant the Pond does work out in that zone, and a repeat is sent without one, so its `next_run` is when it really fires. A repeat's cron is therefore UTC: 07:00 in Nairobi is hour 4. The fix is the Pond's, `Job::new_async_tz`. A schedule made on the desktop keeps whatever zone it was given there.
