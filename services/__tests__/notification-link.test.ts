@@ -59,4 +59,9 @@ describe('allowedUrl', () => {
   it('refuses a google.com link outside maps', () => {
     expect(allowedUrl('https://www.google.com/search?q=x')).toBeNull();
   });
+
+  // Checked as m.uber.com, but iOS opens the raw string on evil.example.
+  it('returns the URL it checked, not the string it was given', () => {
+    expect(allowedUrl('https://m.uber.com\\@evil.example/')).toBe('https://m.uber.com/@evil.example/');
+  });
 });

@@ -39,7 +39,10 @@ export function allowedUrl(raw: unknown): string | null {
   if (!ALLOWED_HOSTS.has(parsed.hostname.toLowerCase())) return null;
   // Google's host serves far more than maps; only its directions path is a maps link.
   if (parsed.hostname === 'www.google.com' && !parsed.pathname.startsWith('/maps')) return null;
-  return raw;
+  // What was checked is the parse, so the parse is what gets stored and opened. iOS reads
+  // a backslash differently: `https://m.uber.com\@evil.example/` passes here as m.uber.com,
+  // and opened as written it goes to evil.example.
+  return parsed.href;
 }
 
 /** The link in a notification's `data`, or null when it carries none or one we refuse. */
