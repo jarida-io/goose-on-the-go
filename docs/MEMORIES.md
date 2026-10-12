@@ -48,10 +48,10 @@ Requested from goose-in-a-pond: let `PUT /api/v1/memories/{id}` also take option
 tier as `save_memory` does, and leaving any field that is absent as it is. Once that
 lands, the card can carry a Keep switch.
 
-Consolidation does not check the tier: it exempts corrections from pruning and merging,
-and nothing else. So a kept memory is safe from fading but can still be merged with a
-near-duplicate, or pruned, by a tidy-up. Requested alongside: give the permanent tier the
-same exemption from pruning that corrections have. Until then the Keep hint says a tidy-up
+Consolidation does not check the tier. It guards corrections (never pruned, and a merge
+involving one stays a correction) and nothing else, so a kept memory is safe from fading
+but a tidy-up can still prune it or merge it into one that is not kept. Requested
+alongside: the same guards for the permanent tier. Until then the Keep hint says a tidy-up
 can still merge a kept memory.
 
 ## Consolidation progress
