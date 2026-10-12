@@ -255,23 +255,77 @@ export interface UsageSummary {
 }
 
 // ── Memory ────────────────────────────────────────────────────
+//
+// The Pond's `MemoryFragment` (`pond-core/src/user_data/domain/memory.rs`),
+// serialised as-is. The optional fields are skipped on the wire when unset:
+// a fragment saved before segments existed has none of them.
 
+/** What a memory is about. The Pond picks each one's default importance and tier. */
+export type MemorySegment =
+  | 'identity'
+  | 'preference'
+  | 'correction'
+  | 'relationship'
+  | 'project'
+  | 'routine'
+  | 'knowledge'
+  | 'context';
+
+/** How fast a memory decays: `permanent` never does, and cleanup never prunes it. */
 export type MemoryTier = 'short' | 'long' | 'permanent';
 export type MemoryLifecycle = 'active' | 'archived' | 'merged';
 
 export interface MemoryFragment {
   id: string;
+  profile_id: string | null;
+  session_id: string | null;
   content: string;
-  source?: string;
-  tags?: string[];
+  /** "chat", "extraction", "api", "mcp_tool", ... */
+  source: string;
+  tags: string[];
   created_at: string;
+  segment?: MemorySegment;
+  /** 0.0–1.0. */
   importance?: number;
   tier?: MemoryTier;
-  lifecycle?: MemoryLifecycle;
+  decay_rate?: number;
   access_count: number;
   last_accessed_at?: string;
+  lifecycle?: MemoryLifecycle;
   superseded_by?: string;
+  corrects?: string;
 }
+
+/** `POST /memories`. A segment alone sets the importance and tier it implies. */
+export interface SaveMemoryRequest {
+  content: string;
+  tags?: string[];
+  source?: string;
+  segment?: MemorySegment;
+  importance?: number;
+  tier?: MemoryTier;
+}
+
+/** The tally a finished consolidation run reports. */
+export interface ConsolidationRunResult {
+  accepted_count: number;
+  rejected_count: number;
+  duration_ms: number;
+}
+
+/**
+ * One frame of `POST /memory/consolidate`. Each stage carries the full
+ * proposals, challenges and rulings; only their number is read here.
+ */
+export type ConsolidationEvent =
+  | { type: 'started'; memory_count: number }
+  | { type: 'proposer_done'; proposals: unknown[] }
+  | { type: 'adversary_done'; challenges: unknown[] }
+  | { type: 'judge_done'; decisions: { accepted: boolean }[] }
+  | { type: 'applied' }
+  | { type: 'completed'; result: ConsolidationRunResult }
+  | { type: 'error'; message: string }
+  | { type: 'cancelled' };
 
 // ── Models ────────────────────────────────────────────────────
 

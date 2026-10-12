@@ -70,6 +70,7 @@ The Pond rate-limits per IP (600 requests a minute for API traffic), and a runaw
 | Next routine | 60s | `ROUTINE_MS` | |
 | Schedules | 60s with the event stream up, 30s without it, 5s while one is running | `SCHEDULES_STREAMING_MS`, `SCHEDULES_IDLE_MS`, `SCHEDULES_ACTIVE_MS` | `GET /schedules/events` says when a run starts and ends; the poll picks up the next run the scheduler works out afterwards. A finished run is also followed by one read, at most one per `MIN_POLL_MS`, never while another read is out or the app is not in front, and only for a timed schedule, since rule fires share the stream. The Pond takes no stream permit for it, so a stream that ends is opened again, after 5s doubling to 60s (`SCHEDULES_STREAM_RETRY_MS`, `SCHEDULES_STREAM_RETRY_MAX_MS`). |
 | Rules | 30s | `RULES_MS` | The Pond has no event stream for rules. |
+| Memories | 60s | `MEMORIES_MS` | The Pond writes them in the background, after a conversation or a tidy-up, and has no event stream for them. A tidy-up started from the screen reloads the list when it ends. |
 | Household counts | 60s | `HOUSEHOLD_MS` | |
 | Profiles, models | 60s | `PROFILES_MS`, `MODELS_MS` | |
 | Weather | 10 min | `WEATHER_MS` | The Pond caches it for 15 min, so asking more often only re-reads that cache. |

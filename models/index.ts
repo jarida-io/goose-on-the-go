@@ -1,8 +1,7 @@
 /** Models barrel export — Goose On The Go v2 */
 
 
-export type { MemoryFragment, MemoryCategory } from './memory';
-export { SAMPLE_MEMORIES } from './memory';
+export { MEMORY_SEGMENTS, SAMPLE_MEMORIES, isKept, segmentLabel, segmentsIn } from './memory';
 
 
 export type { ActivityFilter } from './log';

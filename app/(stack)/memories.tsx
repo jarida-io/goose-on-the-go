@@ -1,247 +1,132 @@
 /**
- * MemoriesScreen — Categorized memory cards with icons, pin, and delete.
+ * MemoriesScreen — what the Pond has learned about the household: read, add,
+ * reword and forget, filter by segment, and tidy the store on request.
  *
- * Category filter tabs, memory cards with visual indicators.
+ * The filter chips are the Pond's segments and "Kept" is its permanent tier;
+ * `models/memory.ts` says why those, and not fields of the app's own.
  */
 
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ScrollView,
-} from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { InkButton, InkChip, InkEmptyState, InkNotice, InkSpinner, InkText } from '@jarida/ink/native';
 
-import { GIcon } from '@/components/ui/g-icon';
-import { GPressable } from '@/components/ui/g-pressable';
-import { SAMPLE_MEMORIES, type MemoryFragment, type MemoryCategory } from '@/models/memory';
-import { Grey, JaridaPurple, Brand, Semantic } from '@/constants/colors';
-import { FontFamily, FontSize, FontWeight } from '@/constants/typography';
-import { Spacing } from '@/constants/spacing';
-import { Radii } from '@/constants/radii';
+import { ConsolidationCard } from '@/components/patterns/consolidation-card';
+import { MemoryCard } from '@/components/patterns/memory-card';
+import { MemorySheet } from '@/components/patterns/memory-sheet';
+import { segmentLabel, segmentsIn } from '@/models/memory';
+import type { MemoryFragment, MemorySegment } from '@/services/types';
+import { useConsolidation } from '@/view-models/use-consolidation';
+import { useMemories } from '@/view-models/use-memories';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import type { ThemeColors } from '@/constants/colors';
-import i18n from '@/services/i18n';
-
-// Identifiers, typed by MemoryCategory, not copy: the label each one shows comes from tabLabel().
-/* eslint-disable-next-line i18next/no-literal-string -- category ids; tabLabel() supplies the words */
-const CATEGORY_TABS: (MemoryCategory | 'All')[] = ['All', 'Preference', 'Habit', 'Person', 'Reminder'];
-
-/**
- * Tab labels, one literal key per branch.
- *
- * This used to assemble the key from the tab value at runtime, which reads
- * better and is worse: a key built that way is invisible to
- * services/__tests__/i18n.test.ts, so deleting memories.tabHabit would have left
- * the test green and put the raw key on screen. The switch is exhaustive, so
- * TypeScript fails here if a category is added without a label.
- */
-function tabLabel(tab: MemoryCategory | 'All'): string {
-  switch (tab) {
-    case 'All': return i18n.t('memories.tabAll');
-    case 'Preference': return i18n.t('memories.tabPreference');
-    case 'Habit': return i18n.t('memories.tabHabit');
-    case 'Person': return i18n.t('memories.tabPerson');
-    case 'Reminder': return i18n.t('memories.tabReminder');
-  }
-}
-
-const CATEGORY_COLORS: Record<MemoryCategory, string> = {
-  Preference: JaridaPurple[500],
-  Habit: Semantic.info,
-  Person: Semantic.success,
-  Reminder: Semantic.warning,
-};
-
-/** Memory card */
-const MemoryCard = React.memo(function MemoryCard({
-  item,
-  onPin,
-  onDelete,
-}: {
-  item: MemoryFragment;
-  onPin: (id: number) => void;
-  onDelete: (id: number) => void;
-}) {
-  const styles = useThemedStyles(makeStyles);
-  const catColor = CATEGORY_COLORS[item.category];
-  return (
-    <View style={styles.memoryCard}>
-      <View style={styles.memoryHeader}>
-        <View style={{ marginRight: Spacing.sm }}>
-          <GIcon name={item.icon} size={16} color={catColor} />
-        </View>
-        <View style={[styles.categoryBadge, { backgroundColor: catColor + '18' }]}>
-          <Text style={[styles.categoryText, { color: catColor }]}>{tabLabel(item.category)}</Text>
-        </View>
-        <View style={styles.memoryActions}>
-          <GPressable onPress={() => onPin(item.id)} style={styles.actionBtn}>
-            <GIcon name={item.pinned ? 'check' : 'logs'} size={14} color={item.pinned ? JaridaPurple[500] : Grey[400]} />
-          </GPressable>
-          <GPressable onPress={() => onDelete(item.id)} style={styles.actionBtn}>
-            <GIcon name="trash" size={14} color={Grey[400]} />
-          </GPressable>
-        </View>
-      </View>
-      <Text style={styles.memoryText}>{item.text}</Text>
-      <Text style={styles.memoryTime}>{item.time}</Text>
-    </View>
-  );
-});
+import { Spacing } from '@/constants/spacing';
 
 export default function MemoriesScreen() {
+  const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
-  const [memories, setMemories] = useState(SAMPLE_MEMORIES);
-  // eslint-disable-next-line i18next/no-literal-string -- 'All' is the filter value, not copy
-  const [activeCategory, setActiveCategory] = useState<MemoryCategory | 'All'>('All');
+  const { data, loading, error, failed, actions } = useMemories();
+  const consolidation = useConsolidation(actions.refresh);
+  const [filter, setFilter] = useState<MemorySegment | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState<MemoryFragment | null>(null);
+  // A new key per opening gives the sheet a fresh form each time.
+  const [sheetKey, setSheetKey] = useState(0);
 
-  const filtered = activeCategory === 'All'
-    ? memories
-    : memories.filter((m) => m.category === activeCategory);
+  const segments = segmentsIn(data.memories);
+  // A filter whose last memory went is dropped rather than left showing nothing.
+  const active = filter && segments.includes(filter) ? filter : null;
+  const shown = active ? data.memories.filter((m) => m.segment === active) : data.memories;
 
-  const handlePin = useCallback((id: number) => {
-    setMemories((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, pinned: !m.pinned } : m)),
-    );
+  const openSheet = useCallback((memory: MemoryFragment | null) => {
+    setEditing(memory);
+    setSheetKey((k) => k + 1);
+    setSheetOpen(true);
   }, []);
 
-  const handleDelete = useCallback((id: number) => {
-    setMemories((prev) => prev.filter((m) => m.id !== id));
-  }, []);
-
-  const renderItem = useCallback(
-    ({ item }: { item: MemoryFragment }) => (
-      <MemoryCard item={item} onPin={handlePin} onDelete={handleDelete} />
-    ),
-    [handlePin, handleDelete],
+  const { remove } = actions;
+  const confirmDelete = useCallback(
+    (memory: MemoryFragment) => {
+      Alert.alert(t('memories.forgetTitle'), t('memories.forgetBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('memories.card.forget'), style: 'destructive', onPress: () => void remove(memory) },
+      ]);
+    },
+    [t, remove],
   );
 
-  const keyExtractor = useCallback((item: MemoryFragment) => String(item.id), []);
-
   return (
-    <View style={styles.container}>
-      {/* Category tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsRow}
-      >
-        {CATEGORY_TABS.map((tab) => (
-          <GPressable feedback="lift"
-            key={tab}
-            style={[styles.tab, activeCategory === tab && styles.tabActive]}
-            onPress={() => setActiveCategory(tab)}
-          >
-            <Text style={[styles.tabText, activeCategory === tab && styles.tabTextActive]}>
-              {tabLabel(tab)}
-            </Text>
-          </GPressable>
-        ))}
-      </ScrollView>
-
-      {/* Memory list */}
-      <FlatList
-        data={filtered}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <ConsolidationCard
+        progress={consolidation.progress}
+        available={consolidation.available}
+        onStart={consolidation.actions.start}
+        onStop={consolidation.actions.stop}
       />
-    </View>
+
+      <View style={styles.header}>
+        <InkButton variant="primary" icon="plus" onPress={() => openSheet(null)}>
+          {t('memories.list.add')}
+        </InkButton>
+      </View>
+
+      {segments.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          <InkChip selected={active === null} onPress={() => setFilter(null)}>
+            {t('memories.list.all')}
+          </InkChip>
+          {segments.map((s) => (
+            <InkChip key={s} selected={active === s} onPress={() => setFilter(s)}>
+              {segmentLabel(s)}
+            </InkChip>
+          ))}
+        </ScrollView>
+      ) : null}
+
+      {loading ? <InkSpinner label={t('memories.list.loading')} /> : null}
+
+      {/* A failed read with no sentence of its own still leaves the list unknown. */}
+      {error || failed ? (
+        <View style={styles.notice}>
+          <InkNotice tone="danger">{error ?? t('memories.list.failed')}</InkNotice>
+          <InkButton variant="quiet" icon="refresh" onPress={actions.refresh}>
+            {t('common.retry')}
+          </InkButton>
+        </View>
+      ) : null}
+
+      {!loading && !error && !failed && data.memories.length === 0 ? (
+        <InkEmptyState icon="sparkle" title={t('memories.list.emptyTitle')}>
+          <InkText>{t('memories.list.emptyBody')}</InkText>
+        </InkEmptyState>
+      ) : null}
+
+      {shown.map((memory) => (
+        <MemoryCard key={memory.id} memory={memory} onEdit={openSheet} onDelete={confirmDelete} />
+      ))}
+
+      <MemorySheet
+        key={sheetKey}
+        open={sheetOpen}
+        editing={editing}
+        onClose={() => setSheetOpen(false)}
+        onSave={actions.save}
+        onReword={actions.reword}
+      />
+    </ScrollView>
   );
 }
 
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-
-    /* Tabs */
-    // Pins this ScrollView's own height to its content instead of letting it
-    // compete for leftover flex space with the list below — without this,
-    // filtering to a category with fewer results frees up vertical space
-    // that gets redistributed into the tab pills instead of staying blank,
-    // stretching them tall.
-    tabsScroll: {
-      flexGrow: 0,
-      flexShrink: 0,
-    },
-    tabsRow: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.md,
-      gap: Spacing.sm,
-      backgroundColor: c.card,
-      borderBottomWidth: 1,
-      borderBottomColor: c.border,
-    },
-    tab: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: 8,
-      borderRadius: Radii.pill,
-      backgroundColor: c.backgroundSecondary,
-    },
-    tabActive: { backgroundColor: JaridaPurple[500] },
-    tabText: {
-      fontFamily: FontFamily.body,
-      fontSize: FontSize.sm,
-      fontWeight: FontWeight.semibold,
-      color: c.textTertiary,
-    },
-    tabTextActive: { color: Brand.white },
-
-    /* List */
-    listContent: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.md,
-      paddingBottom: Spacing['3xl'],
-    },
-
-    /* Memory card */
-    memoryCard: {
-      backgroundColor: c.card,
-      borderRadius: Radii.xl,
-      padding: Spacing.lg,
-      borderWidth: 1,
-      borderColor: c.border,
-      marginBottom: Spacing.md,
-    },
-    memoryHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: Spacing.sm,
-    },
-    categoryBadge: {
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: 2,
-      borderRadius: Radii.pill,
-    },
-    categoryText: {
-      fontFamily: FontFamily.body,
-      fontSize: FontSize.xs,
-      fontWeight: FontWeight.bold,
-    },
-    memoryActions: {
-      flexDirection: 'row',
-      marginLeft: 'auto',
-      gap: Spacing.sm,
-    },
-    actionBtn: {
-      width: 28,
-      height: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    memoryText: {
-      fontFamily: FontFamily.body,
-      fontSize: FontSize.base,
-      color: c.text,
-      lineHeight: FontSize.base * 1.5,
-    },
-    memoryTime: {
-      fontFamily: FontFamily.body,
-      fontSize: FontSize.xs,
-      color: Grey[400],
-      marginTop: Spacing.sm,
-    },
+    scroll: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing['4xl'] },
+    header: { flexDirection: 'row', justifyContent: 'flex-end' },
+    chips: { gap: Spacing.sm },
+    notice: { gap: Spacing.sm },
   });
