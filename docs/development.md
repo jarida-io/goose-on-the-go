@@ -127,3 +127,13 @@ exposing, and pair again over HTTPS before trusting that Pond or that phone agai
 combination of `__DEV__` and the variable, and checks that every relaxation is off
 unless both are set. The HTTPS suites (`pond-trust`, `https-requests`,
 `https-pairing`, `api-client`) run with the variable unset and are unchanged.
+
+## Security review on pull requests
+
+`.github/workflows/claude-security-review.yml` runs a Claude security review on
+each same-repository PR when it is opened, reopened or marked ready. It reads the
+diff against the risks this app carries (pinning, cleartext, secure storage, deep
+links, native config) and posts one "Security review" comment. It never fails the
+PR, because a model's reading is not proof. It needs a `CLAUDE_CODE_OAUTH_TOKEN`
+Actions secret, created with `claude setup-token`; without it the job skips with
+a warning on the run.

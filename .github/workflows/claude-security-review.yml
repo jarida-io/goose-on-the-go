@@ -1,0 +1,105 @@
+name: Claude Security Review
+
+# A security pass on each PR. npm audit and gitleaks (security.yml) cover known advisories and
+# committed secrets. This covers the logic in between: a pin check a new code path skips, a token
+# written somewhere other than secure storage, a deep link that acts without asking. It mirrors
+# goose-in-a-pond's workflow of the same name, so both halves of the system get the same review.
+#
+# It comments and never blocks. The findings are a model's reading, not proof, so a person
+# decides what to do with them.
+
+on:
+  pull_request:
+    # Once, when the PR is ready to read. A review per push mostly restates the first, and
+    # minutes for this private repository come out of the org quota.
+    types: [opened, ready_for_review, reopened]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "LICENSE"
+
+concurrency:
+  group: claude-security-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  security-review:
+    # Drafts wait until they are ready. A fork PR gets neither repository secrets nor an OIDC
+    # token, so the action could only fail there.
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      # The secrets context is not available to `if:`, so it is read here. Without the token the
+      # review cannot run; say so on the run and stop, rather than turn every PR red over setup.
+      - name: Check for the Claude token
+        id: token
+        env:
+          HAS_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+        run: |
+          if [ "$HAS_TOKEN" = "true" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Security review skipped::CLAUDE_CODE_OAUTH_TOKEN is not set on this repository. Create one with 'claude setup-token' and add it as an Actions secret to enable the review."
+          fi
+
+      - name: Checkout repository
+        if: steps.token.outputs.present == 'true'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude security review
+        if: steps.token.outputs.present == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review only the changes in this pull request for security vulnerabilities. Read
+            `gh pr diff`, then read whatever surrounding code you need to decide whether a
+            problem is real. The PR branch is checked out in the working directory.
+
+            Context: Goose On The Go is the Expo / React Native companion app for Goose In A
+            Pond, a local smart-home assistant. The phone pairs with a Pond over a QR code,
+            then talks to it over HTTPS with a pinned key (docs/PINNED_HTTPS.md), on the LAN
+            or over the tailnet. It holds pairing material and session tokens, and reads
+            household memory, cameras and device controls. Look hardest at:
+            - Transport: anything that weakens certificate pinning, adds a pin-discovery
+              fallback, or permits cleartext in the release config. Cleartext must stay off
+              outside the documented development variants (docs/development.md).
+            - Secrets: pairing material or tokens stored outside secure storage, logged,
+              put in URLs, or sent to any host other than the paired Pond.
+            - Deep links and intents (app/, app.json, plugins/): a link that performs an
+              action, pairs, or changes trust without the user confirming it.
+            - Untrusted data from the Pond or the network rendered as HTML, evaluated, or
+              used to build a file path or URL.
+            - Native code and config plugins (native/, plugins/): exported components,
+              permissions added without need, or WebView settings that allow file or
+              universal access.
+            - GitHub workflow changes: untrusted event fields interpolated into `run:`,
+              `pull_request_target`, or permissions widened.
+
+            Report only findings you can tie to a specific line in this diff, with a concrete
+            way to exploit it. Leave out style, hardening that is nice to have, issues that
+            exist only in unchanged code, and anything already caught by npm audit or
+            gitleaks. A short list someone trusts is worth more than a long one.
+
+            Post the result with `gh pr comment` as one comment headed "Security review".
+            For each finding give severity (critical, high, medium or low), file and line,
+            how it is exploited, and the fix. Use
+            `mcp__github_inline_comment__create_inline_comment` (with `confirmed: true`) only
+            for critical and high findings. If you find nothing, say so in one line, with the
+            areas you checked.
+          claude_args: |
+            --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
