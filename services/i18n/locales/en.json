@@ -2737,5 +2737,10 @@
       "deleteFailed": "Couldn't delete the note. It's back in the list.",
       "unavailable": "This Pond can't keep notes. Update it to add them here."
     }
+  },
+  "debug": {
+    "logs": {
+      "failed": "Could not read your Pond's log."
+    }
   }
 }
