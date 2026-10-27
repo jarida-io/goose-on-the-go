@@ -13,11 +13,11 @@
  * has a tab for each.
  */
 
-import type { CivilDate, CivilTime } from '@jarida/ink';
+import type { CivilDate, CivilTime, InkTone } from '@jarida/ink';
 
 import i18n from '@/services/i18n';
 import type { TranslationKey } from '@/services/i18n';
-import type { CreateScheduleRequest, Rule, Schedule, UpdateScheduleRequest } from '@/services/types';
+import type { CreateScheduleRequest, Rule, Schedule, ScheduleRun, UpdateScheduleRequest } from '@/services/types';
 
 /** A sensor rule, which `GET /schedules` returns alongside the timed schedules. */
 export function isRule(schedule: Schedule): boolean {
@@ -107,6 +107,20 @@ export function formatScheduleTime(iso: string, now = new Date()): string {
 
 function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/** The badge a run shows in the history: its colour and its word. */
+export function runStatus(run: ScheduleRun): { tone: InkTone; key: TranslationKey } {
+  switch (run.status) {
+    case 'running':
+      return { tone: 'brand', key: 'schedule.runs.statusRunning' };
+    case 'completed':
+      return { tone: 'success', key: 'schedule.runs.statusCompleted' };
+    case 'failed':
+      return { tone: 'danger', key: 'schedule.runs.statusFailed' };
+    case 'skipped':
+      return { tone: 'warning', key: 'schedule.runs.statusSkipped' };
+  }
 }
 
 // ── Cron in words ────────────────────────────────────────────────────────────

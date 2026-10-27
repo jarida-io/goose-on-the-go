@@ -15,11 +15,12 @@ import {
   isSixFieldCron,
   linkedScheduleId,
   oneOffCron,
+  runStatus,
   timedSchedules,
   updateRequest,
   type ScheduleDraft,
 } from '@/models/schedule';
-import type { Schedule } from '@/services/types';
+import type { Schedule, ScheduleRun } from '@/services/types';
 
 function schedule(overrides: Partial<Schedule>): Schedule {
   return {
@@ -116,6 +117,28 @@ describe('formatScheduleTime', () => {
 
   it('says nothing for a timestamp it cannot read', () => {
     expect(formatScheduleTime('soon', now)).toBe('');
+  });
+});
+
+describe('runStatus', () => {
+  const run = (status: ScheduleRun['status']): ScheduleRun => ({
+    id: 'r',
+    schedule_id: 's',
+    status,
+    result: null,
+    error: null,
+    started_at: '2026-10-27T06:30:00Z',
+    finished_at: null,
+    duration_ms: null,
+  });
+
+  it('gives each status its own word', () => {
+    expect(runStatus(run('completed')).key).toBe('schedule.runs.statusCompleted');
+    expect(runStatus(run('failed')).key).toBe('schedule.runs.statusFailed');
+  });
+
+  it('marks a missed run nobody chose to run as skipped, not failed', () => {
+    expect(runStatus(run('skipped'))).toEqual({ tone: 'warning', key: 'schedule.runs.statusSkipped' });
   });
 });
 

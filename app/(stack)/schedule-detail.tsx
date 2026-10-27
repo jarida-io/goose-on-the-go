@@ -26,32 +26,30 @@ import {
   inkText,
   useInkTheme,
 } from '@jarida/ink/native';
-import type { InkTone } from '@jarida/ink';
 
 import { LabelledSwitch } from '@/components/patterns/labelled-switch';
 import { ScheduleFormSheet } from '@/components/patterns/schedule-form-sheet';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { deviceTimeZone, describeWhen, formatScheduleTime, isOneOff, linkedScheduleId, promptOf } from '@/models/schedule';
+import {
+  deviceTimeZone,
+  describeWhen,
+  formatScheduleTime,
+  isOneOff,
+  linkedScheduleId,
+  promptOf,
+  runStatus,
+} from '@/models/schedule';
 import { useServer } from '@/providers/server-provider';
 import { toggle } from '@/services/haptics';
-import type { TranslationKey } from '@/services/i18n';
 import type { ScheduleRun } from '@/services/types';
 import { useScheduleDetail } from '@/view-models/use-schedule-detail';
 import type { ThemeColors } from '@/constants/colors';
 import { Spacing } from '@/constants/spacing';
 
-function runStatus(run: ScheduleRun): { tone: InkTone; key: TranslationKey } {
-  switch (run.status) {
-    case 'running':
-      return { tone: 'brand', key: 'schedule.runs.statusRunning' };
-    case 'completed':
-      return { tone: 'success', key: 'schedule.runs.statusCompleted' };
-    case 'failed':
-      return { tone: 'danger', key: 'schedule.runs.statusFailed' };
-  }
-}
-
-/** A run's result is what the agent said, and an error is why it did not. */
+/**
+ * A run's result is what the agent said, and an error is why it did not. A
+ * skipped run's result is why it was skipped; a late one says when it was due.
+ */
 const RunRow = React.memo(function RunRow({ run }: { run: ScheduleRun }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
@@ -65,6 +63,11 @@ const RunRow = React.memo(function RunRow({ run }: { run: ScheduleRun }) {
         <InkBadge tone={tone}>{t(key)}</InkBadge>
         <InkText size="sm" tone="tertiary">{formatScheduleTime(run.started_at)}</InkText>
       </View>
+      {run.caught_up_from ? (
+        <InkText size="sm" tone="secondary">
+          {t('schedule.runs.caughtUp', { when: formatScheduleTime(run.caught_up_from) })}
+        </InkText>
+      ) : null}
       {/* A result is a whole answer; ten of them in full would bury the list. */}
       {snippet ? (
         <Text style={snippetText.style} numberOfLines={6} selectable>

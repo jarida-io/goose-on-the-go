@@ -2057,6 +2057,8 @@
       "statusRunning": "Running",
       "statusCompleted": "Done",
       "statusFailed": "Failed",
+      "statusSkipped": "Skipped",
+      "caughtUp": "Ran late (due {{when}})",
       "duration": "{{ms}} ms"
     },
     "form": {

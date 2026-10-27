@@ -654,12 +654,18 @@ export interface UpdateScheduleRequest {
 export interface ScheduleRun {
   id: string;
   schedule_id: string;
-  status: 'running' | 'completed' | 'failed';
+  /**
+   * `skipped` is a run missed while the Pond was off that nobody chose to run:
+   * `started_at` is when it was due and `result` says why. Older Ponds never send it.
+   */
+  status: 'running' | 'completed' | 'failed' | 'skipped';
   result: string | null;
   error: string | null;
   started_at: string;
   finished_at: string | null;
   duration_ms: number | null;
+  /** Set on a missed run somebody chose to run late: when it was originally due. */
+  caught_up_from?: string | null;
 }
 
 /** One frame of `GET /schedules/events`: a run starting or finishing. */
