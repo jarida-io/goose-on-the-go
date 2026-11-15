@@ -12,6 +12,7 @@ import {
   readAdminStatus,
   readCaches,
   readFileListing,
+  readFactoryResetStatus,
   readFreed,
   readHealth,
   readModeChange,
@@ -57,6 +58,7 @@ import type {
   AdminStatus,
   AdminTask,
   AdminUnlocked,
+  FactoryResetStatus,
   PowerModeChange,
   DeepResearchAvailability,
   LongTaskReportWire,
@@ -2635,6 +2637,16 @@ export class PondApiClient {
   /** A 202; a 409 `long_task_running` unless `force`, which loses the running step. */
   async adminRestart(force: boolean): Promise<void> {
     await this.post<unknown>('/api/v1/admin/power/restart', force ? { force: true } : {});
+  }
+
+  /** Erases the Pond. A 409 `pond_name_mismatch` for a typed name that doesn't match, `pond_has_no_name` for an unnamed Pond. */
+  async adminFactoryReset(typedName: string): Promise<void> {
+    await this.post<unknown>('/api/v1/admin/factory-reset', { pond_name: typedName });
+  }
+
+  /** Which step a reset in progress has reached; `active: false` both before one starts and after it ends. */
+  async adminFactoryResetStatus(): Promise<FactoryResetStatus> {
+    return required(readFactoryResetStatus(await this.get<unknown>('/api/v1/admin/factory-reset/status')), 'the reset status');
   }
 
   // ── Verb helpers ────────────────────────────────────────────

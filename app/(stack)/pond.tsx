@@ -24,7 +24,7 @@ import type { AdminCheckStatus } from '@/services/types';
 import { areaGroupLabel } from '@/view-models/pond-admin-words';
 import { useMyPond, type MyPondPart } from '@/view-models/use-my-pond';
 
-type PlaceId = 'files' | 'caches' | 'tasks' | 'health' | 'power';
+type PlaceId = 'files' | 'caches' | 'tasks' | 'health' | 'power' | 'reset';
 
 const PLACES: { id: PlaceId; route: string; labelKey: TranslationKey; descriptionKey: TranslationKey; icon: IconName; tile: TileColor }[] = [
   { id: 'files', route: '/(stack)/pond-files', labelKey: 'screens.pondFiles', descriptionKey: 'myPond.menu.files', icon: 'folder', tile: 'blue' },
@@ -32,6 +32,7 @@ const PLACES: { id: PlaceId; route: string; labelKey: TranslationKey; descriptio
   { id: 'tasks', route: '/(stack)/pond-tasks', labelKey: 'screens.pondTasks', descriptionKey: 'myPond.menu.tasks', icon: 'file-text', tile: 'indigo' },
   { id: 'health', route: '/(stack)/pond-health', labelKey: 'screens.pondHealth', descriptionKey: 'myPond.menu.health', icon: 'activity', tile: 'green' },
   { id: 'power', route: '/(stack)/pond-power', labelKey: 'screens.pondPower', descriptionKey: 'myPond.menu.power', icon: 'power', tile: 'amber' },
+  { id: 'reset', route: '/(stack)/pond-reset', labelKey: 'screens.pondReset', descriptionKey: 'myPond.menu.reset', icon: 'warn', tile: 'red' },
 ];
 
 const COLUMNS = 3;

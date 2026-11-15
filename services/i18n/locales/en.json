@@ -1673,6 +1673,7 @@
     "pondTasks": "Tasks and reports",
     "pondHealth": "Health",
     "pondPower": "Power",
+    "pondReset": "Reset Pond",
     "settingsPhoneNotifications": "Notifications",
     "voiceAgent": "Voice agent",
     "voiceMatch": "Voice Match",
@@ -3887,7 +3888,8 @@
       "tasksCount_one": "{{count}} task",
       "tasksCount_other": "{{count}} tasks",
       "health": "Disk, memory and heat",
-      "power": "Power mode and restart"
+      "power": "Power mode and restart",
+      "reset": "Erase the Pond for a new owner"
     },
     "lock": {
       "title": "Unlock with the admin card",
@@ -4173,6 +4175,54 @@
         "w25": "Same memory speed as MAXN_SUPER, so replies stream about as fast. Starts answering a touch slower and draws less at its peak.",
         "maxn": "Everything at full speed, and the most heat."
       }
+    },
+    "reset": {
+      "title": "Reset Pond",
+      "warningTitle": "This erases everything",
+      "warningBody": "This is erased:",
+      "erases": {
+        "voices": "Every voice it knows",
+        "memories": "Everything it remembers",
+        "routines": "Every schedule and routine",
+        "devices": "Every paired phone and device",
+        "wifi": "Saved Wi-Fi networks",
+        "keys": "Its keys and tokens"
+      },
+      "cannotUndo": "This cannot be undone. This Pond goes back to its first setup, ready for whoever takes it next.",
+      "exportRoutines": "Save routines to this phone first",
+      "exporting": "Saving routines…",
+      "exported": "Routines saved to this phone.",
+      "exportFailed": "Couldn't save the routines.",
+      "continue": "Continue",
+      "typeNameTitle": "Type this Pond's name to continue",
+      "typeNameLabel": "Type \"{{name}}\" below",
+      "typeNamePlaceholder": "Pond's name",
+      "nameMismatch": "That doesn't match this Pond's name.",
+      "noName": "This Pond has no name yet, so there's nothing to type to confirm. Set one in Settings first.",
+      "paymentsHeld": "This Pond still holds a mesh-credit balance. Settle it before resetting.",
+      "mainMemberOnly": "Only the Pond's main member can reset it. Ask them, or use the admin card.",
+      "confirmLockTitle": "Confirm with this phone's lock",
+      "confirmLockBody": "One more check before anything is erased.",
+      "confirmLockPrompt": "Confirm resetting your Pond",
+      "confirmLockButton": "Confirm with Face ID or fingerprint",
+      "confirmPassword": "Confirm with the admin card instead",
+      "resetting": "Resetting your Pond…",
+      "stepProgress": "Step {{completed}} of {{total}}",
+      "steps": {
+        "exporting": "Saving routines…",
+        "pausing": "Pausing schedules…",
+        "notifying_household": "Telling the household…",
+        "revoking_devices": "Revoking paired devices…",
+        "erasing_data": "Erasing data…",
+        "speaking_goodbye": "Saying goodbye…",
+        "reopening_onboarding": "Reopening setup…",
+        "forgetting_wifi": "Forgetting Wi-Fi…"
+      },
+      "resetFailed": "Couldn't reset the Pond.",
+      "successTitle": "Your Pond is ready for a new owner.",
+      "successBody": "Everything on this Pond has been erased. It's back at its first setup.",
+      "back": "Back to My Pond",
+      "eraseEverything": "Erase everything"
     },
     "duration": {
       "pair": "{{a}} {{b}}",

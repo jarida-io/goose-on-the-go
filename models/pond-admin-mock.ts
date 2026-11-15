@@ -16,6 +16,7 @@ import type {
   AdminStatus,
   AdminTask,
   AdminUnlocked,
+  FactoryResetStatus,
   LongTaskState,
   PowerMode,
   PowerModeChange,
@@ -47,6 +48,10 @@ export interface PondAdminSource {
   power(): Promise<AdminPower>;
   setPowerMode(id: number): Promise<PowerModeChange>;
   restart(force: boolean): Promise<void>;
+  /** Erases the Pond. Throws `pond_name_mismatch` for a typed name that doesn't match. */
+  factoryReset(typedName: string): Promise<void>;
+  /** Which step a reset in progress has reached; `active: false` both before one starts and after it ends. */
+  factoryResetStatus(): Promise<FactoryResetStatus>;
 }
 
 /** The mock's card. Typed from memory it reads as "goose in a pond 2026", which the Pond also accepts. */
@@ -563,6 +568,26 @@ export function createMockPond(options: MockPondOptions = {}, now: () => number 
       // A restart ends every unlock, as the Pond keeps them in memory.
       booted = now();
       lastUsed = null;
+    },
+
+    // The typed name is already checked against `home_name` before this is ever called, so nothing
+    // here refuses on it; this only simulates the wipe itself, as the real Pond's erase would.
+    factoryReset: async () => {
+      admit();
+      tasks = [];
+      tree.length = 0;
+      liveKey = null;
+      lastUsed = null;
+      failures = 0;
+      coolUntil = 0;
+      mode = 1;
+    },
+
+    // The mock's reset above runs to completion in one tick, so there is never a step in
+    // progress to report by the time anything polls this.
+    factoryResetStatus: async () => {
+      admit();
+      return { active: false, current_step: null, steps_completed: 0, total_steps: 8 };
     },
   };
 }

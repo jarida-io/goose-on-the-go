@@ -2105,3 +2105,21 @@ export interface PowerModeChange {
   mode: PowerMode | null;
   reboot_required: boolean;
 }
+
+/** In the order a factory reset runs them; `FactoryResetStep::ALL` on the Pond. */
+export type FactoryResetStep =
+  | 'exporting'
+  | 'pausing'
+  | 'notifying_household'
+  | 'revoking_devices'
+  | 'erasing_data'
+  | 'speaking_goodbye'
+  | 'reopening_onboarding'
+  | 'forgetting_wifi';
+
+export interface FactoryResetStatus {
+  active: boolean;
+  current_step: FactoryResetStep | null;
+  steps_completed: number;
+  total_steps: number;
+}

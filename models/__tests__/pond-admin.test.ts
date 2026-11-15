@@ -21,6 +21,7 @@ import {
   readAdminKey,
   readAdminStatus,
   readCaches,
+  readFactoryResetStatus,
   readFileListing,
   readFreed,
   readHealth,
@@ -331,6 +332,32 @@ describe('readPower', () => {
     expect(readModeChange({ mode: { id: 3, name: '7W' }, reboot_required: true })).toEqual({ mode: { id: 3, name: '7W' }, reboot_required: true });
     expect(readModeChange({})).toEqual({ mode: null, reboot_required: false });
     for (const raw of GARBAGE) expect(readModeChange(raw)).toBeNull();
+  });
+
+  describe('readFactoryResetStatus', () => {
+    it('reads which step a reset in progress has reached', () => {
+      expect(readFactoryResetStatus({ active: true, current_step: 'erasing_data', steps_completed: 5, total_steps: 8 })).toEqual({
+        active: true,
+        current_step: 'erasing_data',
+        steps_completed: 5,
+        total_steps: 8,
+      });
+    });
+
+    it('reads an unknown step as none, and falls back to the step count before an unset total', () => {
+      expect(readFactoryResetStatus({ active: true, current_step: 'future_step', steps_completed: 2 })).toEqual({
+        active: true,
+        current_step: null,
+        steps_completed: 2,
+        total_steps: 8,
+      });
+    });
+
+    it('reads no reset in progress as inactive, with nothing completed', () => {
+      expect(readFactoryResetStatus({ active: false })).toEqual({ active: false, current_step: null, steps_completed: 0, total_steps: 8 });
+      expect(readFactoryResetStatus({})).toEqual({ active: false, current_step: null, steps_completed: 0, total_steps: 8 });
+      for (const raw of GARBAGE) expect(readFactoryResetStatus(raw)).toBeNull();
+    });
   });
 });
 

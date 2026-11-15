@@ -28,6 +28,8 @@ export const POND_ADMIN: PondAdminSource = {
   power: () => api.adminPower(),
   setPowerMode: (id) => api.adminSetPowerMode(id),
   restart: (force) => api.adminRestart(force),
+  factoryReset: (typedName) => api.adminFactoryReset(typedName),
+  factoryResetStatus: () => api.adminFactoryResetStatus(),
 };
 
 // One mock for the whole app, so what is deleted on Files is gone from the overview too.

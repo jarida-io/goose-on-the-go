@@ -18,6 +18,8 @@ import type {
   AdminTask,
   AdminTaskArtifact,
   AdminUnlocked,
+  FactoryResetStatus,
+  FactoryResetStep,
   LongTaskState,
   PowerMode,
   PowerModeChange,
@@ -321,6 +323,29 @@ export function readModeChange(raw: unknown): PowerModeChange | null {
   const c = record(raw);
   if (!c) return null;
   return { mode: readMode(c.mode), reboot_required: c.reboot_required === true };
+}
+
+const FACTORY_RESET_STEPS: readonly FactoryResetStep[] = [
+  'exporting',
+  'pausing',
+  'notifying_household',
+  'revoking_devices',
+  'erasing_data',
+  'speaking_goodbye',
+  'reopening_onboarding',
+  'forgetting_wifi',
+];
+
+export function readFactoryResetStatus(raw: unknown): FactoryResetStatus | null {
+  const s = record(raw);
+  if (!s) return null;
+  const step = FACTORY_RESET_STEPS.find((candidate) => candidate === s.current_step) ?? null;
+  return {
+    active: s.active === true,
+    current_step: step,
+    steps_completed: count(s.steps_completed),
+    total_steps: count(s.total_steps) || FACTORY_RESET_STEPS.length,
+  };
 }
 
 /** One step of the way from the data directory to `path`; the root's name is null. */
