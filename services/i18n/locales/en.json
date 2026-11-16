@@ -869,7 +869,8 @@
       "whatItRemembers": "What Goose remembers",
       "visionEvents": "Vision events",
       "faces": "Faces",
-      "visionAutomations": "Vision automations"
+      "visionAutomations": "Vision automations",
+      "rooms": "Rooms"
     },
     "unit": {
       "ms": "ms",

@@ -96,6 +96,13 @@ describe('the catalogue', () => {
     const pageText = pages.flatMap((page) => [page.titleKey, page.descriptionKey]);
     expect([...keys, ...pageText].filter((key) => lookup(key) === key)).toEqual([]);
   });
+
+  it('lets the household page open its people and its rooms', () => {
+    const links = SETTINGS_PAGES.household.sections
+      .flatMap((section) => section.items)
+      .flatMap((item) => (item.kind === 'link' ? [item.route] : []));
+    expect(links).toEqual(expect.arrayContaining(['/(stack)/add-users', '/(stack)/home-management']));
+  });
 });
 
 // How notices reach phones, and who may set reminders by voice: the Pond's defaults, on the pages they belong to.

@@ -485,6 +485,7 @@ const household: SettingsPage = {
     {
       items: [
         { kind: 'link', route: '/(stack)/add-users', icon: 'users', tile: 'green', labelKey: 'screens.addUsers', summary: 'people' },
+        { kind: 'link', route: '/(stack)/home-management', icon: 'home', tile: 'green', labelKey: 'settings.link.rooms', summary: 'rooms' },
       ],
     },
   ],
