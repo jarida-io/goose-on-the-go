@@ -2,6 +2,10 @@
  * Choosing what brings a to-do up: a time, a repeat, arriving at or leaving a place, or something
  * the Pond sees or a connected service raises. The last list is drawn from what the Pond offers
  * (`/me/hooks/sources`), so a connector added on the Pond appears here with no app release.
+ *
+ * Given a hook in `editing`, it opens on that hook's choice and the buttons change it in place
+ * (`onReplace`) rather than adding another. The screen remounts it per hook (`key`), so the fields
+ * are read from the hook once and then belong to the member.
  */
 
 import React, { useState } from 'react';
@@ -12,7 +16,7 @@ import type { CivilDate, CivilTime } from '@/components/ui/ink';
 
 import { Spacing } from '@/constants/spacing';
 import { clockText } from '@/models/news';
-import { REPEATS, hookOnSource, sourceKindKey, sourcesByKind, weekdayNames, type Hook, type HookSources, type Place, type RepeatEvery, type Transition } from '@/models/todos';
+import { REPEATS, hookOnSource, pickerSeedOf, sourceKindKey, sourcesByKind, weekdayNames, type Hook, type HookSources, type Place, type RepeatEvery, type Transition } from '@/models/todos';
 import type { LocationAccess } from '@/services/geofence';
 import { selectionTick } from '@/services/haptics';
 import { SavePlaceHere } from './places';
@@ -23,6 +27,10 @@ function blank(spec: Hook['spec']): Hook {
   return { id: '', label: '', spec, nextFireAt: null, lastFiredAt: null };
 }
 
+function civilBefore(a: CivilDate, b: CivilDate): boolean {
+  return a.year !== b.year ? a.year < b.year : a.month !== b.month ? a.month < b.month : a.day < b.day;
+}
+
 function today(): CivilDate {
   const d = new Date();
   return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() };
@@ -31,28 +39,42 @@ function today(): CivilDate {
 export function HookPicker({
   sources,
   access,
+  editing = null,
   onAdd,
+  onReplace,
+  onCancelEdit,
   onSavePlace,
   onNeedsLocation,
 }: {
   sources: HookSources;
   access: LocationAccess | null;
+  /** The hook being changed, or null when the picker adds a new one. */
+  editing?: Hook | null;
   onAdd: (hook: Hook) => void;
+  onReplace?: (hook: Hook) => void;
+  onCancelEdit?: () => void;
   onSavePlace: (label: string) => Promise<Place | null>;
   onNeedsLocation: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const [kind, setKind] = useState<Kind>('time');
-  const [date, setDate] = useState<CivilDate>(today());
-  const [time, setTime] = useState<CivilTime>({ hour: 18, minute: 0 });
-  const [every, setEvery] = useState<RepeatEvery>('weekday');
-  const [days, setDays] = useState<number[]>([6]);
-  const [transition, setTransition] = useState<Transition>('arrive');
+  const seed = editing ? pickerSeedOf(editing) : null;
+  const [kind, setKind] = useState<Kind>(seed?.kind ?? 'time');
+  const [date, setDate] = useState<CivilDate>(seed?.date ?? today());
+  const [time, setTime] = useState<CivilTime>(seed?.time ?? { hour: 18, minute: 0 });
+  const [every, setEvery] = useState<RepeatEvery>(seed?.every ?? 'weekday');
+  const [days, setDays] = useState<number[]>(seed?.days?.length ? seed.days : [6]);
+  const [transition, setTransition] = useState<Transition>(seed?.transition ?? 'arrive');
   const groups = sourcesByKind(sources.sources);
+  const changing = editing !== null && onReplace !== undefined;
+  const editedSpec = editing?.spec;
+  // An earlier day than today is allowed only when it is the one already set, so opening a past
+  // reminder to change it does not quietly move its date.
+  const earliest = seed?.date && civilBefore(seed.date, today()) ? seed.date : today();
 
   const add = (hook: Hook) => {
     void selectionTick();
-    onAdd(hook);
+    if (changing) onReplace(hook);
+    else onAdd(hook);
   };
 
   return (
@@ -71,10 +93,10 @@ export function HookPicker({
 
       {kind === 'time' ? (
         <View style={styles.form}>
-          <InkDatePicker label={t('goose.asking.day')} value={date} onChange={setDate} min={today()} />
+          <InkDatePicker label={t('goose.asking.day')} value={date} onChange={setDate} min={earliest} />
           <InkTimePicker label={t('goose.asking.time')} value={time} onChange={setTime} />
-          <InkButton icon="plus" onPress={() => add(blank({ kind: 'time', at: new Date(date.year, date.month - 1, date.day, time.hour, time.minute).toISOString() }))}>
-            {t('goose.hookPicker.addTime')}
+          <InkButton icon={changing ? 'check' : 'plus'} onPress={() => add(blank({ kind: 'time', at: new Date(date.year, date.month - 1, date.day, time.hour, time.minute).toISOString() }))}>
+            {changing ? t('goose.hookPicker.changeTime') : t('goose.hookPicker.addTime')}
           </InkButton>
         </View>
       ) : null}
@@ -99,11 +121,11 @@ export function HookPicker({
           ) : null}
           <InkTimePicker label={t('goose.asking.time')} value={time} onChange={setTime} />
           <InkButton
-            icon="plus"
+            icon={changing ? 'check' : 'plus'}
             disabled={every === 'week' && days.length === 0}
             onPress={() => add(blank({ kind: 'repeat', every, at: clockText(time.hour, time.minute), days: every === 'week' ? [...days].sort() : [] }))}
           >
-            {t('goose.hookPicker.addRepeat')}
+            {changing ? t('goose.hookPicker.changeRepeat') : t('goose.hookPicker.addRepeat')}
           </InkButton>
         </View>
       ) : null}
@@ -122,7 +144,7 @@ export function HookPicker({
           {sources.places.length ? (
             <View style={styles.chips}>
               {sources.places.map((p) => (
-                <InkChip key={p.id} icon="pin" onPress={() => add(blank({ kind: 'place', placeId: p.id, transition }))}>
+                <InkChip key={p.id} icon="pin" selected={editedSpec?.kind === 'place' && editedSpec.placeId === p.id} onPress={() => add(blank({ kind: 'place', placeId: p.id, transition }))}>
                   {p.label}
                 </InkChip>
               ))}
@@ -152,7 +174,7 @@ export function HookPicker({
                   <InkText weight="semibold">{source.label}</InkText>
                   <View style={styles.chips}>
                     {source.events.map((e) => (
-                      <InkChip key={e.id} icon="bolt" onPress={() => add(hookOnSource(source, e.id))}>
+                      <InkChip key={e.id} icon="bolt" selected={isEditedEvent(editedSpec, source.id, e.id)} onPress={() => add(hookOnSource(source, e.id))}>
                         {e.label}
                       </InkChip>
                     ))}
@@ -163,8 +185,20 @@ export function HookPicker({
           ))}
         </View>
       ) : null}
+
+      {changing && onCancelEdit ? (
+        <InkButton variant="quiet" icon="x" onPress={onCancelEdit}>
+          {t('goose.hookPicker.cancelChange')}
+        </InkButton>
+      ) : null}
     </View>
   );
+}
+
+function isEditedEvent(spec: Hook['spec'] | undefined, sourceId: string, event: string): boolean {
+  if (spec?.kind === 'event') return spec.sourceId === sourceId && spec.event === event;
+  if (spec?.kind === 'connector') return spec.connectorId === sourceId && spec.event === event;
+  return false;
 }
 
 const styles = StyleSheet.create({

@@ -10,12 +10,15 @@ import {
   hookWrite,
   inOrder,
   isAsking,
+  pickerSeedOf,
   placesWatched,
   readHookSources,
   readTodo,
+  replaceHook,
   readTodoOffers,
   readTodos,
   todoWrite,
+  type Hook,
 } from '@/models/todos';
 
 const todo = {
@@ -149,5 +152,39 @@ describe('offers from chats', () => {
     expect(readTodoOffers({ offers: [{ reminder_id: 'r1', text: 'Call the garage', when_said: 'on Friday', due_at: 'friday', said_at: '2026-11-09T08:00:00Z' }, { text: 'no id' }] })).toEqual([
       { reminderId: 'r1', text: 'Call the garage', whenSaid: 'on Friday', dueAt: null, saidAt: '2026-11-09T08:00:00Z' },
     ]);
+  });
+});
+
+describe('changing a hook in place', () => {
+  const hook = (spec: Hook['spec'], label = ''): Hook => ({ id: 'h', label, spec, nextFireAt: null, lastFiredAt: null });
+
+  it('swaps only the chosen hook and drops the old Pond sentence', () => {
+    const first = hook({ kind: 'time', at: '2026-11-13T16:00:00.000Z' }, 'On Friday 13 November at 19:00');
+    const second = hook({ kind: 'place', placeId: 'p1', transition: 'arrive' }, 'When you get home');
+    const next = hook({ kind: 'time', at: '2026-11-13T15:00:00.000Z' }, 'stale');
+    const out = replaceHook([first, second], 0, next);
+    expect(out).toHaveLength(2);
+    expect(out[0].spec).toEqual(next.spec);
+    expect(out[0].label).toBe('');
+    expect(out[1]).toBe(second);
+  });
+
+  it('reads a time back into the day and clock it was set at, in the phone zone', () => {
+    const at = new Date(2026, 10, 13, 19, 0);
+    expect(pickerSeedOf(hook({ kind: 'time', at: at.toISOString() }))).toEqual({
+      kind: 'time',
+      date: { year: 2026, month: 11, day: 13 },
+      time: { hour: 19, minute: 0 },
+    });
+  });
+
+  it('reads a repeat back, and a place keeps its arrive or leave', () => {
+    expect(pickerSeedOf(hook({ kind: 'repeat', every: 'week', at: '07:30', days: [1, 3] }))).toEqual({ kind: 'repeat', every: 'week', days: [1, 3], time: { hour: 7, minute: 30 } });
+    expect(pickerSeedOf(hook({ kind: 'place', placeId: 'p', transition: 'leave' }))).toEqual({ kind: 'place', transition: 'leave' });
+  });
+
+  it('opens events and connectors on the event list, and leaves an unknown kind remove-only', () => {
+    expect(pickerSeedOf(hook({ kind: 'connector', connectorId: 'c', event: 'e', filter: null }))?.kind).toBe('event');
+    expect(pickerSeedOf(hook({ kind: 'other', rawKind: 'future', raw: {} }))).toBeNull();
   });
 });
