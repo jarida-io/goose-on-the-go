@@ -23,6 +23,7 @@ const extras: Extras = {
   chatModel: 'qwen3-4b',
   extensions: 2,
   people: 3,
+  rooms: 4,
   visionNew: 2,
   facesKnown: 1,
   visionRules: 4,
@@ -38,6 +39,8 @@ describe('menu values', () => {
     expect(summarize('speaking', { ...SAMPLE_SETTINGS, voice_tts_voice: '' }, extras, t)).toBe('Heart');
     expect(summarize('tools', SAMPLE_SETTINGS, extras, t)).toBe('7 of 10 on');
     expect(summarize('people', SAMPLE_SETTINGS, extras, t)).toBe('3 people');
+    expect(summarize('rooms', SAMPLE_SETTINGS, extras, t)).toBe('4 rooms');
+    expect(summarize('rooms', SAMPLE_SETTINGS, { ...extras, rooms: 1 }, t)).toBe('1 room');
     expect(summarize('privacy', { ...SAMPLE_SETTINGS, mic_enabled: false }, extras, t)).toBe('Microphone off');
     expect(summarize('appearance', SAMPLE_SETTINGS, extras, t)).toBe('Match this phone');
   });
@@ -73,6 +76,7 @@ describe('menu values', () => {
   it('shows nothing for a setting it has not read, rather than a guess', () => {
     expect(summarize('memory', null, extras, t)).toBeNull();
     expect(summarize('people', null, { ...extras, people: null }, t)).toBeNull();
+    expect(summarize('rooms', SAMPLE_SETTINGS, { ...extras, rooms: null }, t)).toBeNull();
   });
 
   it('leaves web search blank on a Pond without it, and says when its key was refused', () => {
