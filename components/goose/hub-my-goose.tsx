@@ -270,12 +270,12 @@ function News({ g }: { g: UseMyGooseHub }) {
   const styles = useThemedStyles(makeStyles);
   const ago = useAgo();
   const actions = useStoryActions();
-  const listen = useListen();
   const { data, loading } = g.news;
   const followed = useMemo(() => new Map(g.interests.data.map((i) => [i.id, i.news !== 'off'])), [g.interests.data]);
   const { news } = splitStories(data.stories);
   const hero = news[0];
   const digest = data.digest;
+  const listen = useListen(digest);
 
   if (loading && news.length === 0 && !digest) return null;
 
@@ -320,7 +320,7 @@ function News({ g }: { g: UseMyGooseHub }) {
         <CompactStory key={story.id} story={story} actions={actions} followed={story.interest ? (followed.get(story.interest.id) ?? null) : null} />
       ))}
       {digest ? (
-        <DigestCard digest={digest} listen={listen.state} onPlay={() => digest.listen && void listen.play(digest.listen)} onStop={listen.stop} />
+        <DigestCard digest={digest} listen={listen} />
       ) : null}
       {news.length > COMPACT_STORIES || digest ? <MoreLink label={t('goose.news.more')} onPress={() => router.push('/(stack)/goose-news')} /> : null}
     </View>

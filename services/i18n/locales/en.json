@@ -5218,6 +5218,12 @@
       "covers": "Covers {{topics}}",
       "listen": "Listen",
       "stop": "Stop",
+      "pause": "Pause",
+      "resume": "Resume",
+      "listenArtist": "Goose news",
+      "nowListening": "Now listening",
+      "nowPaused": "Paused",
+      "openListening": "Open {{title}}",
       "read": "Read it",
       "loading": "Opening the digest",
       "onSpeaker": "Play on the speaker"

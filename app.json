@@ -71,7 +71,7 @@
         {
           "microphonePermission": "Goose On The Go uses your microphone so you can talk to Goose.",
           "enableBackgroundRecording": false,
-          "enableBackgroundPlayback": false
+          "enableBackgroundPlayback": true
         }
       ],
       [

@@ -20,6 +20,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Redirect, Tabs, useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { NowListening } from '@/components/patterns/now-listening';
 import {
   InkBottomBar,
   InkProvider,
@@ -172,6 +173,7 @@ function AppTabBar({ state, navigation }: TabBarProps) {
       }}
       style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
     >
+      <NowListening placement="bar" />
       <InkProvider theme={barTheme}>
         <InkBottomBar
           label={t('tabs.label')}

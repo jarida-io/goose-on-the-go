@@ -30,12 +30,12 @@ export function HubNews() {
   const digests = useDigests();
   const interests = useInterests();
   const actions = useStoryActions();
-  const listen = useListen();
   const ago = useAgo();
   const pull = usePullToRefresh(async () => {
     await Promise.all([news.reload(), digests.reload(), interests.reload()]);
   });
   const { data } = news;
+  const listen = useListen(data.digest);
   const { news: stories, longReads } = splitStories(data.stories);
   const [hero, ...rest] = stories;
   const followed = useMemo(() => new Map(interests.data.map((i) => [i.id, i.news !== 'off'])), [interests.data]);
@@ -98,7 +98,7 @@ export function HubNews() {
       ) : null}
 
       {data.digest ? (
-        <DigestCard digest={data.digest} listen={listen.state} onPlay={() => data.digest?.listen && void listen.play(data.digest.listen)} onStop={listen.stop} />
+        <DigestCard digest={data.digest} listen={listen} />
       ) : null}
 
       {hero ? (

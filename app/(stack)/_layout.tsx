@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 import { BackButton } from '@/components/navigation/back-button';
 import { ConnectionStatus } from '@/components/patterns/connection-status';
+import { NowListening } from '@/components/patterns/now-listening';
 import { useTheme } from '@/providers/theme-provider';
 import { JaridaPurple } from '@/constants/colors';
 import { face } from '@/constants/typography';
@@ -28,6 +29,7 @@ function ScreenWithStatus({ route, children }: { route: { name: string }; childr
     <View style={styles.screen}>
       <ConnectionStatus placement="inline" screen={route.name} />
       {children}
+      <NowListening placement="floating" />
     </View>
   );
 }

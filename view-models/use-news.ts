@@ -8,13 +8,13 @@ import type { Digest, DigestSummary, NewsFeed, NewsSettings, Story, StoryDetail 
 import i18n from '@/services/i18n';
 import { showSnackbar } from '@/services/snackbar';
 import type { NewsSettingsWire, StoryVoteWire } from '@/services/types';
-import { cacheFile, discardFile, playFile } from '@/services/voice-io';
 import { api } from '@/services/api-client';
 import { useServer } from '@/providers/server-provider';
 import { copyText } from '@/services/clipboard';
 import { hubAction, useHubRead } from './hub-read';
 import { useHubSource } from './hub-source';
 import { logFailure } from './describe-error';
+import { listenTo, pauseListening, resumeListening, stopListening, useListening, type ListenState } from './news-player';
 
 /** While the Pond is writing, the feed is read every few seconds; otherwise a few times an hour. */
 export const NEWS_WRITING_MS = 5_000;
@@ -186,62 +186,38 @@ export function useDigests() {
   return useHubRead<DigestSummary[]>('digests', (s) => s.digests(), [], NEWS_MS);
 }
 
-export type ListenState = 'idle' | 'loading' | 'playing';
+export type { ListenState } from './news-player';
+
+export interface Listen {
+  state: ListenState;
+  play: () => void;
+  pause: () => void;
+  resume: () => void;
+  stop: () => void;
+}
 
 /**
- * Listen on the phone: the digest's audio, fetched with the member's token, written to the cache,
- * and played to its end. Stopping, or leaving the screen, stops it and drops the file.
+ * Listen on the phone: the brief's audio, fetched with the member's token and played by the app's
+ * one news player, so it carries on when the member leaves this screen, switches app or locks the
+ * phone. Every screen showing the same brief shows, and steers, the same playback.
  */
-export function useListen() {
+export function useListen(digest: { listen: string | null; title: string } | null): Listen {
   const source = useHubSource();
-  const [state, setState] = useState<ListenState>('idle');
-  const playing = useRef<{ stop: () => void; uri: string } | null>(null);
-  const aborter = useRef<AbortController | null>(null);
-
-  const stop = useCallback(() => {
-    aborter.current?.abort();
-    aborter.current = null;
-    const current = playing.current;
-    playing.current = null;
-    if (current) {
-      current.stop();
-      discardFile(current.uri);
-    }
-    setState('idle');
-  }, []);
-
-  useEffect(() => stop, [stop]);
-
-  const play = useCallback(
-    async (path: string) => {
-      stop();
-      setState('loading');
-      const abort = new AbortController();
-      aborter.current = abort;
-      try {
-        const bytes = await source.digestAudio(path, abort.signal);
-        if (abort.signal.aborted) return;
-        const uri = cacheFile('digest', new Uint8Array(bytes));
-        const player = playFile(uri, () => {});
-        playing.current = { stop: player.stop, uri };
-        setState('playing');
-        await player.done;
-        if (playing.current?.uri === uri) {
-          playing.current = null;
-          discardFile(uri);
-          setState('idle');
-        }
-      } catch (e) {
-        if (abort.signal.aborted) return;
-        logFailure('listen', 'digest audio failed', e);
-        setState('idle');
-        showSnackbar({ message: i18n.t('goose.digest.listenFailed'), tone: 'danger' });
-      }
+  const listening = useListening();
+  const path = digest?.listen ?? null;
+  const mine = path !== null && listening?.path === path;
+  const title = digest?.title || i18n.t('goose.digest.title');
+  return {
+    state: mine ? listening.state : 'idle',
+    play: () => {
+      if (path) void listenTo(path, title, (p, signal) => source.digestAudio(p, signal));
     },
-    [source, stop],
-  );
-
-  return { state, play, stop };
+    pause: pauseListening,
+    resume: resumeListening,
+    stop: () => {
+      if (mine) stopListening();
+    },
+  };
 }
 
 /** "Play on the speaker": the Pond reads the digest in the room now. */
