@@ -71,6 +71,18 @@ export function isRecoveryPin(pin: string, minDigits = DEFAULT_MIN_PIN_DIGITS): 
   return /^\d+$/.test(pin) && pin.length >= minDigits && pin.length <= MAX_PIN_DIGITS;
 }
 
+/**
+ * Where a new PIN typed twice stands: `ready` once both match and the PIN is valid; `mismatch` once
+ * the second entry is as long as the first and differs, so a slip is caught before it is saved;
+ * `pending` while either is still being typed.
+ */
+export type PinConfirmation = 'pending' | 'mismatch' | 'ready';
+
+export function pinConfirmation(pin: string, again: string, minDigits = DEFAULT_MIN_PIN_DIGITS): PinConfirmation {
+  if (again.length >= pin.length && again.length > 0 && again !== pin) return 'mismatch';
+  return isRecoveryPin(pin, minDigits) && again === pin ? 'ready' : 'pending';
+}
+
 /** What is typed into a PIN field, kept to digits and to the longest PIN there is. */
 export function pinDigits(typed: string): string {
   return typed.replace(/\D/g, '').slice(0, MAX_PIN_DIGITS);

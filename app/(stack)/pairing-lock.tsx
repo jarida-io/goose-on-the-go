@@ -18,7 +18,7 @@ import { SettingsNotice, SettingsScroll } from '@/components/settings/settings-s
 import { useSettingsStyles, type SettingsColors, type SettingsMetrics, type SettingsType } from '@/components/settings/settings-theme';
 import { Spacing } from '@/constants/spacing';
 import { isUnavailable } from '@/models/content-state';
-import { isRecoveryPin, pinDigits, type PairingRequest } from '@/models/pairing-lock';
+import { pinConfirmation, pinDigits, type PairingRequest } from '@/models/pairing-lock';
 import { useConfirm } from '@/providers/confirm-provider';
 import { confirm as confirmTick, selectionTick } from '@/services/haptics';
 import { useContentState } from '@/view-models/use-content-state';
@@ -65,6 +65,8 @@ export default function PairingLockScreen() {
   const { data, loading, failed, unsupported, error, busy, pinError, actions } = usePairingLock();
   const { lock, ownerName, gap, requests } = data;
   const [pin, setPin] = useState('');
+  // The PIN typed a second time: a slip in a field that hides what is typed is otherwise saved.
+  const [again, setAgain] = useState('');
   const state = useContentState({ loading, failed, hasContent: lock !== null });
   const refresh = <RefreshControl refreshing={false} onRefresh={() => void actions.refresh()} />;
 
@@ -84,11 +86,15 @@ export default function PairingLockScreen() {
     );
   }
 
+  const confirmation = pinConfirmation(pin, again, lock.minPinDigits);
+
   const savePin = async () => {
+    if (confirmation !== 'ready') return;
     void selectionTick();
     if (await actions.savePin(pin)) {
       void confirmTick();
       setPin('');
+      setAgain('');
     }
   };
 
@@ -161,14 +167,27 @@ export default function PairingLockScreen() {
                 placeholder={t('pairingLock.pinPlaceholder')}
                 disabled={busy === 'pin'}
                 secret
+              />
+              <DigitsField
+                label={t('pairingLock.pinAgain')}
+                value={again}
+                onChange={(typed) => setAgain(pinDigits(typed))}
+                placeholder={t('pairingLock.pinAgainPlaceholder')}
+                disabled={busy === 'pin' || pin.length === 0}
+                secret
                 onSubmit={() => void savePin()}
               />
+              {confirmation === 'mismatch' ? (
+                <Text style={styles.failed} accessibilityLiveRegion="polite">
+                  {t('pairingLock.pinMismatch')}
+                </Text>
+              ) : null}
               <View style={styles.answers}>
                 <InkButton
                   variant="primary"
                   size="sm"
                   loading={busy === 'pin'}
-                  disabled={changing || !isRecoveryPin(pin, lock.minPinDigits)}
+                  disabled={changing || confirmation !== 'ready'}
                   onPress={() => void savePin()}
                 >
                   {lock.hasRecoveryPin ? t('pairingLock.pinChange') : t('pairingLock.pinNew')}

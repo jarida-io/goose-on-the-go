@@ -4,6 +4,7 @@
 import {
   heldUntil,
   isRecoveryPin,
+  pinConfirmation,
   lockGap,
   pinDigits,
   readHeldPairing,
@@ -94,5 +95,23 @@ describe('readPairingRequests', () => {
       { id: 'r1', deviceName: 'Wanjiru’s phone', clientType: 'gotg', profileId: null, createdAt: '2026-11-13T10:00:00Z', expiresAt: '2026-11-13T10:10:00Z' },
     ]);
     expect(readPairingRequests({})).toEqual([]);
+  });
+});
+
+describe('a new PIN typed twice', () => {
+  it('is ready only when both entries match and the PIN is valid', () => {
+    expect(pinConfirmation('123456', '123456')).toBe('ready');
+    expect(pinConfirmation('12345', '12345')).toBe('pending');
+  });
+
+  it('waits while the second entry is still being typed', () => {
+    expect(pinConfirmation('123456', '')).toBe('pending');
+    expect(pinConfirmation('123456', '123')).toBe('pending');
+    expect(pinConfirmation('', '')).toBe('pending');
+  });
+
+  it('says so once the second entry is as long as the first and differs', () => {
+    expect(pinConfirmation('123456', '123465')).toBe('mismatch');
+    expect(pinConfirmation('123456', '1234567')).toBe('mismatch');
   });
 });
