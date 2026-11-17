@@ -2,11 +2,11 @@
  * useThemeColor — resolve a single Jarida color token for the active scheme.
  *
  * Accepts optional per-scheme overrides via `props`. Falls back to the
- * token value from LightColors / DarkColors.
+ * token value for the app's chosen scheme and accent.
  */
 
-import { Colors, type ThemeColors } from '@/constants/colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import type { ThemeColors } from '@/constants/colors';
+import { useTheme } from '@/providers/theme-provider';
 
 type ThemeColorName = keyof ThemeColors;
 
@@ -18,9 +18,8 @@ export function useThemeColor(
   props: { light?: string; dark?: string },
   colorName: ThemeColorName,
 ): string {
-  // RN 0.85's useColorScheme may return 'unspecified'; collapse to light/dark.
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const override = props[scheme];
-
-  return override ?? Colors[scheme][colorName];
+  // The app's own scheme and accent, not the system's: a phone set to dark with the app on light
+  // would otherwise draw these in the other scheme's colours.
+  const { colors, colorScheme } = useTheme();
+  return props[colorScheme] ?? colors[colorName];
 }

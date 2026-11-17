@@ -3,7 +3,7 @@
  * and wraps the app tree with ThemeProvider + ServerProvider.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConnectionStatus } from '@/components/patterns/connection-status';
 import { NotificationsProvider } from '@/providers/notifications-provider';
 import { ThemeProvider, useTheme } from '@/providers/theme-provider';
+import { inkTheme } from '@/constants/colors';
 // Registers the app's icons with Ink. Imported for the side effect: on native
 // every Ink `icon=` slot draws an empty gap until something is registered.
 import '@/components/ui/ink-icons';
@@ -190,13 +191,16 @@ function PhoneWakeSync({ phrase }: { phrase: string | undefined }) {
  * scheme rather than each reading the system on its own.
  */
 function ThemedApp() {
-  const { isDark } = useTheme();
+  const { isDark, accent } = useTheme();
+  // Built here rather than from `scheme` and `accent` props, so the raised controls' edge follows the
+  // accent too (`inkTheme`).
+  const ink = useMemo(() => inkTheme(isDark ? 'dark' : 'light', accent), [isDark, accent]);
   // Ink cannot measure the notch or the home indicator itself; told once here,
   // every sheet, toast and bar clears them.
   const insets = useSafeAreaInsets();
   return (
     <NavThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <InkProvider scheme={isDark ? 'dark' : 'light'} accent="Purple" insets={insets}>
+      <InkProvider theme={ink} insets={insets}>
         {/* Inside Ink because the dialog and the snackbar draw with its theme; around every screen
             so any of them can ask. */}
         <SnackbarProvider>

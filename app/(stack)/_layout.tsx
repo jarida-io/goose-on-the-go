@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/navigation/back-button';
 import { ConnectionStatus } from '@/components/patterns/connection-status';
 import { useTheme } from '@/providers/theme-provider';
-import { JaridaPurple } from '@/constants/colors';
 import { face } from '@/constants/typography';
 
 /**
@@ -42,7 +41,7 @@ export default function StackLayout() {
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: colors.card },
-        headerTintColor: JaridaPurple[500],
+        headerTintColor: colors.textBrand,
         headerTitleStyle: {
           color: colors.text,
           ...face('display', 'bold'),

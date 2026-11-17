@@ -13,8 +13,9 @@ import { InkTitle } from '@/components/ui/ink';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 
 import { GIcon } from '@/components/ui/g-icon';
+import { AccentIcon } from '@/components/ui/accent-icon';
 import { GPressable } from '@/components/ui/g-pressable';
-import { Grey, JaridaPurple } from '@/constants/colors';
+import { Grey } from '@/constants/colors';
 import { FontSize, face } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -39,7 +40,7 @@ function ExpandableSection({ section, extra }: { section: PrivacySection; extra?
     >
       <View style={styles.sectionHeader}>
         <View style={{ marginRight: Spacing.md }}>
-          <GIcon name={section.icon} size={16} color={JaridaPurple[500]} />
+          <AccentIcon name={section.icon} size={16} />
         </View>
         <Text style={styles.sectionTitle}>{t(section.titleKey)}</Text>
         <View style={expanded ? { transform: [{ rotate: '180deg' }] } : undefined}>
@@ -89,7 +90,7 @@ export default function PrivacyScreen() {
           {DATA_RIGHTS.map((r, i) => (
             <View key={r.key} style={[styles.rightRow, i < DATA_RIGHTS.length - 1 && styles.divider]}>
               <View style={styles.rightIcon}>
-                <GIcon name={r.icon} size={16} color={JaridaPurple[500]} />
+                <AccentIcon name={r.icon} size={16} />
               </View>
               <Text style={styles.rightText}>{t(r.key)}</Text>
             </View>
@@ -111,7 +112,7 @@ export default function PrivacyScreen() {
               accessibilityRole="link"
             >
               <View style={{ marginRight: Spacing.md }}>
-                <GIcon name={d.icon} size={16} color={JaridaPurple[500]} />
+                <AccentIcon name={d.icon} size={16} />
               </View>
               <View style={styles.documentText}>
                 <Text style={styles.licenseName}>{t(d.titleKey)}</Text>

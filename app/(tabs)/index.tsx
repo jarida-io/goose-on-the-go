@@ -60,7 +60,6 @@ import { useServer } from '@/providers/server-provider';
 import { hostOf } from '@/services/discovery';
 import { tap } from '@/services/haptics';
 import type { Device } from '@/services/types';
-import { Brand, JaridaPurple } from '@/constants/colors';
 import { FontSize, face } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 
@@ -357,7 +356,7 @@ export default function HomeScreen() {
             {initial ? (
               <Text style={styles.avatarText}>{initial}</Text>
             ) : (
-              <GIcon name="home" size={18} color={Brand.white} />
+              <GIcon name="home" size={18} color={styles.avatarText.color} />
             )}
           </GPressable>
         </View>
@@ -440,14 +439,14 @@ const makeStyles = (c: ThemeColors) =>
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: c.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     ...face('display', 'bold'),
     fontSize: FontSize.lg,
-    color: Brand.white,
+    color: c.textOnBrand,
   },
 
 

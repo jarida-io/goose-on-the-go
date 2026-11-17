@@ -2,6 +2,7 @@
  * Draws one page of `SETTINGS_PAGES`: its header, then each section as a group of rows.
  */
 
+import { AccentPicker } from '@/components/settings/accent-picker';
 import React, { useCallback, useMemo, useState, type ReactElement } from 'react';
 import { Platform, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -247,6 +248,8 @@ function specialRows(id: SpecialId, ctx: Context): ReactElement[] {
         onChange: (next) => ctx.theme.setPreference(next as 'system' | 'light' | 'dark'),
         t,
       });
+    case 'accent':
+      return [<AccentPicker key={id} />];
     case 'haptics':
       return [
         <SwitchRow key={id} label={t('settings.hapticsLabel')} value={ctx.haptics.on} onChange={ctx.haptics.set} />,

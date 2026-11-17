@@ -13,10 +13,9 @@ import { useRouter } from 'expo-router';
 import { InkButton, InkEmptyState, InkNotice, InkSegmented, InkSpinner, InkSwitch, InkText, InkTitle, InkInput } from '@/components/ui/ink';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { GIcon } from '@/components/ui/g-icon';
+import { AccentIcon } from '@/components/ui/accent-icon';
 import { GKeyboardScrollView } from '@/components/ui/g-keyboard-view';
 import { isIconName } from '@/constants/icons';
-import { JaridaPurple } from '@/constants/colors';
 import { FontSize, face } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -81,7 +80,7 @@ export const InstalledCard = React.memo(function InstalledCard({
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.iconWrap}>
-          <GIcon name={isIconName(extension.kind) ? extension.kind : 'package'} size={20} color={JaridaPurple[500]} />
+          <AccentIcon name={isIconName(extension.kind) ? extension.kind : 'package'} size={20} />
         </View>
         <View style={styles.cardInfo}>
           <Text style={styles.cardName}>{extension.name}</Text>
@@ -245,7 +244,7 @@ export const MarketplaceCard = React.memo(function MarketplaceCard({
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.iconWrap}>
-          <GIcon name={isIconName(item.kind) ? item.kind : 'package'} size={20} color={JaridaPurple[500]} />
+          <AccentIcon name={isIconName(item.kind) ? item.kind : 'package'} size={20} />
         </View>
         <View style={styles.cardInfo}>
           <Text style={styles.cardName}>{item.name}</Text>
@@ -528,7 +527,7 @@ const makeStyles = (c: ThemeColors) =>
     borderRadius: Radii.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: JaridaPurple[50],
+    backgroundColor: c.tintSoft,
     marginRight: Spacing.md,
   },
   cardInfo: { flex: 1 },

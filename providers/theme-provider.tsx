@@ -20,7 +20,7 @@ import React, {
   type PropsWithChildren,
 } from 'react';
 
-import { Colors, type ThemeColors } from '@/constants/colors';
+import { DEFAULT_THEME_ACCENT, isThemeAccent, themeColors, type ThemeAccent, type ThemeColors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Storage } from '@/services/storage';
 
@@ -33,6 +33,9 @@ interface ThemeContextValue {
   isDark: boolean;
   preference: ThemePreference;
   setPreference: (next: ThemePreference) => void;
+  /** The colour the whole app is drawn in, as the Pond's dashboard lets its user choose. */
+  accent: ThemeAccent;
+  setAccent: (next: ThemeAccent) => void;
   /** False until the stored preference has been read back. */
   hydrated: boolean;
 }
@@ -46,13 +49,16 @@ function isPreference(value: string | null): value is ThemePreference {
 export function ThemeProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [accent, setAccentState] = useState<ThemeAccent>(DEFAULT_THEME_ACCENT);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void Storage.get('themePreference')
-      .then((stored) => {
-        if (active && isPreference(stored)) setPreferenceState(stored);
+    void Promise.all([Storage.get('themePreference'), Storage.get('themeAccent')])
+      .then(([stored, storedAccent]) => {
+        if (!active) return;
+        if (isPreference(stored)) setPreferenceState(stored);
+        if (isThemeAccent(storedAccent)) setAccentState(storedAccent);
       })
       .finally(() => {
         if (active) setHydrated(true);
@@ -67,20 +73,27 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     void Storage.set('themePreference', next);
   }, []);
 
+  const setAccent = useCallback((next: ThemeAccent) => {
+    setAccentState(next);
+    void Storage.set('themeAccent', next);
+  }, []);
+
   // RN 0.85's useColorScheme may return 'unspecified'; collapse to light/dark.
   const colorScheme: ColorScheme =
     preference === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : preference;
 
   const value = useMemo<ThemeContextValue>(
     () => ({
-      colors: Colors[colorScheme],
+      colors: themeColors(colorScheme, accent),
       colorScheme,
       isDark: colorScheme === 'dark',
       preference,
       setPreference,
+      accent,
+      setAccent,
       hydrated,
     }),
-    [colorScheme, preference, setPreference, hydrated],
+    [colorScheme, preference, setPreference, accent, setAccent, hydrated],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

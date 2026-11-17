@@ -682,6 +682,7 @@ const appearance: SettingsPage = {
   descriptionKey: 'settings.page.appearance',
   sections: [
     { items: [{ kind: 'special', id: 'theme' }] },
+    { titleKey: 'settings.section.accent', footerKey: 'settings.footer.accent', items: [{ kind: 'special', id: 'accent' }] },
     { footerKey: 'settings.footer.haptics', items: [{ kind: 'special', id: 'haptics' }] },
   ],
 };

@@ -16,12 +16,13 @@ import { useTranslation } from 'react-i18next';
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
-import { JaridaPurple } from '@/constants/colors';
+import { useTheme } from '@/providers/theme-provider';
 import { selectionTick } from '@/services/haptics';
 
 export function BackButton({ onPress }: { onPress?: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const back = useCallback(() => {
     void selectionTick();
     if (onPress) onPress();
@@ -30,7 +31,7 @@ export function BackButton({ onPress }: { onPress?: () => void }) {
 
   return (
     <GPressable onPress={back} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('common.back')}>
-      <GIcon name="chevron-left" size={22} color={JaridaPurple[500]} />
+      <GIcon name="chevron-left" size={22} color={colors.textBrand} />
     </GPressable>
   );
 }

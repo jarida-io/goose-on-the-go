@@ -15,10 +15,11 @@ import { Redirect, useRouter } from 'expo-router';
 import { InkSwitch, InkNotice } from '@/components/ui/ink';
 
 import { GIcon } from '@/components/ui/g-icon';
+import { AccentIcon } from '@/components/ui/accent-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import { ServerStatus } from '@/components/patterns/server-status';
 import { useServer, MIGRATION_SCREENS, type MigrationScreen } from '@/providers/server-provider';
-import { JaridaPurple, Brand } from '@/constants/colors';
+import { Brand } from '@/constants/colors';
 import { FontSize, face } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -95,7 +96,7 @@ function DeveloperScreenContent() {
           <Text style={styles.screenLabel}>{t('developer.openDebug')}</Text>
           <Text style={styles.screenModeText}>{t('developer.openDebugHint')}</Text>
         </View>
-        <GIcon name="chevron-right" size={16} color={JaridaPurple[500]} />
+        <AccentIcon name="chevron-right" size={16} />
       </GPressable>
 
       <Text style={styles.sectionTitle}>{t('dev.screenMode')}</Text>
@@ -180,7 +181,7 @@ const makeStyles = (c: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.xs,
-      backgroundColor: JaridaPurple[500],
+      backgroundColor: c.tint,
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.sm,
       borderRadius: Radii.md,

@@ -100,6 +100,7 @@ export type SpecialId =
   | 'llmProvider'
   | 'primaryProfile'
   | 'theme'
+  | 'accent'
   | 'haptics'
   | 'posture'
   | 'visionStatus'

@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 
 import { GIcon } from '@/components/ui/g-icon';
+import { AccentIcon } from '@/components/ui/accent-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import {
   InvalidPairingCodeError,
@@ -41,7 +42,7 @@ import {
 } from '@/models/setup-card';
 import { offerPairingPayload, offerSetupCard, offerSetupCode } from '@/services/pairing-handoff';
 import { advanceHold, HOLD_STEADY_MS, LOST_AFTER_MS, type Hold } from '@/models/scan-hold';
-import { Brand, JaridaPurple } from '@/constants/colors';
+import { Brand } from '@/constants/colors';
 import { FontSize, face } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -197,7 +198,7 @@ export default function ConnectDesktopScreen() {
     const canPrompt = permission.canAskAgain;
     return (
       <View style={styles.permissionContainer}>
-        <GIcon name="camera" size={32} color={JaridaPurple[500]} />
+        <AccentIcon name="camera" size={32} />
         <Text style={styles.permissionTitle}>{t('desktop.cameraNeeded')}</Text>
         <Text style={styles.permissionDesc}>
           {matter ? t('commission.camera') : t('pairing.cameraDesc')}
@@ -340,7 +341,7 @@ const makeStyles = (c: ThemeColors) =>
     position: 'absolute',
     width: CORNER_SIZE,
     height: CORNER_SIZE,
-    borderColor: JaridaPurple[400],
+    borderColor: c.borderBrand,
   },
   // Brightens the moment a valid code is held, so the frame itself confirms the
   // aim before any text does.
