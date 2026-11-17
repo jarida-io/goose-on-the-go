@@ -11,10 +11,16 @@ import { useServer } from '@/providers/server-provider';
 import { selectionTick } from '@/services/haptics';
 import { logFailure } from '@/view-models/describe-error';
 import { connectionWords, type ConnectionWords } from '@/view-models/connection-words';
+import { usePondOfflineReason } from '@/view-models/use-pond-offline-reason';
 
 export interface ConnectionStatusView extends ConnectionWords {
   /** Whether the saved pairing has been read back; before it, the state is a placeholder. */
   hydrated: boolean;
+  /**
+   * Why the Pond is offline as the remote-access coordinator saw it, once it is unreachable and
+   * the coordinator could say: "Your Pond is restarting for an update."
+   */
+  why: string | null;
   /** Check now, restarting the back-off. */
   tryNow: () => void;
 }
@@ -43,5 +49,7 @@ export function useConnectionStatus(): ConnectionStatusView {
     retryNow().catch((e: unknown) => logFailure('connection', 'check asked for failed', e));
   }, [retryNow]);
 
-  return { ...connectionWords(connectionState, connectionOutage, now), hydrated, tryNow };
+  const words = connectionWords(connectionState, connectionOutage, now);
+  const why = usePondOfflineReason(words.phase);
+  return { ...words, why, hydrated, tryNow };
 }

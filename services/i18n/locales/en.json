@@ -2948,6 +2948,13 @@
       "remoteLink": "Outside access on this phone has not started",
       "remoteOff": "Outside access is not set up, so mobile data cannot reach it"
     },
+    "why": {
+      "restart": "Your Pond is restarting.",
+      "update": "Your Pond is restarting for an update.",
+      "turnedOff": "Your Pond was turned off at {{time}}.",
+      "withoutWarning": "Your Pond has been offline since {{time}}. It stopped without warning, which usually means a power cut or the home internet is down.",
+      "pondStopped": "Your Pond has been offline since {{time}}. Your home internet is up, so the Pond itself has stopped."
+    },
     "connected": "Connected",
     "offline": "Disconnected",
     "disconnected": "Cannot reach your Pond",

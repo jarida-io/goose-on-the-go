@@ -2,7 +2,7 @@
 
 import '@/services/i18n';
 import type { ConnectionOutage, UnreachableReason } from '@/models/connection';
-import { connectionWords, lastConnectedWords, reasonWords } from '@/view-models/connection-words';
+import { connectionWords, lastConnectedWords, pondOfflineWords, reasonWords } from '@/view-models/connection-words';
 
 const outage = (over: Partial<ConnectionOutage> = {}): ConnectionOutage => ({
   failures: 0, reason: null, nextCheckAt: null, lastConnectedAt: null, ...over,
@@ -82,5 +82,28 @@ describe('the words for each reason', () => {
     ['remote_off', 'Outside access is not set up, so mobile data cannot reach it'],
   ])('%s', (reason, words) => {
     expect(reasonWords(reason)).toBe(words);
+  });
+});
+
+describe('why the Pond is offline, as the coordinator saw it', () => {
+  const SINCE = new Date(2026, 10, 3, 8, 49, 0).getTime();
+
+  it('says a power cut or the home internet when the Pond stopped without warning', () => {
+    const words = pondOfflineWords({ kind: 'stopped_without_warning', since: SINCE }, NOW);
+    expect(words).toMatch(/^Your Pond has been offline since .*49.*\. It stopped without warning, which usually means a power cut or the home internet is down\.$/);
+  });
+
+  it('says a restart or an update the Pond announced, with no time to read', () => {
+    expect(pondOfflineWords({ kind: 'restarting', reason: 'update' }, NOW)).toBe('Your Pond is restarting for an update.');
+    expect(pondOfflineWords({ kind: 'restarting', reason: 'restart' }, NOW)).toBe('Your Pond is restarting.');
+  });
+
+  it('names the day as well when the Pond went offline on another one', () => {
+    const yesterday = new Date(2026, 10, 2, 22, 5, 0).getTime();
+    const sameDay = pondOfflineWords({ kind: 'turned_off', since: SINCE }, NOW);
+    const otherDay = pondOfflineWords({ kind: 'turned_off', since: yesterday }, NOW);
+    expect(sameDay).toMatch(/^Your Pond was turned off at .*49.*\.$/);
+    expect(otherDay.length).toBeGreaterThan(sameDay.length);
+    expect(pondOfflineWords({ kind: 'pond_stopped', since: SINCE }, NOW)).toMatch(/home internet is up, so the Pond itself has stopped\.$/);
   });
 });

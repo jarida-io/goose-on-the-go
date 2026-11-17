@@ -58,7 +58,7 @@ export interface ConnectionStatusProps {
 
 /**
  * The connection's state where the screen has no card of its own for it: what is happening, why
- * when the checks say, when the next check runs, and the action that helps -- Try now, or Pair
+ * when the checks or the remote-access coordinator say, when the next check runs, and the action that helps -- Try now, or Pair
  * where only pairing can. A working connection says nothing.
  *
  * Screens do not repeat it: while it is up, content that did not arrive shows only that it will
@@ -81,8 +81,10 @@ export function ConnectionStatus({ placement = 'banner', screen }: ConnectionSta
   const surface = placement === 'inline' ? stackScreenSurface(screen ?? '') : connectionSurface(segments);
   // Before the saved pairing has loaded, the state is a placeholder, not news.
   if (!status.hydrated || status.phase === 'connected' || surface !== placement) return null;
-  const label = status.reason ? `${status.title}. ${status.reason}` : status.title;
-  const detail = [status.reason, status.next].filter(Boolean).join(' · ');
+  // The coordinator's account, when it has one, says more than which route did not answer.
+  const reason = status.why ?? status.reason;
+  const label = reason ? `${status.title}. ${reason}` : status.title;
+  const detail = [reason, status.next].filter(Boolean).join(' · ');
   const strip = (
     <View style={[styles.container, placement === 'banner' ? { paddingTop: insets.top + Spacing.xs } : styles.inline]}>
       <GIcon name={phaseIcon(status.phase)} size={16} color={colors.textSecondary} />

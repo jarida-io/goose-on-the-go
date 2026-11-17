@@ -36,6 +36,11 @@ const KEYS = {
   refreshToken: 'goose.refreshToken',
   /** Stable per-install identifier used as `client_id` in every handshake. */
   installId: 'goose.installId',
+  /**
+   * The Pond's signed grant to read its status from the remote-access coordinator while the Pond
+   * cannot answer (`services/pond-status.ts`). It reveals only whether the Pond is up.
+   */
+  pondStatusGrant: 'goose.pondStatusGrant',
 } as const;
 
 export type SecureKey = keyof typeof KEYS;

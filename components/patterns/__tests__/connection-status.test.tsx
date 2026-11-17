@@ -16,7 +16,9 @@ const mockServer: {
   connectionState: ConnectionState;
   connectionOutage: ConnectionOutage | null;
   retryNow: jest.Mock;
-} = { hydrated: true, connectionState: 'disconnected', connectionOutage: null, retryNow: jest.fn() };
+  pairedPin: string | null;
+} = { hydrated: true, connectionState: 'disconnected', connectionOutage: null, retryNow: jest.fn(), pairedPin: null };
+const mockAskCoordinator = jest.fn();
 const mockPush = jest.fn();
 let mockSegments: string[] = ['(tabs)', 'chat'];
 
@@ -29,6 +31,10 @@ jest.mock('expo-router', () => ({
   useSegments: () => mockSegments,
 }));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+jest.mock('@/services/pond-status', () => ({
+  askCoordinator: (...args: unknown[]) => mockAskCoordinator(...args),
+  renewStatusGrant: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('@/services/haptics', () => ({ selectionTick: jest.fn().mockResolvedValue(undefined) }));
 // The app registers lucide's glyphs, which jest cannot load. The glyph is not what is under test.
 jest.mock('@/components/ui/g-icon', () => ({ GIcon: () => null }));
@@ -69,6 +75,9 @@ function statement(tree: ReactTestRenderer) {
 }
 
 beforeEach(() => {
+  require('@/view-models/use-pond-offline-reason').resetPondOfflineReason();
+  mockServer.pairedPin = null;
+  mockAskCoordinator.mockReset().mockResolvedValue(null);
   mockServer.hydrated = true;
   mockServer.retryNow = jest.fn().mockResolvedValue(null);
   mockPush.mockClear();
@@ -125,5 +134,23 @@ describe('ConnectionStatus', () => {
     expect(render('disconnected', UNREACHABLE).toJSON()).toBeNull();
     expect(render('disconnected', UNREACHABLE, { placement: 'inline', screen: 'settings-voice' }).toJSON()).not.toBeNull();
     expect(render('disconnected', UNREACHABLE, { placement: 'inline', screen: 'switch-pond' }).toJSON()).toBeNull();
+  });
+
+  it('says why the Pond is offline when the remote-access coordinator knows', async () => {
+    mockServer.pairedPin = 'sha256/pond';
+    const now = Math.floor(Date.now() / 1000);
+    mockAskCoordinator.mockResolvedValue({ state: 'planned_restart', reason: 'update', since: now - 60, now });
+    const tree = render('disconnected', UNREACHABLE);
+    await act(async () => { await Promise.resolve(); });
+    expect(mockAskCoordinator).toHaveBeenCalledWith('sha256/pond', expect.any(Number));
+    expect(words(tree)).toEqual(['Cannot reach your Pond', 'Your Pond is restarting for an update. · Trying again in 9 s', 'Try now']);
+    expect(statement(tree).props.accessibilityLabel).toBe('Cannot reach your Pond. Your Pond is restarting for an update.');
+  });
+
+  it('keeps the route\'s reason when the coordinator has nothing to add', async () => {
+    mockServer.pairedPin = 'sha256/pond';
+    const tree = render('disconnected', UNREACHABLE);
+    await act(async () => { await Promise.resolve(); });
+    expect(words(tree)).toContain('Not answering on this Wi-Fi · Trying again in 9 s');
   });
 });

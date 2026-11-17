@@ -297,6 +297,8 @@ export function ServerProvider({ children }: PropsWithChildren) {
     await tokenWrite.current.catch(() => undefined);
     await SecureStorage.remove('pondIdentity');
     await SecureStorage.remove('sessionToken'); await SecureStorage.remove('refreshToken');
+    // Its grant to ask the coordinator about this Pond: about this Pond, and wrong for the next one.
+    await SecureStorage.remove('pondStatusGrant');
     await Storage.remove('connectionProfile'); await Storage.remove('serverUrl');
     // When this Pond would drop remote access: a date about it, and wrong for the next one.
     await Storage.remove('remoteLapsesAt');
