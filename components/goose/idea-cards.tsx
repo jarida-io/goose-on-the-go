@@ -14,7 +14,7 @@ import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import { Spacing } from '@/constants/spacing';
 import type { RejectReason } from '@/models/anchors';
-import { factLine, ideaKindKey, sourceKindKey, type IdeaCard } from '@/models/idea-cards';
+import { factLine, ideaKindKey, makingWords, sourceKindKey, type IdeaCard } from '@/models/idea-cards';
 import { selectionTick } from '@/services/haptics';
 import type { Question } from '@/models/questions';
 import type { UseIdeaCards } from '@/view-models/use-idea-cards';
@@ -249,7 +249,9 @@ export function IdeaCardSetView({ vm, cards, limit, onSeeAll }: { vm: UseIdeaCar
   const all = cards ?? vm.cards;
   const shown = limit ? all.slice(0, limit) : all;
   const hidden = all.length - shown.length;
-  const meta = vm.making ? t('goose.ideaCards.making') : ago(vm.data.set.madeAt);
+  const waiting = makingWords(vm.data.set);
+  const making = t(waiting.key, { count: waiting.count });
+  const meta = vm.making ? making : ago(vm.data.set.madeAt);
   return (
     <View style={styles.set}>
       <View style={styles.header}>
@@ -268,7 +270,7 @@ export function IdeaCardSetView({ vm, cards, limit, onSeeAll }: { vm: UseIdeaCar
       {vm.loading && all.length === 0 ? <InkSpinner label={t('goose.ideaCards.loading')} /> : null}
       {!vm.loading && all.length === 0 ? (
         vm.making ? (
-          <InkSpinner label={t('goose.ideaCards.making')} />
+          <InkSpinner label={making} />
         ) : (
           <InkText size="sm" tone="secondary">
             {t('goose.ideaCards.empty')}

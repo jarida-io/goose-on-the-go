@@ -64,7 +64,8 @@ export interface IdeaCard {
 
 export interface IdeaCardSet {
   cards: IdeaCard[];
-  set: { state: IdeaSetState; madeAt: string | null };
+  /** `ahead`, while the set is queued: how many of the Pond's jobs run before it. */
+  set: { state: IdeaSetState; madeAt: string | null; ahead: number | null };
 }
 
 export interface IdeaCardDone {
@@ -83,7 +84,7 @@ export function readIdeaCardDeeper(raw: unknown): IdeaCardDeeper {
   return { card: readIdeaCard(r?.card), anchorId: textOrNull(r?.anchor_id) };
 }
 
-export const EMPTY_SET: IdeaCardSet = { cards: [], set: { state: 'none', madeAt: null } };
+export const EMPTY_SET: IdeaCardSet = { cards: [], set: { state: 'none', madeAt: null, ahead: null } };
 
 function readWhy(raw: unknown): IdeaWhy | null {
   const r = record(raw);
@@ -145,7 +146,15 @@ export function readIdeaCard(raw: unknown): IdeaCard | null {
 export function readIdeaCardSet(raw: unknown): IdeaCardSet {
   const r = record(raw);
   const set = record(r?.set);
-  return { cards: readAll(raw, 'cards', readIdeaCard), set: { state: oneOf(set?.state, SET_STATES, 'none'), madeAt: time(set?.made_at) } };
+  const ahead = set?.ahead;
+  return {
+    cards: readAll(raw, 'cards', readIdeaCard),
+    set: {
+      state: oneOf(set?.state, SET_STATES, 'none'),
+      madeAt: time(set?.made_at),
+      ahead: typeof ahead === 'number' && Number.isInteger(ahead) && ahead >= 0 ? ahead : null,
+    },
+  };
 }
 
 export function readSetState(raw: unknown): IdeaSetState {
@@ -179,6 +188,15 @@ export function askMessage(labels: readonly string[]): string {
 /** A set is on its way: the phone reads again soon, and says so. */
 export function isMaking(state: IdeaSetState): boolean {
   return state === 'queued' || state === 'making';
+}
+
+/**
+ * What to say while a set is on its way. A queued one says how many jobs it waits behind: the Pond
+ * runs one at a time for the household, and a refresh behind three plans read as stuck.
+ */
+export function makingWords(set: IdeaCardSet['set']): { key: 'goose.ideaCards.waiting' | 'goose.ideaCards.making'; count?: number } {
+  if (set.state === 'queued' && set.ahead !== null && set.ahead > 0) return { key: 'goose.ideaCards.waiting', count: set.ahead };
+  return { key: 'goose.ideaCards.making' };
 }
 
 export function factLine(parts: readonly (string | null)[]): string {
