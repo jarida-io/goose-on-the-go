@@ -41,7 +41,7 @@ import { loadPhonePlacePreference } from '@/services/phone-place';
 import { phoneWakeSupported } from '@/services/phone-wake';
 import { followWakePhrase, installPhoneWake } from '@/services/phone-wake-pond';
 import { loadReplyNoticePreference } from '@/services/reply-notices';
-import { offerHomeLocationOnce } from '@/services/home-location';
+import { sendHomeLocationOnce } from '@/services/home-location';
 import { showSnackbar } from '@/services/snackbar';
 import { usePondSettings, type UsePondSettings } from '@/view-models/use-pond-settings';
 import { useCaptureSync } from '@/view-models/use-capture-sync';
@@ -152,10 +152,11 @@ function PondSettingsSync() {
 }
 
 /**
- * Offers to give the Pond this phone's location when the phone reaches it at home and the Pond's
- * location is still a guess (a town's centre from its time zone or a typed name), where location is
- * already allowed. Nothing leaves the phone until the person takes the offer. Away from home it does
- * nothing, and the Pond would refuse it anyway (`services/home-location.ts`). Draws nothing.
+ * Gives the Pond this phone's location when the phone reaches it at home, the Pond's location is
+ * still a guess (a town's centre from its time zone or a typed name), and location is already
+ * allowed, then says where the Pond now is. The phone's permission is the person's answer; it is
+ * not asked again. Away from home it does nothing, and the Pond would refuse it anyway
+ * (`services/home-location.ts`). Draws nothing.
  */
 function HomeLocationSync({ pond }: { pond: UsePondSettings }) {
   const { t } = useTranslation();
@@ -166,12 +167,10 @@ function HomeLocationSync({ pond }: { pond: UsePondSettings }) {
   const atHome = connectionState === 'local' && isScreenReal('settings');
   useEffect(() => {
     if (!loaded || !atHome || source === 'manual' || source === 'device') return;
-    const ask = () =>
-      new Promise<boolean>((resolve) => {
-        showSnackbar({ message: t('settings.location.offer'), action: { label: t('settings.location.offerUse'), onPress: () => resolve(true) } });
-      });
-    void offerHomeLocationOnce(ask).then((applied) => {
-      if (applied) void refresh();
+    void sendHomeLocationOnce().then((result) => {
+      if (!result) return;
+      showSnackbar({ message: t('settings.location.fromPhone', { name: result.name }) });
+      void refresh();
     });
   }, [loaded, atHome, source, refresh, t]);
   return null;

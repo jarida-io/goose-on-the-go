@@ -81,30 +81,32 @@ export function homeLocationIsPinned(settings: { weather_location_source?: strin
   return settings.weather_location_source === 'device' || settings.weather_location_source === 'manual';
 }
 
-/** Whether this run of the app has already offered its fix unasked. */
-let offered = false;
+/** Whether this run of the app has already sent its fix unasked. */
+let sent = false;
 
 /**
- * Once per run of the app: offer this phone's fix when the caller has found it at home and the
- * Pond's location still a guess. Offered only with a location grant the person already gave, and
- * sent only when `ask` resolves yes, since it leaves the phone; the Pond keeps a place someone set.
- * Resolves whether the Pond took the fix.
+ * Once per run of the app: when the caller has found the phone at home and the Pond's location is
+ * still a guess, send this phone's fix, with no question, if location is already allowed. The grant
+ * the person gave the phone is their answer, as it is for every other permission; asking again on
+ * every start was a prompt that never went away while the Pond kept guessing. Without a grant it
+ * does nothing and never asks for one. The Pond keeps a place someone set (`replace: false`).
+ * Resolves the Pond's answer when it took the fix, otherwise null.
  */
-export async function offerHomeLocationOnce(ask: () => Promise<boolean>): Promise<boolean> {
-  if (offered) return false;
-  offered = true;
+export async function sendHomeLocationOnce(): Promise<HomeLocationResult | null> {
+  if (sent) return null;
+  sent = true;
   try {
-    if (!(await Location.getForegroundPermissionsAsync()).granted) return false;
+    if (!(await Location.getForegroundPermissionsAsync()).granted) return null;
   } catch {
-    return false;
+    return null;
   }
-  if (!(await ask())) return false;
   const fix = await readPhoneFix(false);
-  if (fix.kind !== 'fix') return false;
+  if (fix.kind !== 'fix') return null;
   try {
-    return (await sendHomeLocation(fix, false)).applied;
+    const result = await sendHomeLocation(fix, false);
+    return result.applied ? result : null;
   } catch (e) {
     console.warn('[home-location] the Pond did not take the phone location', { kind: 'home_location', error: String(e) });
-    return false;
+    return null;
   }
 }
