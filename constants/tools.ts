@@ -58,6 +58,7 @@ const TOOLS: Record<string, ToolWords> = {
   task_start: { label: 'chat.tools.taskStart', doing: 'chat.tools.doingTaskStart', icon: 'logs' },
   task_status: { label: 'chat.tools.taskStatus', doing: 'chat.tools.doingTaskStatus', icon: 'logs' },
   task_cancel: { label: 'chat.tools.taskCancel', icon: 'logs' },
+  ask: { label: 'chat.tools.ask', doing: 'chat.tools.doingAsk', icon: 'chat' },
   play: { label: 'chat.tools.playMusic', icon: 'music' },
   status: { label: 'chat.tools.nowPlaying', icon: 'music' },
   control: { label: 'chat.tools.playback', icon: 'music' },

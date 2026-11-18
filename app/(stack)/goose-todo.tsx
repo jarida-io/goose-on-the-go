@@ -1,14 +1,17 @@
 /**
- * Adding or editing a to-do or a reminder: what it is, any notes, whether Goose should ask if it is
- * done, and what brings it up. Saving sends the hooks whole, as the Pond replaces them all.
+ * Adding or editing a to-do or a reminder: what it is, any notes, its list, priority and steps,
+ * whether Goose should ask if it is done, and what brings it up. Saving sends the hooks and the
+ * steps whole, as the Pond replaces them all; ticking a step of a saved to-do sends at once. What
+ * Goose can do for it is a button, and the plan it belongs to a row that opens the plan.
  */
 
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { InkButton, InkSegmented, InkSwitch, InkText, InkTextArea, useInkTheme } from '@/components/ui/ink';
+import { InkButton, InkCheckbox, InkInput, InkNotice, InkSegmented, InkSwitch, InkText, InkTextArea, useInkTheme } from '@/components/ui/ink';
 
+import { GroupRow, InsetGroup } from '@/components/goose/following';
 import { RoundButton, ScreenScroll, SectionHead } from '@/components/goose/hub-parts';
 import { HookPicker } from '@/components/goose/hook-picker';
 import { Labelled } from '@/components/goose/labelled';
@@ -18,13 +21,30 @@ import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import { SendToChat } from '@/components/goose/send-to-chat';
 import { Spacing } from '@/constants/spacing';
-import { draftOf, hookToOpen, pickerSeedOf, replaceHook, type Hook, type TodoDraft, type TodoKind } from '@/models/todos';
+import { cleanSteps, draftOf, hookToOpen, MAX_LIST_CHARS, MAX_STEP_CHARS, MAX_STEPS, pickerSeedOf, PRIORITIES, priorityKey, replaceHook, type Hook, type TodoDraft, type TodoKind } from '@/models/todos';
 import { useConfirm } from '@/providers/confirm-provider';
 import { toggle } from '@/services/haptics';
+import { useAnchor } from '@/view-models/use-anchors';
 import { useTodo, useTodos } from '@/view-models/use-todos';
 
+/** The plan a to-do belongs to, named, or a quiet line while its name is read. */
+function PlanRow({ anchorId, onLeave }: { anchorId: string; onLeave: () => void }) {
+  const { t } = useTranslation();
+  const plan = useAnchor(anchorId);
+  return (
+    <View style={styles.section}>
+      <InsetGroup>
+        <GroupRow first icon="calendar" label={plan.data?.title ?? t('goose.anchor.loading')} detail={t('goose.todo.plan')} onPress={() => router.push({ pathname: '/(stack)/goose-anchor', params: { id: anchorId } })} />
+      </InsetGroup>
+      <InkButton variant="quiet" onPress={onLeave} style={styles.left}>
+        {t('goose.todo.leavePlan')}
+      </InkButton>
+    </View>
+  );
+}
+
 export default function GooseTodoScreen() {
-  const { id, kind } = useLocalSearchParams<{ id?: string; kind?: TodoKind }>();
+  const { id, kind, already } = useLocalSearchParams<{ id?: string; kind?: TodoKind; already?: string }>();
   const theme = useInkTheme();
   const { t } = useTranslation();
   const ask = useConfirm();
@@ -38,6 +58,7 @@ export default function GooseTodoScreen() {
   const draft = edited ?? (existing ? draftOf(existing) : draftOf(null, kind === 'reminder' ? 'reminder' : 'todo'));
   const [saving, setSaving] = useState(false);
   const [sheet, setSheet] = useState(false);
+  const [step, setStep] = useState('');
   // The hook the member tapped to change; the picker below opens on it. Until they tap one, a
   // saved to-do opens on its only time (`hookToOpen`): a picker showing 18:00 under a reminder set
   // for 15:00 read as the reminder's time not having been kept.
@@ -59,12 +80,26 @@ export default function GooseTodoScreen() {
     set({ hooks: replaceHook(draft.hooks, editing, hook) });
     setEditing(null);
   };
+  const addStep = () => {
+    const typed = step.trim();
+    if (!typed || draft.steps.length >= MAX_STEPS) return;
+    set({ steps: cleanSteps([...draft.steps, { text: typed, done: false }]) });
+    setStep('');
+  };
+  const tickStep = (index: number, isDone: boolean) => {
+    set({ steps: draft.steps.map((s, i) => (i === index ? { ...s, done: isDone } : s)) });
+    // A saved to-do's steps are sent at once, the whole list, as the Pond takes them.
+    if (existing) void todos.actions.tick(existing, index, isDone, draft.steps);
+  };
 
   const save = async () => {
     setSaving(true);
     const done = await todos.actions.save(id ?? null, draft);
     setSaving(false);
-    if (done) router.back();
+    if (!done) return;
+    // The list already held it: open that one, and say so, rather than leave a second behind.
+    if (!id && done.duplicateOf) router.replace({ pathname: '/(stack)/goose-todo', params: { id: done.id, already: '1' } });
+    else router.back();
   };
 
   const remove = async () => {
@@ -76,6 +111,22 @@ export default function GooseTodoScreen() {
   return (
     <>
       <ScreenScroll gap={Spacing.xl}>
+        {already ? <InkNotice tone="info">{t('goose.todo.already')}</InkNotice> : null}
+        {existing?.gooseCan ? (
+          <View style={styles.section}>
+            <InkText size="sm" weight="semibold" tone="secondary">
+              {t('goose.todo.gooseCan')}
+            </InkText>
+            <InkButton
+              variant="primary"
+              icon="sparkle"
+              onPress={() => router.push({ pathname: '/conversation', params: { ask: existing.gooseCan!.prompt } })}
+              style={styles.left}
+            >
+              {existing.gooseCan.label}
+            </InkButton>
+          </View>
+        ) : null}
         <InkSegmented
           label={t('goose.todo.kind')}
           value={draft.kind}
@@ -91,6 +142,38 @@ export default function GooseTodoScreen() {
         <Labelled label={t('goose.todo.notes')}>
           <InkTextArea label={t('goose.todo.notes')} value={draft.notes} onChange={(notes) => set({ notes })} placeholder={t('goose.todo.notesPlaceholder')} rows={2} />
         </Labelled>
+        <InkInput label={t('goose.todo.list')} value={draft.list} onChange={(list) => set({ list: list.slice(0, MAX_LIST_CHARS) })} placeholder={t('goose.todo.listPlaceholder')} />
+        <InkSegmented
+          label={t('goose.todo.priorityLabel')}
+          value={draft.priority}
+          options={PRIORITIES.map((p) => ({ value: p, label: t(priorityKey(p)) }))}
+          onChange={(priority) => set({ priority })}
+        />
+
+        <View style={styles.section}>
+          <SectionHead title={t('goose.todo.steps')} subtitle={draft.steps.length ? t('goose.todo.stepsBody') : null} size="small" />
+          {draft.steps.map((s, i) => (
+            <View key={`${i}-${s.text}`} style={styles.step}>
+              <View style={styles.stepWords}>
+                <InkCheckbox checked={s.done} label={s.text} onChange={(isDone) => tickStep(i, isDone)} />
+              </View>
+              <RoundButton icon="x" size={28} label={t('goose.todo.removeStep', { step: s.text })} onPress={() => set({ steps: draft.steps.filter((_, at) => at !== i) })} />
+            </View>
+          ))}
+          {draft.steps.length < MAX_STEPS ? (
+            <View style={styles.step}>
+              <View style={styles.stepWords}>
+                <InkInput label={t('goose.todo.stepPlaceholder')} value={step} onChange={(words) => setStep(words.slice(0, MAX_STEP_CHARS))} placeholder={t('goose.todo.stepPlaceholder')} onSubmit={addStep} />
+              </View>
+              <InkButton variant="quiet" icon="plus" disabled={!step.trim()} onPress={addStep}>
+                {t('goose.todo.addStep')}
+              </InkButton>
+            </View>
+          ) : null}
+        </View>
+
+        {draft.anchorId ? <PlanRow anchorId={draft.anchorId} onLeave={() => set({ anchorId: null })} /> : null}
+
         <InkSwitch
           checked={draft.ask}
           label={t('goose.todo.ask')}
@@ -179,4 +262,7 @@ const styles = StyleSheet.create({
   hookTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   hookWords: { flex: 1 },
   actions: { gap: Spacing.sm },
+  left: { alignSelf: 'flex-start' },
+  step: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  stepWords: { flex: 1 },
 });

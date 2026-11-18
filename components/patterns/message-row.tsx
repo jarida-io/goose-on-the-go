@@ -228,6 +228,8 @@ export interface MessageRowProps {
   onReply?: (target: ReplyTarget) => void;
   /** The reply's height, as it changes, for a thread that holds its top edge in view while it is written. */
   onLayout?: (height: number) => void;
+  /** The conversation's session, which Goose's questions in a reply are stored under. */
+  sessionId?: string | null;
 }
 
 export const MessageRow = React.memo(function MessageRow({
@@ -239,11 +241,12 @@ export const MessageRow = React.memo(function MessageRow({
   onOffer,
   onReply,
   onLayout,
+  sessionId = null,
 }: MessageRowProps) {
   if (message.role === 'user') {
     return <MyMessage message={message} position={position} queued={queued} onUnqueue={onUnqueue} onReply={onReply} />;
   }
-  return <TheirMessage message={message} turnSeed={turnSeed} onOffer={onOffer} onReply={onReply} onLayout={onLayout} />;
+  return <TheirMessage message={message} turnSeed={turnSeed} sessionId={sessionId} onOffer={onOffer} onReply={onReply} onLayout={onLayout} />;
 });
 
 /** What the person said: any quote it answers, their pictures, a voice note, and the bubble. */
@@ -320,12 +323,14 @@ const PICTURE_PAGES = 6;
 function TheirMessage({
   message,
   turnSeed,
+  sessionId,
   onOffer,
   onReply,
   onLayout,
 }: {
   message: Message;
   turnSeed: number;
+  sessionId: string | null;
   onOffer?: (id: string, take: boolean) => Promise<void> | void;
   onReply?: (target: ReplyTarget) => void;
   onLayout?: (height: number) => void;
@@ -357,7 +362,7 @@ function TheirMessage({
   const text = message.content ? (
     <Markdown key="text" source={message.content} sources={done ? trail.chips : undefined} />
   ) : null;
-  const tools = message.tools?.length ? <ToolTrail key="tools" tools={message.tools} /> : null;
+  const tools = message.tools?.length ? <ToolTrail key="tools" tools={message.tools} sessionId={sessionId} /> : null;
   const thoughts = (
     <ReplyThoughts
       key="thoughts"

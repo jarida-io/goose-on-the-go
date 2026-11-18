@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { DEFAULT_RADIUS_M, inOrder, isAsking, placesWatched, todoWrite, type HookSources, type Todo, type TodoDraft, type TodoOffer } from '@/models/todos';
+import { DEFAULT_RADIUS_M, inOrder, isAsking, placesWatched, tickStep, todoWrite, type HookSources, type Todo, type TodoDraft, type TodoOffer, type TodoStep } from '@/models/todos';
 import { useServer } from '@/providers/server-provider';
 import { askForLocation, currentPosition, locationAccess, watchPlaces, type LocationAccess } from '@/services/geofence';
 import { confirm } from '@/services/haptics';
@@ -110,13 +110,28 @@ export function useTodos(enabled = true) {
     [flip],
   );
 
+  /** A new one the list already holds under the same words comes back as that one, with `duplicateOf`. */
   const save = useCallback(
     async (id: string | null, draft: TodoDraft) => {
       const body = todoWrite(draft);
       const done = await hubAction('todos', () => (id ? source.editTodo(id, body) : source.addTodo({ ...body, kind: draft.kind, text: draft.text.trim() })));
       if (!done) return null;
       replace(done);
-      showSnackbar({ message: i18n.t(id ? 'goose.todos.saved' : draft.kind === 'reminder' ? 'goose.todos.reminderAdded' : 'goose.todos.added'), tone: 'success' });
+      const said = done.duplicateOf ? 'goose.todos.alreadyListed' : id ? 'goose.todos.saved' : draft.kind === 'reminder' ? 'goose.todos.reminderAdded' : 'goose.todos.added';
+      showSnackbar({ message: i18n.t(said), tone: 'success' });
+      return done;
+    },
+    [replace, source],
+  );
+
+  /** Ticks one step: the Pond takes the steps only whole, so the whole list is sent again. */
+  const tick = useCallback(
+    async (todo: Todo, index: number, isDone: boolean, from: readonly TodoStep[] = todo.steps) => {
+      const steps = tickStep(from, index, isDone);
+      replace({ ...todo, steps });
+      const done = await hubAction('todos', () => source.editTodo(todo.id, { steps }));
+      replace(done ?? todo);
+      if (done && isDone) void confirm();
       return done;
     },
     [replace, source],
@@ -137,9 +152,9 @@ export function useTodos(enabled = true) {
     async (offer: TodoOffer, dueAt?: string) => {
       const done = await hubAction('todos', () => source.acceptTodoOffer(offer.reminderId, dueAt), { retry: true });
       if (!done) return false;
-      setData((d) => ({ ...d, offers: d.offers.filter((o) => o.reminderId !== offer.reminderId), open: inOrder([done, ...d.open]) }));
+      setData((d) => ({ ...d, offers: d.offers.filter((o) => o.reminderId !== offer.reminderId), open: inOrder([done, ...d.open.filter((t) => t.id !== done.id)]) }));
       void confirm();
-      showSnackbar({ message: i18n.t('goose.todos.offerAdded'), tone: 'success' });
+      showSnackbar({ message: i18n.t(done.duplicateOf ? 'goose.todos.alreadyListed' : 'goose.todos.offerAdded'), tone: 'success' });
       return true;
     },
     [setData, source],
@@ -202,6 +217,7 @@ export function useTodos(enabled = true) {
       answer,
       setDone,
       save,
+      tick,
       remove,
       acceptOffer,
       declineOffer,

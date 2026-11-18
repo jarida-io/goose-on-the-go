@@ -9,7 +9,7 @@
  */
 
 import { ApiError } from '@/services/api-client';
-import { ChatRuns, type ChatRunsDeps } from '@/services/chat-runs';
+import { ChatRuns, questionAnswered, type ChatRunsDeps } from '@/services/chat-runs';
 import type { TurnNotice } from '@/services/reply-notices';
 import type { ActiveRun, ChatFrame, SessionMessage } from '@/services/types';
 
@@ -23,8 +23,8 @@ interface Opened {
 function streamingRoute() {
   const opened: Opened[] = [];
   const fn = jest.fn((...args: unknown[]) => {
-    const onFrame = args[args.length - 2] as (frame: ChatFrame) => void;
-    const signal = args[args.length - 1] as AbortSignal | undefined;
+    const onFrame = args.find((a) => typeof a === 'function') as (frame: ChatFrame) => void;
+    const signal = args.find((a) => a instanceof AbortSignal) as AbortSignal | undefined;
     return new Promise<void>((resolve, reject) => {
       signal?.addEventListener('abort', () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' })));
       opened.push({ onFrame, resolve, reject });
@@ -272,6 +272,27 @@ describe('reattaching after a drop', () => {
     stream.last().onFrame({ done: true, seq: 9 });
     stream.last().resolve();
     expect(await ended).toMatchObject({ outcome: 'done', stale: true });
+  });
+});
+
+describe('a turn waiting on Goose’s questions', () => {
+  it('tells a reattached stream which ask calls it was waiting on, so its silence is not taken for a drop', async () => {
+    const { runs, api, stream } = harness();
+    runs.start(ask);
+    await settle();
+    stream.last().onFrame(started());
+    stream.last().onFrame({ type: 'tool_call', tool: 'giap-questions__ask', id: 'a1', input: { questions: [] }, seq: 2 });
+    stream.last().reject(dropped());
+    await settle();
+    expect(api.reattachRun).toHaveBeenCalledTimes(1);
+    expect(api.reattachRun.mock.calls[0][5]).toEqual(new Set(['a1']));
+  });
+
+  it('reads a typed message taken as the answer, from either of its two frames', () => {
+    expect(questionAnswered({ type: 'question_answered', batch_id: 'b1', session_id: 's1' })).toBe('b1');
+    expect(questionAnswered({ done: true, session_id: 's1', question_answered: true })).toBeNull();
+    expect(questionAnswered({ done: true, session_id: 's1' })).toBeUndefined();
+    expect(questionAnswered({ type: 'text', content: 'Hello' })).toBeUndefined();
   });
 });
 

@@ -39,12 +39,14 @@ import type { TFunction } from 'i18next';
 import type { BubblePosition } from '@/components/ui/ink';
 
 import type { Message, ToolCall } from '@/models/chat';
+import { isAskTool } from '@/models/questions';
 import { readNote, withOfferState } from '@/models/message-note';
 import { toolWords, humanizeTool } from '@/constants/tools';
 import { useServer, type MigrationScreen } from '@/providers/server-provider';
 import { ApiError, api } from '@/services/api-client';
 import { cardsFor, forgetCalls, type CardsByCall } from '@/services/card-cache';
-import { chatRuns, type TurnHandle } from '@/services/chat-runs';
+import { chatRuns, questionAnswered, type TurnHandle } from '@/services/chat-runs';
+import { markAskAnswered } from '@/services/answered-asks';
 import { changed, keepThread, newThread, threadFor, watchThread, type Thread } from '@/services/chat-threads';
 import { composeMessage, type Attachment } from '@/services/media';
 import type { AnswerShape, ChatFrame, ChatStreamRequest, SessionMessage } from '@/services/types';
@@ -480,6 +482,13 @@ function questionFor(id: string, text: string, attachments: Attachment[]): Messa
   };
 }
 
+/** The `ask` call the turn running in a thread is waiting on, if it is waiting on one. */
+export function waitingAsk(th: Pick<Thread, 'turn' | 'messages'>): ToolCall | null {
+  const replyId = th.turn?.replyId;
+  const reply = replyId ? th.messages.find((m) => m.id === replyId) : undefined;
+  return reply?.tools?.find((t) => t.status === 'running' && isAskTool(t.name)) ?? null;
+}
+
 /**
  * What a conversation needs to know about the connection: whether the saved pairing has been read
  * back, and whether chat talks to the Pond or to its mock.
@@ -805,20 +814,62 @@ export function useChatOn({ hydrated, isScreenReal }: ChatConnection): UseChat {
     [hydrated, pickUp, refreshTitle, reload, show],
   );
 
+  /**
+   * A message typed while the turn waits on Goose's questions. It goes now rather than behind the
+   * turn: the Pond takes it as the answer, says so in a two-frame stream and starts no turn, and the
+   * waiting turn carries on in its own stream. Should the batch have closed meanwhile, the Pond
+   * answers it as an ordinary turn, which is drawn as one.
+   */
+  const answerWaiting = useCallback(
+    async (th: Thread, session: string, question: Message, text: string, options: SendOptions): Promise<string | null> => {
+      th.messages = [...th.messages, question];
+      changed(th);
+      let answered: string | null | undefined;
+      const frames: ChatFrame[] = [];
+      try {
+        await api.streamChat(streamBody(text, [], options, session), (frame) => {
+          const said = questionAnswered(frame);
+          if (said !== undefined) answered = answered ?? said;
+          else frames.push(frame);
+        });
+      } catch (e) {
+        logFailure('chat', 'answer to waiting questions failed', e);
+      }
+      if (answered !== undefined) {
+        markAskAnswered(session, { batchId: answered, text });
+        return null;
+      }
+      // Not taken as an answer: the bubble goes, and the message is asked as an ordinary turn.
+      th.messages = th.messages.filter((m) => m.id !== question.id);
+      changed(th);
+      if (frames.some((f) => f.type === 'text' || f.type === 'tool_call')) {
+        void reload(th, false);
+        return null;
+      }
+      return queue.submit({ kind: 'ask', thread: th, question, text, attachments: [], options });
+    },
+    [queue, reload],
+  );
+
   const send = useCallback(
     (text: string, attachments: Attachment[] = [], options: SendOptions = {}) => {
       const trimmed = text.trim();
       if (!trimmed && attachments.length === 0) return Promise.resolve(null);
+      const th = viewRef.current;
+      const question = questionFor(nextLocalId(), trimmed, attachments);
+      if (trimmed && attachments.length === 0 && th.session && isScreenRealRef.current('chat') && waitingAsk(th)) {
+        return answerWaiting(th, th.session, question, trimmed, options);
+      }
       return queue.submit({
         kind: 'ask',
-        thread: viewRef.current,
-        question: questionFor(nextLocalId(), trimmed, attachments),
+        thread: th,
+        question,
         text: trimmed,
         attachments,
         options,
       });
     },
-    [queue],
+    [answerWaiting, queue],
   );
 
   const answerOffer = useCallback(

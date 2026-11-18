@@ -27,9 +27,18 @@ else Goose can do. This document is the contract between the Pond and the phone.
 
 `GET /me/hub` → `{"version":1,"about":bool,"interests":bool,"interview":bool,"news":bool,
 "todos":bool,"cart":bool,"connectors":bool,"ideas":bool,"screenshots":bool,"activity":bool,
-"catalog":bool,
+"catalog":bool,"anchors":bool,"facts":bool,"questions":bool,"captures":bool,"agents":bool,
+"ledger":bool,"intentions":bool,"engine_log":bool,
 "cards":[kind]}`. A Pond without the route answers 404 and the phone
-keeps its older My Goose.
+keeps its older My Goose. A key a Pond does not send is a part it does not serve, and the phone
+neither reads it nor offers it.
+
+The idea engine's parts (plans and what Goose makes for them, its questions, the fact sheet and
+the don't-list, captures, the specialists and the Budget ledger, intentions and the engine log)
+are specified in the Pond's own copy of this contract, `docs/architecture/my-goose-hub.md`
+(parts 0b-1, 1, 1a, 1b, 3 and 6b), and its design in `docs/architecture/idea-engine.md`. The
+phone reads them through `services/api-client.ts` and the readers in `models/anchors.ts`,
+`models/fact-sheet.ts`, `models/engine-log.ts`, `models/specialists.ts` and `models/captures.ts`.
 
 ## 0a. About you: the member's profile
 

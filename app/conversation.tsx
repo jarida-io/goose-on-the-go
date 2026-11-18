@@ -515,9 +515,10 @@ export default function ChatScreen() {
         onOffer={answerOffer}
         onReply={setReplyTo}
         onLayout={item.message.pending && item.message.role === 'assistant' ? holdReplyTop : undefined}
+        sessionId={sessionId}
       />
     ),
-    [turnSeed, unqueue, answerOffer, holdReplyTop],
+    [turnSeed, unqueue, answerOffer, holdReplyTop, sessionId],
   );
 
   const started = messages.length > 0 || queued.length > 0;

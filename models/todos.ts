@@ -3,7 +3,7 @@
 // and its spec as sent, so editing the to-do never drops it.
 
 import type { TranslationKey } from '@/services/i18n';
-import type { HookSourceKindWire, HookWriteWire, RepeatEveryWire, TodoWriteWire } from '@/services/types';
+import type { GooseCanWire, HookSourceKindWire, HookWriteWire, RepeatEveryWire, TodoPriorityWire, TodoStepWire, TodoWriteWire } from '@/services/types';
 
 import { count, list, oneOf, readAll, record, strings, text, textOrNull, time, type Raw } from './me-read';
 
@@ -12,6 +12,15 @@ export type TodoState = 'open' | 'done' | 'dropped';
 export type TodoSource = 'you' | 'chat' | 'goose' | 'idea';
 export type RepeatEvery = RepeatEveryWire;
 export type Transition = 'arrive' | 'leave';
+export type TodoPriority = TodoPriorityWire;
+export type TodoStep = TodoStepWire;
+export type GooseCan = GooseCanWire;
+
+export const PRIORITIES: readonly TodoPriority[] = ['low', 'normal', 'high'];
+/** The Pond's caps on a to-do's list name and steps. */
+export const MAX_LIST_CHARS = 40;
+export const MAX_STEPS = 12;
+export const MAX_STEP_CHARS = 120;
 
 export const REPEATS: readonly RepeatEvery[] = ['day', 'weekday', 'week', 'month'];
 
@@ -48,9 +57,34 @@ export interface Todo {
   snoozedUntil: string | null;
   createdAt: string | null;
   doneAt: string | null;
+  list: string | null;
+  priority: TodoPriority;
+  steps: TodoStep[];
+  /** Something Goose offers to do for it: the button's words and what it asks Goose. */
+  gooseCan: GooseCan | null;
+  /** The plan it belongs to. */
+  anchorId: string | null;
+  /** On an add the Pond answered with a to-do already open under the same words: that one's id. */
+  duplicateOf: string | null;
 }
 
 const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function readSteps(raw: unknown): TodoStep[] {
+  return list(raw).flatMap((s) => {
+    const r = record(s);
+    const words = text(r?.text);
+    return words ? [{ text: words, done: r?.done === true }] : [];
+  });
+}
+
+function readGooseCan(raw: unknown): GooseCan | null {
+  const r = record(raw);
+  const label = text(r?.label);
+  const prompt = text(r?.prompt);
+  const kind = (['research', 'chat', 'watch'] as const).find((k) => k === r?.kind);
+  return label && prompt && kind ? { label, kind, prompt } : null;
+}
 
 function readSpec(kind: string, raw: unknown): HookSpec | null {
   const s = record(raw) ?? {};
@@ -119,6 +153,12 @@ export function readTodo(raw: unknown): Todo | null {
     snoozedUntil: time(r.snoozed_until),
     createdAt: time(r.created_at),
     doneAt: time(r.done_at),
+    list: textOrNull(r.list),
+    priority: oneOf(r.priority, PRIORITIES, 'normal'),
+    steps: readSteps(r.steps),
+    gooseCan: readGooseCan(r.goose_can),
+    anchorId: textOrNull(r.anchor_id),
+    duplicateOf: textOrNull(r.duplicate_of),
   };
 }
 
@@ -152,6 +192,18 @@ export interface TodoDraft {
   dueAt: string | null;
   ask: boolean;
   hooks: Hook[];
+  list: string;
+  priority: TodoPriority;
+  steps: TodoStep[];
+  anchorId: string | null;
+}
+
+/** Steps the Pond will take: worded, at most twelve, each within its length. */
+export function cleanSteps(steps: readonly TodoStep[]): TodoStep[] {
+  return steps
+    .map((s) => ({ text: s.text.trim().slice(0, MAX_STEP_CHARS), done: s.done }))
+    .filter((s) => s.text)
+    .slice(0, MAX_STEPS);
 }
 
 export function todoWrite(draft: TodoDraft): TodoWriteWire {
@@ -162,13 +214,44 @@ export function todoWrite(draft: TodoDraft): TodoWriteWire {
     due_at: draft.dueAt,
     ask: draft.ask,
     hooks: draft.hooks.map(hookWrite),
+    list: draft.list.trim().slice(0, MAX_LIST_CHARS) || null,
+    priority: draft.priority,
+    steps: cleanSteps(draft.steps),
+    anchor_id: draft.anchorId,
   };
 }
 
 export function draftOf(todo: Todo | null, kind: TodoKind = 'todo'): TodoDraft {
   return todo
-    ? { kind: todo.kind, text: todo.text, notes: todo.notes ?? '', dueAt: todo.dueAt, ask: todo.ask, hooks: todo.hooks }
-    : { kind, text: '', notes: '', dueAt: null, ask: kind === 'todo', hooks: [] };
+    ? {
+        kind: todo.kind,
+        text: todo.text,
+        notes: todo.notes ?? '',
+        dueAt: todo.dueAt,
+        ask: todo.ask,
+        hooks: todo.hooks,
+        list: todo.list ?? '',
+        priority: todo.priority,
+        steps: todo.steps,
+        anchorId: todo.anchorId,
+      }
+    : { kind, text: '', notes: '', dueAt: null, ask: kind === 'todo', hooks: [], list: '', priority: 'normal', steps: [], anchorId: null };
+}
+
+/** The whole step list with one step ticked or unticked: the Pond takes steps only whole. */
+export function tickStep(steps: readonly TodoStep[], index: number, done: boolean): TodoStep[] {
+  return steps.map((s, i) => (i === index ? { ...s, done } : s));
+}
+
+export function priorityKey(priority: TodoPriority): TranslationKey {
+  switch (priority) {
+    case 'low':
+      return 'goose.todo.priority.low';
+    case 'normal':
+      return 'goose.todo.priority.normal';
+    case 'high':
+      return 'goose.todo.priority.high';
+  }
 }
 
 /**

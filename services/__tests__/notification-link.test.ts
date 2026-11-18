@@ -224,3 +224,11 @@ describe('a phone asking to pair', () => {
     expect(openRouteFromData({ open: 'devices' })).toEqual({ open: 'devices' });
   });
 });
+
+describe('an idea card notice', () => {
+  it('opens the cards under either spelling, and ignores any id it carries', () => {
+    expect(openRouteFromData({ open: 'idea_cards' })).toEqual({ open: 'idea_cards' });
+    expect(openRouteFromData({ open: 'cards', card_id: '../x' })).toEqual({ open: 'idea_cards' });
+    expect(screenPath({ open: 'idea_cards' })).toBe('/(stack)/goose-cards');
+  });
+});

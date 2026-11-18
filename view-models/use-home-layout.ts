@@ -11,7 +11,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { moveTo, stepAmong } from '@/components/patterns/widget-layout';
 import { Storage } from '@/services/storage';
 
-export const HOME_WIDGETS = ['ideas', 'ask', 'music', 'next', 'outside', 'remember', 'conversations', 'devices'] as const;
+// What Goose finished and the plans it offers lead: they are what waits on the member.
+export const HOME_WIDGETS = ['ready', 'plans', 'ideas', 'ask', 'music', 'next', 'outside', 'remember', 'conversations', 'devices'] as const;
 export type HomeWidgetKey = (typeof HOME_WIDGETS)[number];
 
 function isWidget(key: unknown): key is HomeWidgetKey {

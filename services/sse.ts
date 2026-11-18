@@ -94,12 +94,13 @@ export class StreamStalledError extends Error {
  * long answer or waits forever on a dead one. What actually marks a dead stream
  * is silence, so the clock restarts on every chunk — keep-alive comments
  * included — and only a gap longer than `idleMs` ends it, with a
- * `StreamStalledError` so the caller can tell a drop from a finish.
+ * `StreamStalledError` so the caller can tell a drop from a finish. A function
+ * for `idleMs` is asked again after each chunk, so what a frame says can widen it.
  */
 export async function readSse(
   response: Response,
   onEvent: (event: SseEvent) => void,
-  options: { idleMs?: number; onIdle?: () => void } = {},
+  options: { idleMs?: number | (() => number); onIdle?: () => void } = {},
 ): Promise<void> {
   const body = response.body;
   if (!body) {
@@ -113,12 +114,14 @@ export async function readSse(
   const reader = body.getReader();
   const decoder = new TextDecoder();
   const parser = createSseParser(onEvent);
-  const idleMs = options.idleMs;
+  const idleOf = () => (typeof options.idleMs === 'function' ? options.idleMs() : options.idleMs);
+  let idleMs = idleOf();
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stalled = false;
   const arm = () => {
-    if (!idleMs) return;
+    idleMs = idleOf();
     if (timer) clearTimeout(timer);
+    if (!idleMs) return;
     timer = setTimeout(() => {
       stalled = true;
       options.onIdle?.();
@@ -131,8 +134,8 @@ export async function readSse(
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      arm();
       parser.push(decoder.decode(value, { stream: true }));
+      arm();
     }
     parser.push(decoder.decode());
     parser.end();

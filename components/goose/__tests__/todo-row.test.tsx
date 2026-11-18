@@ -29,6 +29,12 @@ const todo: Todo = {
   snoozedUntil: null,
   createdAt: '2026-11-11T09:00:00Z',
   doneAt: null,
+  list: null,
+  priority: 'normal',
+  steps: [],
+  gooseCan: null,
+  anchorId: null,
+  duplicateOf: null,
 };
 
 function render(row: Todo, onToggle: () => Promise<unknown>) {

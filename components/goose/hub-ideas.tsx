@@ -13,6 +13,7 @@ import { ContentUnavailable } from '@/components/patterns/content-unavailable';
 import { isUnavailable } from '@/models/content-state';
 import { shownIdeas } from '@/models/ideas';
 import { useContentState } from '@/view-models/use-content-state';
+import { useHub } from '@/view-models/use-hub';
 import { useIdeas } from '@/view-models/use-ideas';
 import { usePullToRefresh } from '@/view-models/use-pull-to-refresh';
 import { ScreenScroll, SectionHead } from './hub-parts';
@@ -23,6 +24,8 @@ export function HubIdeas() {
   const { t } = useTranslation();
   const router = useRouter();
   const ideas = useIdeas();
+  // A Pond that makes plans instead writes no new ideas, so asking it to think again would do nothing.
+  const engine = useHub().hub?.anchors === true;
   const pull = usePullToRefresh(ideas.reload);
   const shown = shownIdeas(ideas.data.ideas);
   const thinking = ideas.data.state === 'thinking';
@@ -37,14 +40,18 @@ export function HubIdeas() {
           icon="light"
           title={thinking ? t('goose.ideas.thinking') : t('goose.ideas.emptyTitle')}
           action={
-            thinking ? null : (
+            thinking ? null : engine ? (
+              <InkButton variant="primary" icon="calendar" onPress={() => router.push('/(stack)/goose-plans')}>
+                {t('goose.ideas.seePlans')}
+              </InkButton>
+            ) : (
               <InkButton variant="primary" icon="sparkle" onPress={() => void ideas.actions.thinkAgain()}>
                 {t('goose.ideas.thinkAgain')}
               </InkButton>
             )
           }
         >
-          <InkText tone="secondary">{t('goose.ideas.emptyBody')}</InkText>
+          <InkText tone="secondary">{engine ? t('goose.ideas.emptyEngine') : t('goose.ideas.emptyBody')}</InkText>
         </InkEmptyState>
       ) : null}
       {shown.length ? (
@@ -54,7 +61,7 @@ export function HubIdeas() {
           ))}
         </InsetGroup>
       ) : null}
-      {shown.length && !thinking ? (
+      {shown.length && !thinking && !engine ? (
         <InkButton variant="quiet" icon="sparkle" onPress={() => void ideas.actions.thinkAgain()} style={styles.left}>
           {t('goose.ideas.thinkAgain')}
         </InkButton>

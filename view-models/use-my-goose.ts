@@ -31,6 +31,15 @@ import { useIdeas } from './use-ideas';
 import { useInterests } from './use-interests';
 import { useNews } from './use-news';
 import { useTodos } from './use-todos';
+import { EMPTY_CAPTURES, type Captures } from '@/models/captures';
+import { EMPTY_SHEET, type FactSheet } from '@/models/fact-sheet';
+import { api } from '@/services/api-client';
+import { useHubRead } from './hub-read';
+import { useAnchors } from './use-anchors';
+import { CAPTURES_MS } from './use-captures';
+import { FACTS_MS } from './use-fact-sheet';
+import { useQuestions } from './use-questions';
+import { useSpecialists } from './use-specialists';
 
 /** Agents the Pond could run for this household, and saying yes or no to one. */
 export function useAgentIdeas() {
@@ -191,6 +200,11 @@ export function useMyGooseHub(hub: MeHub) {
   const connectors = useConnectors(hub.connectors);
   const catalog = useCatalog(hub.catalog);
   const watches = useWebWatches();
+  const anchors = useAnchors(hub.anchors);
+  const questions = useQuestions(undefined, hub.questions);
+  const specialists = useSpecialists(hub.agents);
+  const facts = useHubRead<FactSheet>('facts', () => api.facts(), EMPTY_SHEET, FACTS_MS, hub.facts);
+  const captures = useHubRead<Captures>('captures', () => api.captures(), EMPTY_CAPTURES, CAPTURES_MS, hub.captures);
 
   const now = new Date();
   const moved = cart.data.find((i) => atTarget(i)) ?? cart.data.find((i) => priceMove(i)?.direction === 'down') ?? null;
@@ -219,6 +233,11 @@ export function useMyGooseHub(hub: MeHub) {
   const { reload: reloadConnectors } = connectors.actions;
   const { reload: reloadCatalog } = catalog;
   const { refresh: reloadWatches } = watches.actions;
+  const { reload: reloadAnchors } = anchors;
+  const { reload: reloadQuestions } = questions;
+  const { reload: reloadSpecialists } = specialists;
+  const { reload: reloadFacts } = facts;
+  const { reload: reloadCaptures } = captures;
   const reload = useCallback(async () => {
     await Promise.all([
       hub.news ? reloadNews() : null,
@@ -228,13 +247,53 @@ export function useMyGooseHub(hub: MeHub) {
       hub.interests ? reloadInterests() : null,
       hub.connectors ? reloadConnectors() : null,
       hub.catalog ? reloadCatalog() : null,
+      hub.anchors ? reloadAnchors() : null,
+      hub.questions ? reloadQuestions() : null,
+      hub.agents ? reloadSpecialists() : null,
+      hub.facts ? reloadFacts() : null,
+      hub.captures ? reloadCaptures() : null,
       reloadWatches(),
     ]);
-  }, [hub, reloadNews, reloadTodos, reloadCart, reloadIdeas, reloadInterests, reloadConnectors, reloadCatalog, reloadWatches]);
+  }, [
+    hub,
+    reloadNews,
+    reloadTodos,
+    reloadCart,
+    reloadIdeas,
+    reloadInterests,
+    reloadConnectors,
+    reloadCatalog,
+    reloadAnchors,
+    reloadQuestions,
+    reloadSpecialists,
+    reloadFacts,
+    reloadCaptures,
+    reloadWatches,
+  ]);
 
   const loading = (hub.news && news.loading) || (hub.todos && todos.loading) || (hub.interests && interests.loading);
 
-  return { hub, clauses, newMember, loading, news, todos, cart, ideas, interests, connectors, catalog, watches, reload };
+  return {
+    hub,
+    clauses,
+    newMember,
+    loading,
+    news,
+    todos,
+    cart,
+    ideas,
+    interests,
+    connectors,
+    catalog,
+    watches,
+    anchors,
+    questions,
+    specialists,
+    /** How many lines the fact sheet holds, for its row; null until read. */
+    factCount: facts.loading || facts.failed ? null : facts.data.facts.length,
+    captures: captures.data,
+    reload,
+  };
 }
 
 export type UseMyGooseHub = ReturnType<typeof useMyGooseHub>;

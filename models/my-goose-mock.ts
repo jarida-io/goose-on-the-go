@@ -312,6 +312,12 @@ function todo(id: string, text: string, rest: Partial<Todo>): Todo {
     snoozedUntil: null,
     createdAt: null,
     doneAt: null,
+    list: null,
+    priority: 'normal',
+    steps: [],
+    gooseCan: null,
+    anchorId: null,
+    duplicateOf: null,
     ...rest,
   };
 }
@@ -735,6 +741,11 @@ export function createMockHub({ fresh = false, clock = Date.now }: MockHubOption
     ...(body.due_at !== undefined ? { dueAt: body.due_at } : {}),
     ...(body.ask !== undefined ? { ask: body.ask } : {}),
     ...(body.state ? { state: body.state, doneAt: body.state === 'done' ? iso(clock()) : null } : {}),
+    ...(body.list !== undefined ? { list: body.list || null } : {}),
+    ...(body.priority ? { priority: body.priority } : {}),
+    ...(body.steps ? { steps: body.steps } : {}),
+    ...(body.goose_can !== undefined ? { gooseCan: body.goose_can } : {}),
+    ...(body.anchor_id !== undefined ? { anchorId: body.anchor_id } : {}),
     ...(body.hooks
       ? {
           hooks: body.hooks.map((h, i) => {
@@ -772,7 +783,30 @@ export function createMockHub({ fresh = false, clock = Date.now }: MockHubOption
   return {
     async hub() {
       await delay();
-      return { version: 1, interests: true, news: true, todos: true, cart: true, connectors: true, ideas: true, catalog: true, about: false, interview: false, screenshots: false, activity: false, cards: [] };
+      return {
+        version: 1,
+        interests: true,
+        news: true,
+        todos: true,
+        cart: true,
+        connectors: true,
+        ideas: true,
+        catalog: true,
+        about: false,
+        interview: false,
+        screenshots: false,
+        activity: false,
+        anchors: false,
+        facts: false,
+        questions: false,
+        captures: false,
+        agents: false,
+        ledger: false,
+        intentions: false,
+        engine_log: false,
+        cards: [],
+        ideaCards: false,
+      };
     },
     async interests() {
       await delay();

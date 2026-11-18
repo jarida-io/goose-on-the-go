@@ -18,6 +18,7 @@ import {
   replaceHook,
   readTodoOffers,
   readTodos,
+  tickStep,
   todoWrite,
   type Hook,
 } from '@/models/todos';
@@ -93,7 +94,42 @@ describe('reading a to-do', () => {
         { kind: 'place', spec: { place_id: 'p-office', transition: 'leave' } },
         { kind: 'time', spec: { at: '2026-11-10T15:00:00Z' } },
       ],
+      list: null,
+      priority: 'normal',
+      steps: [],
+      anchor_id: null,
     });
+  });
+
+  it('reads its list, priority, steps, what Goose can do and its plan, and the one it duplicates', () => {
+    const read = readTodo({
+      ...todo,
+      list: 'Work',
+      priority: 'high',
+      steps: [{ text: 'Draft', done: true }, { text: '' }, { text: 'Send', done: 'yes' }],
+      goose_can: { label: 'Find the deck', kind: 'research', prompt: 'Find last quarter’s deck' },
+      anchor_id: 'a-1',
+      duplicate_of: 't-1',
+    });
+    expect(read).toMatchObject({
+      list: 'Work',
+      priority: 'high',
+      steps: [{ text: 'Draft', done: true }, { text: 'Send', done: false }],
+      gooseCan: { label: 'Find the deck', kind: 'research', prompt: 'Find last quarter’s deck' },
+      anchorId: 'a-1',
+      duplicateOf: 't-1',
+    });
+    expect(readTodo({ ...todo, priority: 'urgent', goose_can: { label: 'x', kind: 'spend', prompt: 'y' } })).toMatchObject({ priority: 'normal', gooseCan: null, duplicateOf: null });
+  });
+
+  it('writes the steps whole, worded and within the Pond’s caps, and ticks one by sending them all', () => {
+    const draft = { ...draftOf(null), text: 'Pack', list: '  Trip  ', steps: [...Array.from({ length: 13 }, (_, i) => ({ text: `Step ${i + 1}`, done: false })), { text: ' ', done: false }] };
+    const body = todoWrite(draft);
+    expect(body.list).toBe('Trip');
+    expect(body.steps).toHaveLength(12);
+    const steps = [{ text: 'Passport', done: false }, { text: 'Charger', done: false }];
+    expect(tickStep(steps, 1, true)).toEqual([{ text: 'Passport', done: false }, { text: 'Charger', done: true }]);
+    expect(steps[1].done).toBe(false);
   });
 });
 

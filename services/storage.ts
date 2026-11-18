@@ -75,6 +75,8 @@ const FAMILIES = {
   setupChecklist: '@goose/setup-checklist/',
   /** Home's offer of the setup interview, put away, by member: Assistant notes still offers it. */
   interviewOffer: '@goose/interview-offer/',
+  /** Which library pictures were sent to a Pond, by Pond address, so none is sent twice. Ids only. */
+  captureSync: '@goose/capture-sync/',
 } as const;
 
 type StorageFamily = keyof typeof FAMILIES;

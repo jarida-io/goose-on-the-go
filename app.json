@@ -122,9 +122,20 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Goose On The Go opens your photos so you can choose pictures to send to Goose.",
+          "photosPermission": "Goose On The Go reads your photos to send Goose the pictures you choose, your new screenshots, and new photos in the albums you pick, so Goose can read what they show. They go to your own Pond, nowhere else, and you can turn this off in My Goose.",
           "cameraPermission": "Goose On The Go uses your camera to scan QR codes, such as your Pond's pairing code and the setup code on a device you are adding, and to take photos you choose to send to Goose.",
           "microphonePermission": "Goose On The Go uses the microphone when you talk to Goose. What you say goes to your own Pond, nowhere else."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Goose On The Go reads your photos to send Goose the pictures you choose, your new screenshots, and new photos in the albums you pick, so Goose can read what they show. They go to your own Pond, nowhere else, and you can turn this off in My Goose.",
+          "savePhotosPermission": false,
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": [
+            "photo"
+          ]
         }
       ],
       [

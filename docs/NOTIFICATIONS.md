@@ -75,6 +75,19 @@ reply notice uses. Before opening it, the tap asks the Pond for that conversatio
 instead, and any other failure opens the conversation, which says itself why it cannot load. A
 missing or malformed id opens the chat tab, as every `chat` hint did before 2026-11-04.
 
+The idea engine's notices name three more screens: `deliverable` (`deliverable_id`, a piece of
+work that is ready or changed) opens `/(stack)/goose-deliverable`; `anchor` (`anchor_id`, the
+heartbeat's heads-up about a plan) opens `/(stack)/goose-anchor`; `questions` (`batch_id`,
+optional `anchor_id`) opens `/(stack)/goose-questions` with that batch. An id of the wrong shape
+is dropped and the plans list, or every open question, opens instead.
+
+Some notices are answered from their own buttons without opening the app (`services/todo-prompts.ts`):
+a to-do check-in (Done, Not yet), an offer from a chat (Add, No), and a specialist offer
+(`action: "agent_offer"`, `agent: "budget"`), whose Turn on button sends
+`PUT /me/agents/budget {on: true}`. Each button is sent once however often the press is
+delivered, and the notice leaves the shade once answered. Tapped rather than answered, a
+specialist offer opens the specialists screen.
+
 ## Push wake-up
 
 The Pond sends FCM a **data-only** message at high priority, `{ notification_id, category,

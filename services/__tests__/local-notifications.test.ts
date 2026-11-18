@@ -102,6 +102,22 @@ describe('openTapped', () => {
     expect(mockPush.mock.calls).toEqual([['/(stack)/pond']]);
   });
 
+  it('opens a ready piece of work, a plan, and the questions a notice names', () => {
+    tap({ id: 'd', open: 'deliverable', deliverable_id: 'del-1' });
+    tap({ id: 'a', open: 'anchor', anchor_id: 'anc-1' });
+    tap({ id: 'q', open: 'questions', batch_id: 'b-1', anchor_id: 'anc-1' });
+    expect(mockPush.mock.calls).toEqual([
+      [{ pathname: '/(stack)/goose-deliverable', params: { id: 'del-1' } }],
+      [{ pathname: '/(stack)/goose-anchor', params: { id: 'anc-1' } }],
+      [{ pathname: '/(stack)/goose-questions', params: { batch: 'b-1', anchor: 'anc-1' } }],
+    ]);
+  });
+
+  it('opens the specialists for a Budget offer tapped rather than answered', () => {
+    tap({ id: 'o', action: 'agent_offer', agent: 'budget', label: 'Turn on' });
+    expect(mockPush.mock.calls).toEqual([['/(stack)/goose-specialists']]);
+  });
+
   it('opens nothing for a screen outside the allow-list, or no hint at all', () => {
     tap({ open: '/(stack)/developer' });
     tap({ open: 'storage' });
@@ -275,6 +291,33 @@ describe('presentLocally', () => {
       schedule_id: 'sched-1',
     });
   });
+  it('keeps the ids the idea engine’s notices open, and the Budget offer with its Turn on button', async () => {
+    mockSchedule.mockClear();
+    await presentLocally({
+      id: 'n-q',
+      target: 'broadcast',
+      category: 'action_required',
+      title: 'Questions about Diani trip',
+      body: '',
+      timestamp: '2026-11-17T08:00:00Z',
+      data: { open: 'questions', batch_id: 'b-1', anchor_id: 'a/b' },
+    });
+    await presentLocally({
+      id: 'n-b',
+      target: 'broadcast',
+      category: 'action_required',
+      title: 'Keep a record of what you spend?',
+      body: 'You have sent three pictures of receipts.',
+      timestamp: '2026-11-17T08:00:00Z',
+      data: { action: 'agent_offer', agent: 'budget', label: 'Turn on' },
+    });
+    expect(mockSchedule.mock.calls[0][0].content.data).toEqual({ id: 'n-q', category: 'action_required', open: 'questions', batch_id: 'b-1' });
+    expect(mockSchedule.mock.calls[1][0].content).toMatchObject({
+      data: { id: 'n-b', category: 'action_required', action: 'agent_offer', agent: 'budget', label: 'Turn on' },
+      categoryIdentifier: 'agent_offer',
+    });
+  });
+
   it('keeps the conversation a reply notice opens, under the run it reports on', async () => {
     await presentLocally({
       id: 'reply-r1',

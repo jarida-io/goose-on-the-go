@@ -44,6 +44,11 @@ import { loadReplyNoticePreference } from '@/services/reply-notices';
 import { offerHomeLocationOnce } from '@/services/home-location';
 import { showSnackbar } from '@/services/snackbar';
 import { usePondSettings, type UsePondSettings } from '@/view-models/use-pond-settings';
+import { useCaptureSync } from '@/view-models/use-capture-sync';
+import { installMediaLibraryCapture } from '@/services/media-library-capture';
+
+// Before any screen or the capture sync reads the library; installing it asks the member nothing.
+installMediaLibraryCapture();
 
 /**
  * Keep the splash up until the app can draw itself.
@@ -186,6 +191,15 @@ function PhoneWakeSync({ phrase }: { phrase: string | undefined }) {
 }
 
 /**
+ * Sends new screenshots, and new photos from the albums the member chose, when the app comes to the
+ * front, on a Pond that serves captures and in a build that can read the library. Draws nothing.
+ */
+function CaptureSync() {
+  useCaptureSync();
+  return null;
+}
+
+/**
  * Sits inside ThemeProvider so Navigation and Ink derive from the same resolved
  * scheme rather than each reading the system on its own.
  */
@@ -203,6 +217,7 @@ function ThemedApp() {
           <ConfirmProvider>
             <ConnectionStatus />
             <PondSettingsSync />
+            <CaptureSync />
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="(stack)" options={{ headerShown: false }} />

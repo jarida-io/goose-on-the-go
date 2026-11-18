@@ -28,8 +28,8 @@ import { api, ApiError } from './api-client';
 import i18n from './i18n';
 import { markdownToPlain } from './markdown';
 
-import { linkFromData, openRouteFromData, rideOfferFromData, screenPath, todoPromptFromData, type OpenRoute } from './notification-link';
-import { answerFrom, categoryFor, handleTodoResponse, promptData, registerTodoCategories } from './todo-prompts';
+import { linkFromData, openRouteFromData, rideOfferFromData, screenPath, type OpenRoute } from './notification-link';
+import { answerFrom, categoryFor, handleTodoResponse, promptData, promptFromData, registerTodoCategories, type Prompt } from './todo-prompts';
 import type { ServerNotification } from './notification-stream';
 import { noteWakeTap, watchWakeTaps } from './wake-alert';
 import { wakePingOfNotification } from './wake-ping';
@@ -261,6 +261,11 @@ function openData(data: unknown): Record<string, unknown> {
     return { open: route.open, ...(route.storyId ? { story_id: route.storyId } : {}), ...(route.digestId ? { digest_id: route.digestId } : {}) };
   }
   if (route.open === 'cart') return { open: route.open, ...(route.cartId ? { cart_id: route.cartId } : {}) };
+  if (route.open === 'anchor') return { open: route.open, ...(route.anchorId ? { anchor_id: route.anchorId } : {}) };
+  if (route.open === 'deliverable') return { open: route.open, ...(route.deliverableId ? { deliverable_id: route.deliverableId } : {}) };
+  if (route.open === 'questions') {
+    return { open: route.open, ...(route.batchId ? { batch_id: route.batchId } : {}), ...(route.anchorId ? { anchor_id: route.anchorId } : {}) };
+  }
   if (route.open !== 'schedule') return { open: route.open };
   return {
     open: route.open,
@@ -303,7 +308,7 @@ function openFromData(data: unknown): void {
   }
   // A question tapped rather than answered opens where it is answered in full: an offer of a
   // reminder from a conversation on Reminders, where the offers are listed, a check-in on the to-dos.
-  const route = openRouteFromData(data) ?? promptRoute(todoPromptFromData(data));
+  const route = openRouteFromData(data) ?? promptRoute(promptFromData(data));
   if (!route) return;
   if (route.open !== 'conversation') {
     const href = screenPath(route);
@@ -349,9 +354,10 @@ function openTapped(Notifications: NotificationsModule, response: NotificationRe
   openFromData(data);
 }
 
-/** Where a tapped question about a to-do opens; null for a notice that asks none. */
-function promptRoute(prompt: ReturnType<typeof todoPromptFromData>): OpenRoute | null {
+/** Where a tapped question opens: the to-dos, the offers from chats, or the specialists; null for a notice that asks none. */
+function promptRoute(prompt: Prompt | null): OpenRoute | null {
   if (!prompt) return null;
+  if (prompt.action === 'agent_offer') return { open: 'specialists' };
   return prompt.action === 'todo_offer' ? { open: 'reminders' } : { open: 'todos' };
 }
 

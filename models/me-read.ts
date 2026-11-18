@@ -11,6 +11,12 @@ export function text(raw: unknown): string {
   return typeof raw === 'string' ? raw.trim() : '';
 }
 
+/** An id from a route's params: only the shape the Pond issues, never anything that could be a path. */
+export function routeId(param: string | string[] | undefined): string {
+  const id = Array.isArray(param) ? param[0] : param;
+  return id && /^[A-Za-z0-9_-]{1,128}$/.test(id) ? id : '';
+}
+
 /** A string with something in it, or null. */
 export function textOrNull(raw: unknown): string | null {
   return text(raw) || null;

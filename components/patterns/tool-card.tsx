@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import * as WebBrowser from 'expo-web-browser';
 import { InkEdge, InkEyebrow, inkText, useInkTheme } from '@/components/ui/ink';
 
+import { AskCard } from '@/components/patterns/ask-card';
 import { LongTaskCard } from '@/components/patterns/long-task-card';
 import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
@@ -37,6 +38,7 @@ import {
 } from '@/constants/tools';
 import type { ToolCall } from '@/models/chat';
 import { startedTaskId } from '@/models/long-tasks';
+import { isAskTool, readAskInput } from '@/models/questions';
 import {
   conditionIcon,
   dayLabel,
@@ -453,23 +455,33 @@ function ResultPanel({ tool }: { tool: ToolCall }) {
   );
 }
 
-/** The tools a reply folds into the chip under it: all but those that draw a fact or follow a task. */
+/** A call Goose asked the member through, which draws its own card. */
+function asks(tool: ToolCall): boolean {
+  return isAskTool(tool.name) && readAskInput(tool.args).length > 0;
+}
+
+/** The tools a reply folds into the chip under it: all but those that draw a fact, follow a task or ask. */
 export function foldedTools(tools: ToolCall[]): ToolCall[] {
-  return tools.filter((tool) => !hasFact(tool) && !startedTaskId(tool));
+  return tools.filter((tool) => !hasFact(tool) && !startedTaskId(tool) && !asks(tool));
 }
 
 /**
- * What under an answer is drawn in place, most useful first: a long task the turn started, followed
- * live, then the facts its tools drew. The rest is in the chip; the steps are at the reply's top.
+ * What under an answer is drawn in place, most useful first: Goose's questions, which the turn waits
+ * on, a long task the turn started, followed live, then the facts its tools drew. The rest is in the
+ * chip; the steps are at the reply's top.
  */
-export const ToolTrail = React.memo(function ToolTrail({ tools }: { tools: ToolCall[]; done?: boolean }) {
+export const ToolTrail = React.memo(function ToolTrail({ tools, sessionId = null }: { tools: ToolCall[]; done?: boolean; sessionId?: string | null }) {
   const tasks = tools.flatMap((tool) => {
     const taskId = startedTaskId(tool);
     return taskId ? [{ call: tool.id, taskId }] : [];
   });
-  if (tasks.length === 0 && !tools.some(hasFact)) return null;
+  const asked = tools.filter(asks);
+  if (tasks.length === 0 && asked.length === 0 && !tools.some(hasFact)) return null;
   return (
     <View style={styles.trail}>
+      {asked.map((call) => (
+        <AskCard key={call.id} call={call} sessionId={sessionId} />
+      ))}
       {tasks.map((task) => (
         <LongTaskCard key={task.call} taskId={task.taskId} callId={task.call} />
       ))}

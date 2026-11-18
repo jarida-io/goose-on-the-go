@@ -18,6 +18,7 @@ import { AppState } from 'react-native';
 
 import type { CardHint, Message, ToolCall } from '@/models/chat';
 import { readReceipt, withReceipt } from '@/models/message-note';
+import { isAskTool } from '@/models/questions';
 
 import { ApiError, api } from './api-client';
 import { rememberCard } from './card-cache';
@@ -39,6 +40,21 @@ export function isDrop(e: unknown): boolean {
   if (e instanceof StreamStalledError) return true;
   if (e instanceof ApiError) return false;
   return e instanceof TypeError || (e instanceof Error && /network|connection|socket/i.test(e.message));
+}
+
+/** The `ask` calls a reply is still waiting on, so a reattached stream that resumes past them knows. */
+export function waitingAsks(reply: Message): ReadonlySet<string> {
+  return new Set((reply.tools ?? []).filter((t) => t.status === 'running' && isAskTool(t.name)).map((t) => t.id));
+}
+
+/**
+ * Whether a frame says a typed message was taken as the answer to a waiting question batch, and
+ * which: the batch's id, or null where only the `done` frame said so. Undefined otherwise.
+ */
+export function questionAnswered(frame: ChatFrame): string | null | undefined {
+  if (frame.type === 'question_answered') return frame.batch_id?.trim() || null;
+  if (frame.done === true && frame.question_answered === true) return null;
+  return undefined;
 }
 
 /** The card a tool result asks to be drawn as, when it asks. */
@@ -438,7 +454,8 @@ export class ChatRuns {
         await this.deps.sleep(wait);
         if (signal.aborted) break;
         try {
-          await this.deps.api.reattachRun(held.runId, held.seq, held.epoch, onFrame, signal);
+          const asks = waitingAsks(held.view.reply);
+          await this.deps.api.reattachRun(held.runId, held.seq, held.epoch, onFrame, signal, ...(asks.size > 0 ? [asks] : []));
           lost = !held.done && !held.failed;
         } catch (e) {
           // 404 is a run finished long enough ago to be forgotten; 410, a Pond that restarted.

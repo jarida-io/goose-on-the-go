@@ -1,179 +1,96 @@
-# Home — carrying the Pond's ideas, and reading denser
+# Home: what Goose finished for you, then the house
 
-Status: **proposal**, written 2026-10-31, and built in #214. Two constraints below were wrong
-when first written and are corrected in place: today's counts need no change to the Developer
-toggle, and the fixed starters do not belong on Home.
+Home answers two questions in order: does Goose have anything for me, and what is happening at
+home. Since the Pond's idea engine (the Pond's `docs/architecture/idea-engine.md`), the first
+answer is no longer composed chips or ideas from a background job. It is finished work Goose made
+for the real things in the member's life (a trip, an event, a purchase, a project), the plans it
+offers to follow, and the few questions it needs answered.
 
-The question it answers: can Home carry the ideas the Pond already composes, and say more per
-screenful, without the household learning anything new and without a new dependency.
+Verify before you reuse any of this: grep the symbol, the line numbers drift.
 
-The short answer is that almost none of this needs new phone capability. The Pond composes four
-kinds of idea today, and Home shows none of them — they sit one or two taps away, behind the You
-tab. What Home needs is to surface them and to stop spending a whole row on two facts.
+## 1. What is on the screen
 
-Verify before you reuse any of this: grep the symbol, the line numbers below will drift.
+[`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>) draws, top to bottom:
 
-## 1. What is true today
+1. **The greeting** and the avatar.
+2. **Idea cards**, then **Goose has questions**: the newest open or waiting batch of structured
+   questions (the Pond's `docs/architecture/structured-questions.md`), answered in place with the
+   card in `components/goose/question-card.tsx`: one question a page, its header chip, its options
+   with descriptions and Goose's pick first marked Recommended, the focused option's preview,
+   **Other** with a field, **Done** and **Send**. A batch asked in a chat leads back to that chat,
+   one asked for a plan to the plan. See all opens the questions screen. They sit above the board
+   because, like the idea cards, they wait on the member.
+3. **The Pond's line** (`PondSays`): reminders waiting, or "Nothing needs you right now", said only
+   once every read that asks something of the member has answered with nothing. A failed read is
+   not quiet. It is not drawn while a suggestion waits, which its own widget says.
+4. **The glance strip**: devices on, the temperature and where. A figure the Pond has not answered
+   for is left out.
+5. **The Pond card and the setup offers**: whether the Pond can be reached, getting ready, finish
+   setup, the interview, remote access. Each draws nothing once it is satisfied.
+6. **The board** (`WidgetBoard`): every widget in the order this phone's owner chose, rearranged by
+   a long press or "Edit Home". A widget with nothing true to say is left off the board. The
+   default order (`HOME_WIDGETS` in `view-models/use-home-layout.ts`):
 
-### The screen
-
-[`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>) draws, in order:
-
-1. The greeting and the avatar.
-2. A badge row: devices online, outdoor temperature. Two facts at most, and the whole row is
-   hidden while the Pond is unreachable.
-3. `PondCard` — whether the Pond can be reached.
-4. Four conditional offers: `PondGettingReady`, `AgentsGettingReady`, `FinishSetup`,
-   `RemoteAccessOffer`.
-5. **Right now** — `NowPlayingCard` and `NextRoutineCard`, and the heading is drawn only when at
-   least one of them is true.
-6. **Conversations** — three rows (`RECENT_LIMIT` in
-   [`use-recent-sessions.ts`](../view-models/use-recent-sessions.ts)), one line each, and See all.
-7. **Devices** — a grid capped at `HOME_GRID_LIMIT = 4`, and See all.
-
-The screen's own rule, in its doc comment, is the right one: *a card with nothing true to say is
-not drawn*. It is also why Home thins out. On an evening with nothing playing and no routine due,
-section 5 vanishes entirely and Home is a greeting, two chips, a status card, three lines of
-conversation and four tiles. Nothing is broken. There is simply far less on screen than the Pond
-knows, and the quiet case is the common one.
-
-### The Pond already composes ideas, and Home shows none of them
-
-| What | View-model | Where it shows today |
+| Widget | What it says | Frame |
 | --- | --- | --- |
-| Proposals, each awaiting a yes or no | [`use-proposals.ts`](../view-models/use-proposals.ts) | `/(stack)/suggestions`, via `PROFILE_NAV` |
-| Prompts worth asking | [`use-suggestions.ts`](../view-models/use-suggestions.ts) | `conversation.tsx`, and `greeting-card.tsx` which only conversation uses |
-| Reminders lifted out of conversations | [`use-reminders.ts`](../view-models/use-reminders.ts) | `/(stack)/reminders`, via `PROFILE_NAV` |
-| How much happened today | [`use-activity-summary.ts`](../view-models/use-activity-summary.ts) | the strip above the Activity list |
+| `ready` Ready for you | Unread finished work, up to three: the plan's name over the title and its one-line hook, "Goose isn't sure about this one" when its critic still objected. A tap opens the deliverable, which marks it read. | raised |
+| `plans` Shall Goose follow these? | Plans Goose offered (candidate anchors), up to two: what it is, why Goose thinks so, **Yes, follow it** and **Not now**, decided in place. | raised |
+| `ideas` From your Pond | Proposals waiting on a yes (a device change, a booking, anything that spends or sends) and an agent the Pond could run. | raised while a proposal waits |
+| `ask` Ask Goose | A field that opens a conversation, and what a new chat would offer to ask. | plain |
+| `music`, `next`, `outside`, `remember` | Now playing, the next routine, the weather, reminders lifted from chats. | accent / plain |
+| `conversations`, `devices` | The last three conversations; up to six devices. | plain |
 
-**Proposals** are the closest thing to what was asked for, and the app already calls them
-"suggestions" to the reader — the Pond's word is "proposal". A `ProposalRow` carries a `summary`,
-a `rationale` kept in its own field *so that showing the summary alone cannot pass for the reason*,
-and a formatted `expires`. `actions.decide(id, 'approve' | 'reject')` settles one. Approving runs
-nothing: `ProposalDecisionResult.executed` is always false, so a yes stages work rather than
-firing it — which is what makes a yes safe to offer on Home.
+The first two, the idea cards and the questions come from `useHomeEngine` (`view-models/use-home-engine.ts`), which reads
+`GET /me/anchors` and `GET /me/questions` only when `GET /me/hub` says the Pond serves `anchors`
+and `questions`. An older Pond's Home is the board it always was, without them.
 
-**Ask-prompts** are a different thing that needs no decision: `OfferedPrompt` is
-`{ id, prompt, composed }`, the Pond composes them from its memories while idle, and it answers up
-to four. When it has none, or cannot be reached, the rule the desktop set and this app follows is
-to keep the fixed starters on screen — a row of chips that empties reads as broken.
+`ready` is `readyWork` in `models/anchors.ts`: deliverables that are `ready` or `unsure` and
+`unseen`, of the member's own anchors that are active or offered. A shared anchor's work shows on
+its owner's Home, not on the member it is shared with. `plans` is `candidates`: anchors in state
+`candidate` that the member owns.
 
-**Reminders** are final once dismissed; the Pond has no route that brings one back, which is why
-their screen asks first.
+A saved order from before these widgets existed keeps its arrangement and gains the two at its
+head, because `mergeOrder` puts a new widget after the one it follows by default; one saved while
+the questions were a widget drops them, since they are no longer on the board.
 
-**Today's counts** are `ActivitySummary` — `{ window, since, total, by_category }` over
-`EventCategory` (`agent`, `tool`, `inference`, `sensor`, `camera`, `device`, `auth`, `network`,
-`system`).
+## 2. Where each part leads
 
-## 2. The design
+| From | To |
+| --- | --- |
+| A ready card | `/(stack)/goose-deliverable`: the document, facts at a glance, sources, what changed, the critic's objections when unsure, Make it again, Share the file, Not for me. |
+| An offered plan's words | `/(stack)/goose-anchor`: facts, what Goose made, the running job's steps, its questions, sharing and Stop. |
+| More ready, more offers | `/(stack)/goose-plans`: offers, the plans the member follows, the ones shared with them, and Add a plan. |
+| See all questions | `/(stack)/goose-questions`, every open and waiting batch. |
+| Open the chat, on a chat batch | `/conversation` with that session. |
 
-Order on screen, with what each part does when it has nothing to say.
-
-### (a) Greeting — unchanged
-
-### (b) A glance strip, in place of the two chips
-
-Three or four figures across one row, each a number and its noun: devices on, the temperature with
-its location, what the household asked today. A figure the Pond has not answered for is left out
-rather than shown as a dash; the strip hides only when every figure is missing.
-
-This is where the density actually comes from. The current row can carry two facts and often
-carries one.
-
-### (c) Pond card and the setup offers — unchanged
-
-They are about whether the app works at all, and they already draw nothing once they are satisfied.
-
-### (d) Ideas from your Pond — the new section
-
-At most **two** proposal cards, each the summary, the rationale beneath it, and two buttons:
-**Yes** and **Not now**, deciding in place exactly as `/(stack)/suggestions` does. A count beside
-the heading, and See all into that screen when there are more.
-
-Ask Goose is its own widget: a header, a field to tap that opens `/conversation`, and under
-"Try asking" up to three ask-prompts as rows held to two lines. Tapping one opens `/conversation` with the
-prompt as the first message, and tells the Pond it was taken so it stops offering it.
-
-When there are no ask-prompts, Ask Goose is the field alone, with no empty "Try asking". When there
-are no proposals and no agent idea, the ideas section is not drawn — the existing rule, unchanged.
-
-Pending reminders appear here as a single line, not as cards: *3 reminders waiting*, leading to
-their screen. Dismissal stays where it asks first.
-
-### (e) Right now — unchanged
-
-### (f) Conversations — a second line
-
-Each row gains the last thing said, one line, under the title. Three rows of two lines carry
-considerably more than three rows of one, and it is already fetched.
-
-### (g) Devices — a fuller grid
-
-Raise `HOME_GRID_LIMIT` from 4 to 6, and let the last tile be a +N that leads to the tab. Four
-tiles on a modern phone leaves most of a row empty.
+The same three reach the member from notifications (`docs/NOTIFICATIONS.md`) and from My Goose,
+whose "Plans and things you follow" section leads with them.
 
 ## 3. The constraints that decide the work
 
-These are the things that will cost a day each if they are met at the end rather than the start.
+1. **A yes on Home is safe only because of what it does.** Confirming a plan starts research and
+   drafting, which the Pond runs unasked anyway; booking, sending, spending and device changes stay
+   proposals the member approves, in `ideas`. A proposal's yes runs nothing either
+   (`ProposalDecisionResult.executed` is always false).
+2. **Answering in place sends exactly what was chosen, the whole batch at once.** A choice is an
+   option's label and Other's words go as `text`; `batchAnswerBody` in
+   `view-models/use-questions.ts` builds `POST /me/questions/batches/{id}/answer`, with only the
+   questions answered. A Pond without that route gets each answer on its own. A sent or ended
+   (Done) batch leaves the widget at once.
+3. **A read that failed is not an empty list.** The engine's widgets are left off the board while
+   their read has failed, and the Pond's line says nothing rather than "Nothing needs you".
+4. **Not polled hard.** Plans and questions move on the Pond's schedule: every two minutes while
+   Home is in front, every twenty seconds while a job runs, and on the pull to refresh.
+5. **Strings carried as data are `TranslationKey`**, and new keys live under `home.ready`,
+   `home.plans` and `home.questions`. `t()` is never called at module scope.
+6. **The bottom bar reserves its own strip**: Home clears it with `paddingBottom:
+   useBottomBarInset()`, never a spacer.
+7. **`InkCard` already has a face and a plate**: a card's own style carries layout only. The
+   board draws the widgets' frames; a widget draws its content.
 
-1. **Ask-prompts need a session id, and Home has no conversation.** `useSuggestions(sessionId)`
-   takes one because the id decides whose data the Pond may read. Home must not borrow a real one:
-   the Pond binds an unattributed session to the device's member on read, so reusing a session
-   from the list would quietly claim somebody else's conversation. `use-proposals` already solved
-   this — `sessionLabel()` mints `gotg-suggestions-<32 hex>`, which satisfies the not-blank rule
-   and names no session. Home does the same, once per visit, and never reuses a real id.
+## 4. What this should not become
 
-2. **Today's counts need no change.** `useActivitySummary` gates its source on
-   `isScreenReal('logs')`, which reads like a Developer-only surface and is not one: `logs` is in
-   `REAL_BY_DEFAULT`, and `resolveScreenReal` returns the default in any build where `__DEV__` is
-   false. A household already reads the real Pond. The hook can be used as it stands; only a dev
-   build with the toggle flipped to mock shows `SAMPLE_SUMMARY`, which is what that toggle is for.
-
-3. **There is no forecast route, and this is the one item that cannot be built from the phone.**
-   `GET /api/v1/weather` answers `{ enabled, temp, location_name }` — a current temperature and
-   nothing else. The `WeatherForecast` type in [`models/weather-card.ts`](../models/weather-card.ts)
-   is parsed by `tool-card.tsx` out of a `get_weather_forecast` **chat tool result**, so a forecast
-   reaches the phone only when the assistant calls that tool inside a conversation. Home cannot ask
-   for one. Until the Pond grows a forecast route, the honest version of (b) is the temperature
-   with its location name; a high and low is a Pond-side change, and it is separable from
-   everything else here.
-
-4. **The fixed starters do not belong on Home.** `useSuggestions` keeps them on screen when the
-   Pond has none, which is right in a conversation about to be started: a row of chips that
-   empties reads as broken. On Home it would mean the same three chips every day under "Ideas
-   from your Pond", and the section could never be absent. Home shows only prompts carrying a
-   Pond id.
-
-5. **Dismissal is final**, so Home links to reminders rather than dismissing them inline.
-
-6. **Strings carried as data are `TranslationKey`, not `string`**, and `t()` is never called at
-   module scope — a constant is evaluated at import, before i18next has a language, and freezes
-   there. New keys go under `home.*`, beside the greetings and the section headings.
-
-7. **The bottom bar reserves its own strip.** Home already clears it with
-   `paddingBottom: useBottomBarInset()`. A new section must not reintroduce a hardcoded spacer.
-
-8. **`InkCard` already has a face and a plate.** A proposal card's own style carries layout only.
-
-9. **A read that failed is not an empty list.** Home already distinguishes them — today with an
-   `InkNotice tone="danger"` against an `InkEmptyState`, and with the `ContentUnavailable` pattern
-   once #196 lands. The new section follows whichever is current: a failed read of proposals must
-   not read as "no ideas".
-
-## 4. What it costs
-
-On the phone: one new section component, a view-model that wraps `useProposals` and
-`useSuggestions` for Home's own session label, the strip, the conversation second line, the grid
-cap, their strings and their tests. No new dependency.
-
-On the Pond: a forecast route, if a high and low is wanted. Nothing else.
-
-## 5. What this should not become
-
-- **Not a feed.** Two proposals on Home, the rest behind See all. The point is that the good one is
-  seen without hunting, not that Home becomes the list.
-- **Not auto-approved.** A yes stages work and the Pond runs nothing by itself; that property is
-  what makes the inline button acceptable, and it should stay true.
-- **Not polled hard.** Proposals move on the Pond's own slow schedule. They belong on the existing
-  pull-to-refresh and the screen's focus, not on a timer.
-- **Not a replacement for the Suggestions screen.** Home is a glance; that screen is the record.
+- **Not a feed.** Three ready cards, two offers, one batch of questions; the rest behind a tap.
+- **Not a second inbox for the same thing.** Opening a deliverable marks it read, and the Pond's
+  "ready" suggestion and notice go with it.
+- **Not auto-approved.** Nothing on Home books, spends, sends or changes a device.

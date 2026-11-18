@@ -74,7 +74,31 @@ import {
   type PairingRequest,
 } from '@/models/pairing-lock';
 import { readScreenshots, type Screenshots } from '@/models/screenshots';
+import {
+  readAnchor,
+  readAnchors,
+  readDeliverable,
+  type Anchor,
+  type Deliverable,
+} from '@/models/anchors';
+import { readQuestionBatches, watchAsks, type QuestionBatch } from '@/models/questions';
+import { readFactSheet, readRules, readSheetFact, type DontRule, type FactSheet, type SheetFact } from '@/models/fact-sheet';
+import { readEngineJobs, readIntentions, type EngineJob, type Intention } from '@/models/engine-log';
+import { readLedger, readLedgerEntry, readSpecialists, type Ledger, type LedgerEntry, type Specialist } from '@/models/specialists';
+import { readCaptures, readCaptureSettings, type CaptureSettings, type Captures } from '@/models/captures';
 import { readCatalog, type CatalogItem } from '@/models/catalog';
+import {
+  readIdeaCard,
+  readIdeaCardDeeper,
+  readIdeaCardDone,
+  readIdeaCardSet,
+  readSetState,
+  type IdeaCard,
+  type IdeaCardDeeper,
+  type IdeaCardDone,
+  type IdeaCardSet,
+  type IdeaSetState,
+} from '@/models/idea-cards';
 import { readLongTask, readLongTaskReport, readResearchAvailability, reportFileName } from '@/models/long-tasks';
 import {
   readAdminKey,
@@ -167,6 +191,18 @@ import type {
   StoryVoteWire,
   TodoAnswerWire,
   TodoWriteWire,
+  AnchorPatchWire,
+  AnchorStopWire,
+  CaptureSettingsWire,
+  CaptureWire,
+  DeliverableRejectWire,
+  IdeaCardDismissWire,
+  FactCategoryWire,
+  FactPatchWire,
+  LedgerPatchWire,
+  NewAnchorWire,
+  QuestionAnswerWire,
+  QuestionBatchAnswerWire,
   DeviceStatePatch,
   EventCategory,
   Extension,
@@ -483,6 +519,24 @@ const CHAT_TIMEOUT_MS = 180_000;
  * for long, and a minute of nothing means the connection has gone.
  */
 const STREAM_IDLE_MS = 60_000;
+
+/**
+ * A turn waiting on Goose's questions: the Pond holds the stream silent for up to 10 minutes
+ * before the `ask` tool gives up, so the guard waits that long and a little more.
+ */
+export const ASK_WAIT_IDLE_MS = 11 * 60_000;
+
+/** A chat stream's frames, watched for an `ask` call, and the stall guard that follows them. */
+function askAwareStream(onFrame: (frame: ChatFrame) => void, waiting: ReadonlySet<string> = new Set()): { onFrame: (frame: ChatFrame) => void; idleMs: () => number } {
+  let asks = waiting;
+  return {
+    onFrame: (frame) => {
+      asks = watchAsks(asks, frame);
+      onFrame(frame);
+    },
+    idleMs: () => (asks.size > 0 ? ASK_WAIT_IDLE_MS : STREAM_IDLE_MS),
+  };
+}
 
 /** Transcription pads every clip to a 30s window, and the first speech call loads a model. */
 const VOICE_TIMEOUT_MS = 45_000;
@@ -1409,7 +1463,8 @@ export class PondApiClient {
       body: JSON.stringify(place ? { ...body, device_place: place } : body),
       signal,
     });
-    await readSse(res, (event) => deliver(event, onFrame), { idleMs: STREAM_IDLE_MS });
+    const stream = askAwareStream(onFrame);
+    await readSse(res, (event) => deliver(event, stream.onFrame), { idleMs: stream.idleMs });
   }
 
   /**
@@ -1417,7 +1472,8 @@ export class PondApiClient {
    *
    * `afterSeq` is exclusive. A 410 means the Pond restarted and the run is gone,
    * a 404 that it finished long enough ago to be forgotten; either way the
-   * answer, if there is one, is in the session's saved messages.
+   * answer, if there is one, is in the session's saved messages. `waitingAsks`
+   * are the `ask` calls seen before the drop, which keep the stall guard patient.
    */
   async reattachRun(
     runId: string,
@@ -1425,6 +1481,7 @@ export class PondApiClient {
     epoch: number | string | undefined,
     onFrame: (frame: ChatFrame) => void,
     signal?: AbortSignal,
+    waitingAsks?: ReadonlySet<string>,
   ): Promise<void> {
     const q = new URLSearchParams({ after_seq: String(afterSeq) });
     if (epoch !== undefined) q.set('epoch', String(epoch));
@@ -1432,7 +1489,8 @@ export class PondApiClient {
       `/api/v1/chat/runs/${encodeURIComponent(runId)}/events?${q.toString()}`,
       { headers: { Accept: 'text/event-stream' }, signal },
     );
-    await readSse(res, (event) => deliver(event, onFrame), { idleMs: STREAM_IDLE_MS });
+    const stream = askAwareStream(onFrame, waitingAsks);
+    await readSse(res, (event) => deliver(event, stream.onFrame), { idleMs: stream.idleMs });
   }
 
   /**
@@ -3533,6 +3591,215 @@ export class PondApiClient {
 
   async catalog(): Promise<CatalogItem[]> {
     return readCatalog(await this.get<unknown>('/api/v1/me/catalog'));
+  }
+
+  // The idea engine: plans, what Goose makes for them, its questions, the fact sheet, the
+  // don't-list, the specialists, the ledger, the heartbeat's jobs and the pictures sent to it. A
+  // Pond serves each part its `/me/hub` names; a member an anchor is shared with is refused (403)
+  // everything but reading it and answering its questions.
+
+  async anchors(): Promise<Anchor[]> {
+    return readAnchors(await this.get<unknown>('/api/v1/me/anchors'));
+  }
+
+  async anchor(id: string): Promise<Anchor> {
+    return required(readAnchor(await this.get<unknown>(`/api/v1/me/anchors/${encodeURIComponent(id)}`)), 'the plan');
+  }
+
+  /** 201 for a new one, or 200 with the one the member already has under that title. */
+  async addAnchor(body: NewAnchorWire): Promise<Anchor> {
+    return required(readAnchor(await this.post<unknown>('/api/v1/me/anchors', body)), 'the plan');
+  }
+
+  async editAnchor(id: string, body: AnchorPatchWire): Promise<Anchor> {
+    return required(readAnchor(await this.patch<unknown>(`/api/v1/me/anchors/${encodeURIComponent(id)}`, body)), 'the plan');
+  }
+
+  async confirmAnchor(id: string): Promise<Anchor> {
+    return required(readAnchor(await this.post<unknown>(`/api/v1/me/anchors/${encodeURIComponent(id)}/confirm`, {})), 'the plan');
+  }
+
+  /** A candidate fades; 409 for one already confirmed. */
+  async dismissAnchor(id: string): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/anchors/${encodeURIComponent(id)}/dismiss`, {});
+  }
+
+  async stopAnchor(id: string, body: AnchorStopWire): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/anchors/${encodeURIComponent(id)}/stop`, body);
+  }
+
+  async shareAnchor(id: string, profileIds: string[]): Promise<Anchor> {
+    return required(readAnchor(await this.put<unknown>(`/api/v1/me/anchors/${encodeURIComponent(id)}/shares`, { profile_ids: profileIds })), 'the plan');
+  }
+
+  async deliverable(id: string): Promise<Deliverable> {
+    return required(readDeliverable(await this.get<unknown>(`/api/v1/me/deliverables/${encodeURIComponent(id)}`)), 'what Goose made');
+  }
+
+  /** 202: a job is queued, or the open one moved ahead. 409 once it was rejected or its plan is over. */
+  async refreshDeliverable(id: string): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/deliverables/${encodeURIComponent(id)}/refresh`, {});
+  }
+
+  async rejectDeliverable(id: string, body: DeliverableRejectWire): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/deliverables/${encodeURIComponent(id)}/reject`, body);
+  }
+
+  async deliverableSeen(id: string): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/deliverables/${encodeURIComponent(id)}/seen`, {});
+  }
+
+  // Idea cards (pond docs/architecture/idea-cards.md, section 4): served when `/me/hub` says so.
+
+  async ideaCards(): Promise<IdeaCardSet> {
+    return readIdeaCardSet(await this.get<unknown>('/api/v1/me/idea-cards'));
+  }
+
+  /** 202 with the set's state; a set already on its way is not started twice. */
+  async refreshIdeaCards(): Promise<IdeaSetState> {
+    return readSetState(await this.post<unknown>('/api/v1/me/idea-cards/refresh', {}));
+  }
+
+  async doIdeaCard(id: string): Promise<IdeaCardDone> {
+    return readIdeaCardDone(await this.post<unknown>(`/api/v1/me/idea-cards/${encodeURIComponent(id)}/do`, {}));
+  }
+
+  async saveIdeaCard(id: string, saved: boolean): Promise<IdeaCard> {
+    return required(readIdeaCard(await this.post<unknown>(`/api/v1/me/idea-cards/${encodeURIComponent(id)}/${saved ? 'save' : 'unsave'}`, {})), 'the idea');
+  }
+
+  async dismissIdeaCard(id: string, body: IdeaCardDismissWire): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/idea-cards/${encodeURIComponent(id)}/dismiss`, body);
+  }
+
+  /** Finds or makes the card's plan and queues its first piece of work. */
+  async deeperIdeaCard(id: string): Promise<IdeaCardDeeper> {
+    return readIdeaCardDeeper(await this.post<unknown>(`/api/v1/me/idea-cards/${encodeURIComponent(id)}/deeper`, {}));
+  }
+
+  /** The body as a Markdown file to share; a 404 before anything is written. */
+  async deliverableFile(id: string): Promise<{ name: string; body: string }> {
+    const res = await this.open(`/api/v1/me/deliverables/${encodeURIComponent(id)}/file`, { signal: timeoutSignal(REQUEST_TIMEOUT_MS) });
+    return { name: reportFileName(res.headers.get('Content-Disposition'), 'markdown'), body: await res.text() };
+  }
+
+  /** Open and waiting batches, newest first; `sessionId` narrows them to one chat's. */
+  async questions(sessionId?: string): Promise<QuestionBatch[]> {
+    const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
+    return readQuestionBatches(await this.get<unknown>(`/api/v1/me/questions${query}`));
+  }
+
+  /** Every answer in one request; resumes a chat turn still waiting on them. */
+  async answerQuestionBatch(id: string, body: QuestionBatchAnswerWire): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/questions/batches/${encodeURIComponent(id)}/answer`, body);
+  }
+
+  /** The member's Done: Goose goes ahead with what it has. */
+  async enoughQuestions(id: string): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/questions/batches/${encodeURIComponent(id)}/enough`, {});
+  }
+
+  /** 422 for no choice and no words, or two choices where one is asked; 409 once it is closed. */
+  async answerQuestion(id: string, body: QuestionAnswerWire): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/questions/${encodeURIComponent(id)}/answer`, body);
+  }
+
+  async skipQuestion(id: string): Promise<void> {
+    await this.post<unknown>(`/api/v1/me/questions/${encodeURIComponent(id)}/skip`, {});
+  }
+
+  async engineJobs(limit = 30): Promise<EngineJob[]> {
+    return readEngineJobs(await this.get<unknown>(`/api/v1/me/engine/jobs?limit=${Math.max(1, Math.min(100, Math.round(limit)))}`));
+  }
+
+  async facts(): Promise<FactSheet> {
+    return readFactSheet(await this.get<unknown>('/api/v1/me/facts'));
+  }
+
+  /** The line is the member's own; the answer is the whole sheet. */
+  async addFact(category: FactCategoryWire, fact: string): Promise<FactSheet> {
+    return readFactSheet(await this.post<unknown>('/api/v1/me/facts', { category, fact }));
+  }
+
+  /** 409 when another line already says that. */
+  async editFact(id: string, change: FactPatchWire): Promise<SheetFact> {
+    return required(readSheetFact(await this.patch<unknown>(`/api/v1/me/facts/${encodeURIComponent(id)}`, change)), 'the line');
+  }
+
+  async deleteFact(id: string): Promise<void> {
+    await this.del<unknown>(`/api/v1/me/facts/${encodeURIComponent(id)}`);
+  }
+
+  async rebuildFacts(): Promise<void> {
+    await this.post<unknown>('/api/v1/me/facts/rebuild', {});
+  }
+
+  async dontList(): Promise<DontRule[]> {
+    return readRules(await this.get<unknown>('/api/v1/me/dont'));
+  }
+
+  async addDont(rule: string, strength: 'never' | 'avoid' = 'never'): Promise<DontRule[]> {
+    return readRules(await this.post<unknown>('/api/v1/me/dont', { rule, strength }));
+  }
+
+  /** The list left after, or null from a Pond that answers 204. */
+  async deleteDont(id: string): Promise<DontRule[] | null> {
+    const res = await this.del<unknown>(`/api/v1/me/dont/${encodeURIComponent(id)}`);
+    return res ? readRules(res) : null;
+  }
+
+  async specialists(): Promise<Specialist[]> {
+    return readSpecialists(await this.get<unknown>('/api/v1/me/agents'));
+  }
+
+  /** Off answers an offer with "declined", which is never offered again. */
+  async setSpecialist(id: string, on: boolean): Promise<Specialist[]> {
+    return readSpecialists(await this.put<unknown>(`/api/v1/me/agents/${encodeURIComponent(id)}`, { on }));
+  }
+
+  /** 409 while Budget is not on. */
+  async ledger(month?: string): Promise<Ledger> {
+    const query = month && /^\d{4}-\d{2}$/.test(month) ? `?month=${month}` : '';
+    return readLedger(await this.get<unknown>(`/api/v1/me/ledger${query}`));
+  }
+
+  async editLedgerEntry(id: string, change: LedgerPatchWire): Promise<LedgerEntry> {
+    return required(readLedgerEntry(await this.patch<unknown>(`/api/v1/me/ledger/${encodeURIComponent(id)}`, change)), 'the entry');
+  }
+
+  async deleteLedgerEntry(id: string): Promise<void> {
+    await this.del<unknown>(`/api/v1/me/ledger/${encodeURIComponent(id)}`);
+  }
+
+  async intentions(state: 'waiting' | 'settled' = 'waiting'): Promise<Intention[]> {
+    return readIntentions(await this.get<unknown>(`/api/v1/me/intentions?state=${state}`));
+  }
+
+  /** A waiting one is withdrawn; 409 for one carried out or expired. */
+  async withdrawIntention(id: string): Promise<void> {
+    await this.del<unknown>(`/api/v1/me/intentions/${encodeURIComponent(id)}`);
+  }
+
+  async captures(): Promise<Captures> {
+    return readCaptures(await this.get<unknown>('/api/v1/me/captures'));
+  }
+
+  async setCaptureSettings(change: CaptureSettingsWire): Promise<CaptureSettings> {
+    return readCaptureSettings(await this.put<unknown>('/api/v1/me/captures/settings', change));
+  }
+
+  /** One picture for the Pond to read once; answers how many wait. A 429 means the Pond is full. */
+  async sendCapture(body: CaptureWire): Promise<number> {
+    const res = await this.post<{ pending?: unknown }>('/api/v1/me/captures', body);
+    return typeof res?.pending === 'number' ? res.pending : 0;
+  }
+
+  async deleteCapture(id: string): Promise<void> {
+    await this.del<unknown>(`/api/v1/me/captures/${encodeURIComponent(id)}`);
+  }
+
+  async deleteAllCaptures(): Promise<void> {
+    await this.del<unknown>('/api/v1/me/captures');
   }
 
   // ── Verb helpers ────────────────────────────────────────────

@@ -258,7 +258,6 @@ const memory: SettingsPage = {
         { kind: 'number', key: 'memory_extraction_max_facts', min: 0, max: 50, step: 1, labelKey: 'settings.field.memory_extraction_max_facts.label', hintKey: 'settings.field.memory_extraction_max_facts.hint' },
         { kind: 'switch', key: 'agent_memory_inject', labelKey: 'settings.field.agent_memory_inject.label', hintKey: 'settings.field.agent_memory_inject.hint' },
         { kind: 'number', key: 'agent_memory_limit', min: 0, max: 100, step: 1, labelKey: 'settings.field.agent_memory_limit.label', hintKey: 'settings.field.agent_memory_limit.hint' },
-        { kind: 'switch', key: 'suggestion_generation_enabled', labelKey: 'settings.field.suggestion_generation_enabled.label', hintKey: 'settings.field.suggestion_generation_enabled.hint' },
       ],
     },
     {

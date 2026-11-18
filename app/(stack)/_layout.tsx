@@ -123,6 +123,16 @@ export default function StackLayout() {
       <Stack.Screen name="goose-activity" options={{ title: t('screens.gooseActivity') }} />
       <Stack.Screen name="goose-screenshots" options={{ title: t('screens.gooseScreenshots') }} />
       <Stack.Screen name="goose-catalog" options={{ title: t('screens.gooseCatalog') }} />
+      <Stack.Screen name="goose-plans" options={{ title: t('screens.goosePlans') }} />
+      <Stack.Screen name="goose-cards" options={{ title: t('screens.gooseCards') }} />
+      <Stack.Screen name="goose-anchor" options={{ title: t('screens.gooseAnchor') }} />
+      <Stack.Screen name="goose-deliverable" options={{ title: t('screens.gooseDeliverable') }} />
+      <Stack.Screen name="goose-questions" options={{ title: t('screens.gooseQuestions') }} />
+      <Stack.Screen name="goose-facts" options={{ title: t('screens.gooseFacts') }} />
+      <Stack.Screen name="goose-specialists" options={{ title: t('screens.gooseSpecialists') }} />
+      <Stack.Screen name="goose-ledger" options={{ title: t('screens.gooseLedger') }} />
+      <Stack.Screen name="goose-work" options={{ title: t('screens.gooseWork') }} />
+      <Stack.Screen name="goose-captures" options={{ title: t('screens.gooseCaptures') }} />
       <Stack.Screen name="ride" options={{ title: t('screens.ride') }} />
       <Stack.Screen name="agents" options={{ title: t('screens.agents') }} />
       <Stack.Screen name="task-report" options={{ title: t('screens.taskReport') }} />
