@@ -56,20 +56,21 @@ it('sends every profile menu row to a screen that exists', () => {
  * The way in to a screen is a menu row, and a row that is dropped in a merge fails nothing above:
  * the file still exists, so the guard passes, and the screen is simply unreachable.
  */
+/** Web search lives inside the merged Internet, Wi-Fi & Bluetooth page. */
 it('offers Web search beside the other ways the Pond reaches out', () => {
-  const connection = PROFILE_NAV.find((group) => group.groupKey === 'settings.menu.connection');
+  const internetLinks = SETTINGS_PAGES.internet.sections.flatMap((s) => s.items).filter((i) => i.kind === 'link');
 
-  expect(connection?.items).toContainEqual(
-    expect.objectContaining({ id: 'webSearch', labelKey: 'screens.webSearch', icon: 'search', route: '/(stack)/web-search' }),
+  expect(internetLinks).toContainEqual(
+    expect.objectContaining({ labelKey: 'screens.webSearch', icon: 'search', route: '/(stack)/web-search' }),
   );
 });
 
-/** Choosing ngrok over the built-in network belongs with the other ways in from outside. */
-it('offers the ngrok tunnel beside remote access', () => {
-  const connection = PROFILE_NAV.find((group) => group.groupKey === 'settings.menu.connection');
+/** Choosing ngrok over the built-in network belongs in Developer. */
+it('offers the ngrok tunnel in Developer', () => {
+  const help = PROFILE_NAV.find((group) => group.groupKey === 'settings.menu.help');
 
-  expect(connection?.items).toContainEqual(
-    expect.objectContaining({ id: 'ngrokTunnel', labelKey: 'screens.ngrokTunnel', route: '/(stack)/ngrok-tunnel' }),
+  expect(help?.items).toContainEqual(
+    expect.objectContaining({ id: 'developer', route: '/(stack)/developer' }),
   );
 });
 
@@ -88,7 +89,7 @@ it('offers every settings page from a menu row or a page that is', () => {
       for (const item of section.items) if (item.kind === 'link') routes.add(item.route);
     }
   }
-  const pages = stackScreenFiles().filter((name) => name.startsWith('settings-') && !['settings-timezone', 'settings-model', 'settings-model-helper', 'settings-model-role', 'settings-model-catalog', 'settings-model-search', 'settings-issue'].includes(name));
+  const pages = stackScreenFiles().filter((name) => name.startsWith('settings-') && !['settings-timezone', 'settings-model', 'settings-model-helper', 'settings-model-role', 'settings-model-catalog', 'settings-model-search', 'settings-issue', 'settings-advanced', 'settings-tools', 'settings-announcements', 'settings-memory'].includes(name));
   expect(pages.filter((name) => !routes.has(`/(stack)/${name}`))).toEqual([]);
 });
 

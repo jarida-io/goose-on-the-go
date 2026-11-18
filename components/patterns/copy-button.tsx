@@ -18,7 +18,17 @@ import { selectionTick } from '@/services/haptics';
 export const ACTION_HEIGHT = 24;
 const COPIED_MS = 1500;
 
-export function CopyButton({ text, label, style }: { text: string; label?: string; style?: StyleProp<ViewStyle> }) {
+export function CopyButton({
+  text,
+  label,
+  style,
+  onLongPress,
+}: {
+  text: string;
+  label?: string;
+  style?: StyleProp<ViewStyle>;
+  onLongPress?: () => void;
+}) {
   const theme = useInkTheme();
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -35,6 +45,14 @@ export function CopyButton({ text, label, style }: { text: string; label?: strin
         // A build without the clipboard offers the share sheet instead, which says nothing was copied.
         void copyText(text).then((done) => setCopied(done === 'copied'));
       }}
+      onLongPress={
+        onLongPress
+          ? () => {
+              void selectionTick();
+              onLongPress();
+            }
+          : undefined
+      }
       accessibilityRole="button"
       accessibilityLabel={copied ? t('chat.reply.copied') : (label ?? t('chat.reply.copy'))}
       hitSlop={hitSlop(ACTION_HEIGHT)}

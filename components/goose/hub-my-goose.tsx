@@ -8,15 +8,17 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { router, useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { InkButton, InkCard, InkSpinner, InkText, inkText, useInkTheme } from '@/components/ui/ink';
+import { InkButton, InkCard, InkChoice, InkInput, InkSheet, InkSpinner, InkText, InkTextArea, inkText, useInkTheme } from '@/components/ui/ink';
 
+import { ChromePuck, PUCK_SIZE } from '@/components/patterns/chrome-puck';
 import { ContentUnavailable } from '@/components/patterns/content-unavailable';
 import { Goose } from '@/components/patterns/goose';
 import { GlyphRow } from '@/components/patterns/goose-shelves';
+import { WebWatchGuidedSheet } from '@/components/patterns/web-watch-guided-sheet';
 import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import type { ThemeColors } from '@/constants/colors';
@@ -25,7 +27,7 @@ import { Spacing } from '@/constants/spacing';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { catalogHref, type CatalogItem } from '@/models/catalog';
 import { inUse } from '@/models/connectors';
-import { anchorKindKey, candidates, followed, readyWork } from '@/models/anchors';
+import { ADDABLE_KINDS, anchorKindKey, candidates, followed, readyWork } from '@/models/anchors';
 import type { MeHub } from '@/models/hub';
 import { shownIdeas } from '@/models/ideas';
 import { categoriesOf, categoryIcon, categoryKey } from '@/models/interests';
@@ -40,7 +42,8 @@ import { selectionTick, tap } from '@/services/haptics';
 import { Storage } from '@/services/storage';
 import { useContentState } from '@/view-models/use-content-state';
 import { useGooseActivity } from '@/view-models/use-goose-activity';
-import { useIdeaCards } from '@/view-models/use-idea-cards';
+import { useIdeaCards, type UseIdeaCards } from '@/view-models/use-idea-cards';
+import { AddIdeaSheet } from './idea-cards';
 import { ideaKindKey } from '@/models/idea-cards';
 import { useMyGooseHub, type UseMyGooseHub } from '@/view-models/use-my-goose';
 import { useListen, useStoryActions } from '@/view-models/use-news';
@@ -81,7 +84,7 @@ function targetHref(clause: HubClause): Parameters<typeof router.push>[0] {
     case 'cart':
       return { pathname: '/(stack)/goose-cart-item', params: { id: target.id } };
     case 'ideas':
-      return '/(stack)/goose-ideas';
+      return '/(stack)/goose-cards';
   }
 }
 
@@ -143,60 +146,138 @@ function InterviewInvite({ hub }: { hub: MeHub }) {
   );
 }
 
-type Jump = { key: string; icon: IconName; label: string; href: Parameters<typeof router.push>[0] };
+type HubChipKey = 'plans' | 'todos' | 'ideas' | 'news' | 'watching' | 'you' | 'following';
+type Jump = { key: HubChipKey; icon: IconName; label: string };
 
-/** The find bar and the jumps: every part of My Goose, one tap from the top. */
-function FindAndJump({ hub }: { hub: MeHub }) {
+function clauseChipLabel(clause: HubClause): { icon: IconName; label: string } {
+  switch (clause.target.to) {
+    case 'todos':
+      return { icon: 'checklist', label: 'Reminders & To-dos' };
+    case 'interview':
+      return { icon: 'chat', label: 'Interview' };
+    case 'news':
+      return { icon: 'news', label: 'News' };
+    case 'digest':
+      return { icon: 'news', label: 'Open digest' };
+    case 'cart':
+      return { icon: 'cart', label: 'Tracked item' };
+    case 'ideas':
+      return { icon: 'light', label: 'Ideas' };
+  }
+}
+
+/** Bigger category chips at the top so the user picks one area to explore instead of scrolling everything. */
+const CHIPS_COLLAPSED_HEIGHT = 94;
+
+function HubChips({
+  hub,
+  counts,
+  selected,
+  onSelect,
+}: {
+  hub: MeHub;
+  counts: Record<HubChipKey, number>;
+  selected: HubChipKey | null;
+  onSelect: (next: HubChipKey | null) => void;
+}) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const theme = useInkTheme();
+  const [expanded, setExpanded] = useState(false);
+  const [chipLayouts, setChipLayouts] = useState<Record<string, { y: number; height: number }>>({});
   const all: (Jump & { shown: boolean })[] = [
-    { shown: hub.anchors, key: 'plans', icon: 'calendar', label: t('goose.find.plans'), href: '/(stack)/goose-plans' },
-    { shown: hub.news, key: 'news', icon: 'news', label: t('goose.find.news'), href: '/(stack)/goose-news' },
-    { shown: hub.ideas, key: 'ideas', icon: 'light', label: t('goose.find.ideas'), href: '/(stack)/goose-ideas' },
-    { shown: hub.todos, key: 'todos', icon: 'checklist', label: t('goose.find.todos'), href: '/(stack)/goose-todos' },
-    { shown: hub.cart, key: 'prices', icon: 'tag', label: t('goose.find.prices'), href: '/(stack)/goose-cart' },
-    { shown: true, key: 'watching', icon: 'eye', label: t('goose.find.watching'), href: '/(stack)/web-watches' },
-    { shown: hub.facts, key: 'facts', icon: 'profile', label: t('goose.find.facts'), href: '/(stack)/goose-facts' },
-    { shown: hub.about && !hub.facts, key: 'about', icon: 'profile', label: t('goose.find.about'), href: '/(stack)/goose-about' },
-    { shown: hub.captures, key: 'pictures', icon: 'photo', label: t('goose.find.pictures'), href: '/(stack)/goose-captures' },
-    { shown: hub.interests, key: 'interests', icon: 'sparkle', label: t('goose.find.interests'), href: '/(stack)/goose-interests' },
-    { shown: true, key: 'saved', icon: 'archive', label: t('goose.find.saved'), href: '/(stack)/saved' },
-    { shown: hub.about, key: 'notes', icon: 'file-text', label: t('goose.find.notes'), href: '/(stack)/goose-notes' },
-    { shown: hub.activity, key: 'activity', icon: 'activity', label: t('goose.find.activity'), href: '/(stack)/goose-activity' },
-    { shown: hub.connectors, key: 'connectors', icon: 'plug', label: t('goose.find.connectors'), href: '/(stack)/goose-connectors' },
-    { shown: hub.catalog, key: 'more', icon: 'more', label: t('goose.find.more'), href: '/(stack)/goose-catalog' },
+    { shown: hub.anchors, key: 'plans', icon: 'calendar', label: 'Goals' },
+    { shown: hub.todos, key: 'todos', icon: 'checklist', label: 'Reminders & To-dos' },
+    { shown: hub.ideas || hub.ideaCards, key: 'ideas', icon: 'light', label: t('goose.find.ideas') },
+    { shown: hub.news, key: 'news', icon: 'news', label: t('goose.find.news') },
+    { shown: true, key: 'watching', icon: 'eye', label: t('goose.find.watching') },
+    { shown: true, key: 'you', icon: 'profile', label: 'You & Goose' },
+    { shown: true, key: 'following', icon: 'sparkle', label: 'Following' },
   ];
-  const jumps = all.filter((jump) => jump.shown);
+  const jumps = all
+    .filter((jump) => jump.shown)
+    .sort((a, b) => (counts[b.key] ?? 0) - (counts[a.key] ?? 0));
+
+  const { overflows, maxHeight } = useMemo(() => {
+    const rects = jumps.map((j) => chipLayouts[j.key]).filter(Boolean);
+    if (rects.length === 0) return { overflows: false, maxHeight: CHIPS_COLLAPSED_HEIGHT };
+    const rows: number[] = [];
+    for (const r of rects) {
+      if (!rows.some((y) => Math.abs(y - r.y) < 6)) rows.push(r.y);
+    }
+    rows.sort((a, b) => a - b);
+    if (rows.length <= 2) return { overflows: false, maxHeight: undefined };
+    const secondRowY = rows[1];
+    const thirdRowY = rows[2];
+    const secondRowBottom = Math.max(
+      ...rects.filter((r) => Math.abs(r.y - secondRowY) < 6).map((r) => r.y + r.height),
+    );
+    return { overflows: true, maxHeight: Math.floor((secondRowBottom + thirdRowY) / 2) };
+  }, [chipLayouts, jumps]);
+
   return (
-    <View style={styles.find}>
-      <GPressable
-        onPress={() => go('/(stack)/goose-search')}
-        accessibilityRole="search"
-        accessibilityLabel={t('goose.find.placeholder')}
-        style={[styles.findBar, { backgroundColor: theme.color.chrome, borderColor: theme.color.line }]}
-      >
-        <GIcon name="search" size={18} color={theme.color.textTertiary} />
-        <InkText size="md" tone="secondary" style={{ flex: 1 }}>
-          {t('goose.find.placeholder')}
-        </InkText>
-      </GPressable>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.jumps} accessibilityLabel={t('goose.find.jumpTo')}>
-        {jumps.map((jump) => (
-          <GPressable
-            key={jump.key}
-            onPress={() => go(jump.href)}
-            accessibilityRole="button"
-            accessibilityLabel={jump.label}
-            style={[styles.jump, { backgroundColor: theme.color.chrome, borderColor: theme.color.line }]}
-          >
-            <GIcon name={jump.icon} size={14} color={theme.color.accentLine} />
-            <InkText size="sm" weight="semibold">
-              {jump.label}
-            </InkText>
-          </GPressable>
-        ))}
-      </ScrollView>
+    <View style={styles.jumpsOuter} accessibilityLabel={t('goose.find.jumpTo')}>
+      <View style={!expanded && maxHeight !== undefined ? { maxHeight, overflow: 'hidden' } : undefined}>
+        <View style={styles.jumpsWrap}>
+          {jumps.map((jump) => {
+            const active = selected === jump.key;
+            return (
+              <GPressable
+                key={jump.key}
+                onLayout={(e) => {
+                  const { y, height } = e.nativeEvent.layout;
+                  setChipLayouts((prev) => {
+                    const cur = prev[jump.key];
+                    if (cur && Math.abs(cur.y - y) < 1 && Math.abs(cur.height - height) < 1) return prev;
+                    return { ...prev, [jump.key]: { y, height } };
+                  });
+                }}
+                onPress={() => {
+                  void selectionTick();
+                  onSelect(active ? null : jump.key);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={jump.label}
+                style={[
+                  styles.jumpBig,
+                  {
+                    backgroundColor: active ? theme.color.accent : theme.color.chrome,
+                    borderColor: active ? theme.color.accent : theme.color.lineStrong,
+                  },
+                ]}
+              >
+                <GIcon name={jump.icon} size={17} color={active ? theme.color.textOnAccent : theme.color.accentLine} />
+                <InkText
+                  size="md"
+                  weight="semibold"
+                  style={active ? { color: theme.color.textOnAccent } : undefined}
+                >
+                  {jump.label}
+                </InkText>
+              </GPressable>
+            );
+          })}
+        </View>
+      </View>
+      {overflows ? (
+        <GPressable
+          onPress={() => {
+            void selectionTick();
+            setExpanded((v) => !v);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? 'Show fewer' : 'Show more'}
+          style={styles.jumpsToggle}
+        >
+          <InkText size="xs" weight="semibold" style={{ color: theme.color.accentLine }}>
+            {expanded ? 'Show less' : 'More'}
+          </InkText>
+          <View style={{ transform: [{ rotate: expanded ? '-90deg' : '90deg' }] }}>
+            <GIcon name="chevron-right" size={14} color={theme.color.accentLine} />
+          </View>
+        </GPressable>
+      ) : null}
     </View>
   );
 }
@@ -215,8 +296,9 @@ function YouAndGoose({ hub, g }: { hub: MeHub; g: UseMyGooseHub }) {
   // What it did last says more than a caption; a count says there is something new to read.
   const did = unseen > 0 ? t('goose.you.activityNew', { count: unseen }) : (items[0]?.summary ?? t('goose.you.activityDetail'));
   const offered = g.specialists.data.some((s) => s.state === 'offered');
-  const all: (Jump & { shown: boolean; detail: string | null })[] = [
+  const all: { shown: boolean; key: string; icon: IconName; label: string; detail: string | null; href: Parameters<typeof router.push>[0] }[] = [
     { shown: hub.facts, key: 'facts', icon: 'profile', label: t('goose.you.facts'), detail: g.factCount === null ? null : t('goose.you.factsDetail', { count: g.factCount }), href: '/(stack)/goose-facts' },
+    { shown: true, key: 'memories', icon: 'memory', label: t('screens.memories'), detail: null, href: '/(stack)/memories' },
     { shown: hub.activity, key: 'activity', icon: 'activity', label: t('goose.you.activity'), detail: did, href: '/(stack)/goose-activity' },
     { shown: hub.engine_log || hub.intentions, key: 'work', icon: 'sparkle', label: t('goose.you.work'), detail: t('goose.you.workDetail'), href: '/(stack)/goose-work' },
     // With the fact sheet, "About you" is the sheet; the older profile is what Goose remembers.
@@ -243,10 +325,10 @@ function YouAndGoose({ hub, g }: { hub: MeHub; g: UseMyGooseHub }) {
 }
 
 /** Idea cards: the new ones first, then the saved, each opening the cards screen. */
-function IdeaCards() {
+function IdeaCards({ cards }: { cards: UseIdeaCards }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
-  const cards = useIdeaCards();
+  const [adding, setAdding] = useState(false);
   const rows = [...cards.fresh, ...cards.saved];
   if (cards.loading && rows.length === 0) return null;
   const open = () => go('/(stack)/goose-cards');
@@ -257,8 +339,26 @@ function IdeaCards() {
         title={t('goose.ideaCards.title')}
         subtitle={t('goose.ideaCards.subtitle')}
         onOpen={open}
-        trailing={<RoundButton icon="refresh" label={t('goose.ideaCards.refreshLabel')} onPress={() => void (cards.making ? undefined : cards.actions.refresh())} />}
+        trailing={
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <RoundButton
+              icon="chat"
+              label="Brainstorm ideas"
+              onPress={() =>
+                go({
+                  pathname: '/conversation',
+                  params: {
+                    ask: "Let's brainstorm ideas together based on my interests and saved ideas. Ask me what I'm curious about or want to explore, and we can shape new ideas I can try later.",
+                  },
+                })
+              }
+            />
+            <RoundButton icon="plus" label="Add idea" onPress={() => setAdding(true)} />
+            <RoundButton icon="refresh" label={t('goose.ideaCards.refreshLabel')} onPress={() => void (cards.making ? undefined : cards.actions.refresh())} />
+          </View>
+        }
       />
+      <AddIdeaSheet open={adding} onClose={() => setAdding(false)} onCreate={cards.actions.create} />
       {rows.length ? (
         <InsetGroup>
           {rows.slice(0, SHOWN_ROWS).map((card, i) => (
@@ -759,6 +859,7 @@ function Following({ g }: { g: UseMyGooseHub }) {
 
 export function HubMyGoose({ hub }: { hub: MeHub }) {
   const { t } = useTranslation();
+  const theme = useInkTheme();
   const styles = useThemedStyles(makeStyles);
   const chrome = useChromeScroll();
   // The header's goose works only while it can be seen; the bail-out keeps a scroll from re-rendering.
@@ -776,9 +877,21 @@ export function HubMyGoose({ hub }: { hub: MeHub }) {
   const g = useMyGooseHub(hub);
   const pull = usePullToRefresh(g.reload);
   const [placesSheet, setPlacesSheet] = useState(false);
+  const [selectedChip, setSelectedChip] = useState<HubChipKey | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [ideaModalOpen, setIdeaModalOpen] = useState(false);
+  const ideaCards = useIdeaCards(hub.ideaCards);
+  const [watchModalOpen, setWatchModalOpen] = useState(false);
+  const [goalKind, setGoalKind] = useState<(typeof ADDABLE_KINDS)[number]>('trip');
+  const [goalTitle, setGoalTitle] = useState('');
+  const [goalPlace, setGoalPlace] = useState('');
+  const [goalNotes, setGoalNotes] = useState('');
+  const [savingGoal, setSavingGoal] = useState(false);
 
   const clauses = g.clauses.map((clause) => ({
     text: t(clause.key as never, clause.params) as string,
+    chip: clauseChipLabel(clause),
     onPress: () => go(targetHref(clause)),
   }));
 
@@ -795,37 +908,293 @@ export function HubMyGoose({ hub }: { hub: MeHub }) {
   const state = useContentState({ loading: g.loading, failed, hasContent: anything });
   const reload = useCallback(() => g.reload(), [g]);
 
+  const handlePlus = useCallback(() => {
+    void selectionTick();
+    if (selectedChip === 'plans') {
+      setGoalModalOpen(true);
+      return;
+    }
+    if (selectedChip === 'todos') {
+      openTodo(null);
+      return;
+    }
+    if (selectedChip === 'watching') {
+      setWatchModalOpen(true);
+      return;
+    }
+    if (selectedChip === 'following') {
+      go({ pathname: '/(stack)/goose-interests', params: { add: '1' } });
+      return;
+    }
+    setAddModalOpen(true);
+  }, [selectedChip]);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
         {...chrome}
         onScroll={onScroll}
         style={styles.page}
-        contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset + Spacing.xl }]}
+        contentContainerStyle={[
+          styles.scroll,
+          selectedChip === null && styles.scrollCentered,
+          { paddingBottom: bottomInset + PUCK_SIZE + Spacing['2xl'] },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl {...pull} />}
       >
         <Header working={g.loading} out={headerOut} />
-        <FindAndJump hub={hub} />
-        {g.loading && !anything ? <InkSpinner label={t('myGoose.loading')} /> : <HubSentence clauses={clauses} quiet={t('goose.say.quiet')} />}
-        {state === 'unreachable' || state === 'failed' ? <ContentUnavailable state={state} onRetry={reload} /> : null}
-        {g.newMember ? <InterviewInvite hub={hub} /> : null}
-        {hub.todos ? <Asking g={g} /> : null}
-        {hub.ideaCards ? <IdeaCards /> : null}
-        {hub.questions ? <Questions g={g} /> : null}
-        {hub.anchors ? <Plans g={g} /> : null}
-        {hub.news ? <News g={g} /> : null}
-        {hub.ideas ? <Ideas g={g} /> : null}
-        {hub.cart ? <Prices g={g} /> : null}
-        {hub.news ? <LongReads g={g} /> : null}
-        {hub.todos ? <Todos g={g} onNeedsLocation={() => setPlacesSheet(true)} /> : null}
-        <Watching g={g} />
-        <YouAndGoose hub={hub} g={g} />
-        <Connectors g={g} />
-        {hub.catalog ? <MoreGooseCanDo g={g} /> : null}
-        <Following g={g} />
+        <HubChips
+          hub={hub}
+          counts={{
+            plans: g.anchors.data.length,
+            todos: g.todos.data.open.length + g.todos.data.offers.length,
+            ideas: hub.cards.length,
+            news: g.news.data.stories.length,
+            watching: g.watches.data.watches.length,
+            following: g.interests.data.length,
+            you: 1,
+          }}
+          selected={selectedChip}
+          onSelect={setSelectedChip}
+        />
+
+        {selectedChip === null ? (
+          <View style={styles.centerStage}>
+            {g.loading && !anything ? (
+              <InkSpinner label={t('myGoose.loading')} />
+            ) : (
+              <>
+                <HubSentence clauses={clauses} quiet={t('goose.say.quiet')} />
+                {clauses.length > 0 ? (
+                  <View style={styles.clauseChips}>
+                    {clauses.map((c, idx) => (
+                      <GPressable
+                        key={`${c.chip.label}-${idx}`}
+                        onPress={c.onPress}
+                        accessibilityRole="button"
+                        style={[
+                          styles.smallChip,
+                          { backgroundColor: theme.color.chrome, borderColor: theme.color.lineStrong },
+                        ]}
+                      >
+                        <GIcon name={c.chip.icon} size={13} color={theme.color.accentLine} />
+                        <InkText size="xs" weight="semibold">
+                          {c.chip.label}
+                        </InkText>
+                      </GPressable>
+                    ))}
+                  </View>
+                ) : null}
+              </>
+            )}
+            {state === 'unreachable' || state === 'failed' ? <ContentUnavailable state={state} onRetry={reload} /> : null}
+            {g.newMember ? <InterviewInvite hub={hub} /> : null}
+          </View>
+        ) : (
+          <View style={styles.selectedStage}>
+            {selectedChip === 'plans' && hub.anchors ? <Plans g={g} /> : null}
+            {selectedChip === 'todos' && hub.todos ? (
+              <>
+                <Asking g={g} />
+                <Todos g={g} onNeedsLocation={() => setPlacesSheet(true)} />
+              </>
+            ) : null}
+            {selectedChip === 'ideas' ? (
+              <>
+                {hub.ideaCards ? <IdeaCards cards={ideaCards} /> : null}
+                {hub.questions ? <Questions g={g} /> : null}
+              </>
+            ) : null}
+            {selectedChip === 'news' && hub.news ? (
+              <>
+                <News g={g} />
+                <LongReads g={g} />
+              </>
+            ) : null}
+            {selectedChip === 'watching' ? <Watching g={g} /> : null}
+            {selectedChip === 'you' ? <YouAndGoose hub={hub} g={g} /> : null}
+            {selectedChip === 'following' ? <Following g={g} /> : null}
+          </View>
+        )}
       </ScrollView>
+
+      {/* Bottom floating dock: minimized Search puck on the left, contextual + puck on the right */}
+      <View pointerEvents="box-none" style={[styles.bottomDock, { bottom: bottomInset + Spacing.sm }]}>
+        <ChromePuck
+          icon="search"
+          label={t('goose.find.placeholder')}
+          onPress={() => go('/(stack)/goose-search')}
+        />
+        <ChromePuck
+          icon="plus"
+          label="Add or change"
+          onPress={handlePlus}
+        />
+      </View>
+
       <LocationSheet open={placesSheet} access={g.todos.access} onClose={() => setPlacesSheet(false)} onAllow={g.todos.actions.allowLocation} />
+
+      {addModalOpen ? (
+        <View style={styles.inTreeSheetRoot} pointerEvents="box-none">
+          <GPressable
+            feedback="none"
+            haptic="none"
+            onPress={() => setAddModalOpen(false)}
+            accessibilityLabel={t('common.cancel')}
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+          />
+          <View
+            style={[
+              styles.inTreeSheetPanel,
+              {
+                backgroundColor: theme.color.surface,
+                borderColor: theme.color.edge,
+                paddingBottom: Math.max(bottomInset, Spacing.xl),
+              },
+            ]}
+          >
+            <View style={[styles.sheetGrabber, { backgroundColor: theme.color.textDisabled }]} />
+            <InkText size="xl" weight="bold" style={styles.sheetTitle}>
+              Add or change
+            </InkText>
+            <View style={styles.modalList}>
+              {hub.anchors ? (
+                <InkButton
+                  variant="quiet"
+                  icon="calendar"
+                  onPress={() => {
+                    setAddModalOpen(false);
+                    setGoalModalOpen(true);
+                  }}
+                >
+                  Add Goal or Plan
+                </InkButton>
+              ) : null}
+              {hub.todos ? (
+                <InkButton
+                  variant="quiet"
+                  icon="checklist"
+                  onPress={() => {
+                    setAddModalOpen(false);
+                    openTodo(null);
+                  }}
+                >
+                  Add Reminder or To-do
+                </InkButton>
+              ) : null}
+              <InkButton
+                variant="quiet"
+                icon="eye"
+                onPress={() => {
+                  setAddModalOpen(false);
+                  setWatchModalOpen(true);
+                }}
+              >
+                Add Web Watch
+              </InkButton>
+              {hub.interests ? (
+                <InkButton
+                  variant="quiet"
+                  icon="sparkle"
+                  onPress={() => {
+                    setAddModalOpen(false);
+                    go({ pathname: '/(stack)/goose-interests', params: { add: '1' } });
+                  }}
+                >
+                  Add Interest
+                </InkButton>
+              ) : null}
+              {hub.ideaCards ? (
+                <InkButton
+                  variant="quiet"
+                  icon="light"
+                  onPress={() => {
+                    setAddModalOpen(false);
+                    setIdeaModalOpen(true);
+                  }}
+                >
+                  Add Idea
+                </InkButton>
+              ) : null}
+              <InkButton
+                variant="primary"
+                icon="chat"
+                onPress={() => {
+                  setAddModalOpen(false);
+                  go('/conversation');
+                }}
+              >
+                Ask Goose
+              </InkButton>
+            </View>
+          </View>
+        </View>
+      ) : null}
+
+      <AddIdeaSheet open={ideaModalOpen} onClose={() => setIdeaModalOpen(false)} onCreate={ideaCards.actions.create} />
+
+      <InkSheet open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title={t('goose.plans.addTitle')} scroll>
+        <View style={styles.modalList}>
+          <View style={styles.clauseChips}>
+            {ADDABLE_KINDS.map((k) => (
+              <InkChoice key={k} selected={goalKind === k} onSelect={() => setGoalKind(k)}>
+                {t(anchorKindKey(k))}
+              </InkChoice>
+            ))}
+          </View>
+          <InkInput
+            label={t('goose.plans.addWhat')}
+            value={goalTitle}
+            onChange={setGoalTitle}
+            placeholder={t('goose.plans.addWhatPlaceholder')}
+          />
+          <InkInput
+            label={t('goose.plans.addPlace')}
+            value={goalPlace}
+            onChange={setGoalPlace}
+            placeholder={t('goose.plans.addPlacePlaceholder')}
+          />
+          <InkTextArea
+            label={t('goose.plans.addNotes')}
+            value={goalNotes}
+            onChange={setGoalNotes}
+            placeholder={t('goose.plans.addNotesPlaceholder')}
+            rows={2}
+            maxRows={4}
+          />
+          <InkButton
+            variant="primary"
+            block
+            loading={savingGoal}
+            disabled={!goalTitle.trim() || savingGoal}
+            onPress={async () => {
+              setSavingGoal(true);
+              const done = await g.anchors.actions.add({
+                kind: goalKind,
+                title: goalTitle,
+                ...(goalPlace.trim() ? { place: goalPlace.trim() } : {}),
+                ...(goalNotes.trim() ? { notes: goalNotes.trim() } : {}),
+              });
+              setSavingGoal(false);
+              if (done) {
+                setGoalTitle('');
+                setGoalPlace('');
+                setGoalNotes('');
+                setGoalModalOpen(false);
+              }
+            }}
+          >
+            {t('goose.plans.addSave')}
+          </InkButton>
+        </View>
+      </InkSheet>
+
+      <WebWatchGuidedSheet
+        open={watchModalOpen}
+        onClose={() => setWatchModalOpen(false)}
+        onCreated={() => void g.reload()}
+      />
     </SafeAreaView>
   );
 }
@@ -834,13 +1203,21 @@ const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
     page: { flex: 1 },
-    scroll: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, gap: Spacing['2xl'] },
+    scroll: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, gap: Spacing.xl },
+    scrollCentered: { flexGrow: 1 },
+    centerStage: { flex: 1, justifyContent: 'center', gap: Spacing.lg, paddingVertical: Spacing.xl },
+    selectedStage: { gap: Spacing.xl },
+    clauseChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+    smallChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
+    bottomDock: { position: 'absolute', left: Spacing.lg, right: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    modalList: { gap: Spacing.md, paddingBottom: Spacing.xl },
     head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md },
     headText: { flex: 1 },
-    find: { gap: Spacing.sm },
-    findBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
-    jumps: { gap: Spacing.sm, paddingRight: Spacing.lg },
-    jump: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.md, paddingVertical: 7, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
+    jumpsOuter: { gap: Spacing.xs },
+    jumpsCollapsed: { maxHeight: CHIPS_COLLAPSED_HEIGHT, overflow: 'hidden' },
+    jumpsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    jumpsToggle: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingVertical: 4 },
+    jumpBig: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
     section: { gap: Spacing.md },
     group: { gap: Spacing.xs },
     invite: { gap: Spacing.sm },
@@ -851,4 +1228,16 @@ const makeStyles = (c: ThemeColors) =>
     emptyRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
     followHead: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
     pill: { paddingHorizontal: Spacing.lg, paddingVertical: 7, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, marginTop: 6 },
+    inTreeSheetRoot: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, justifyContent: 'flex-end', zIndex: 50 },
+    inTreeSheetPanel: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      borderWidth: 1,
+      borderBottomWidth: 0,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    sheetGrabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, marginBottom: Spacing.xs },
+    sheetTitle: { marginBottom: Spacing.xs },
   });

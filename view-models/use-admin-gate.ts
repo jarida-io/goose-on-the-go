@@ -6,6 +6,7 @@ import { useFocusEffect } from 'expo-router';
 
 import { adminPasswordProblem, formatAdminPassword, normalizeAdminPassword, type AdminPasswordProblem } from '@/models/pond-admin';
 import { useServer } from '@/providers/server-provider';
+import { api } from '@/services/api-client';
 import i18n from '@/services/i18n';
 import { showSnackbar } from '@/services/snackbar';
 import {
@@ -299,6 +300,7 @@ export interface UseAdminUnlock {
   setPassword: (raw: string) => void;
   /** Resolves to whether My Pond is now unlocked. */
   unlock: () => Promise<boolean>;
+  unlockWithPin: (pin: string) => Promise<boolean>;
   /** Reads the kept key behind the phone's biometrics and opens with it. Resolves to whether it opened. */
   unlockWithKept: () => Promise<boolean>;
   forgetKept: () => Promise<void>;
@@ -428,6 +430,26 @@ export function useAdminUnlock(): UseAdminUnlock {
     }
   }, [canKeep, coolingSecs, explain, keepKey, password, pin, remember, source, store, unlocking]);
 
+  const unlockWithPin = useCallback(
+    async (enteredPin: string) => {
+      if (unlocking || !enteredPin.trim() || coolingSecs > 0) return false;
+      setUnlocking(true);
+      setError(null);
+      try {
+        const answer = await api.adminUnlockWithPin(enteredPin.trim());
+        store.unlocked(answer.expires_at);
+        if (remember && canKeep && pin) await keepKey(pin);
+        return true;
+      } catch (e) {
+        explain(e);
+        return false;
+      } finally {
+        setUnlocking(false);
+      }
+    },
+    [canKeep, coolingSecs, explain, keepKey, pin, remember, store, unlocking],
+  );
+
   const unlockWithKept = useCallback(async () => {
     if (!pin || unlocking || coolingSecs > 0 || !store.claimKeyRead()) return false;
     setUnlocking(true);
@@ -506,6 +528,7 @@ export function useAdminUnlock(): UseAdminUnlock {
     setRemember,
     setPassword,
     unlock,
+    unlockWithPin,
     unlockWithKept,
     forgetKept,
   };

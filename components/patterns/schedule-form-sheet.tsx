@@ -65,6 +65,8 @@ export type ScheduleFormSheetProps = {
       /** Whether the Pond can ask about a missed run, so the form offers it. */
       asksIfMissed: boolean;
       schedule?: undefined;
+      prefillName?: string;
+      prefillPrompt?: string;
     }
   | {
       /** The schedule being edited, as the Pond has it; the form opens with its values. */
@@ -117,6 +119,13 @@ export function ScheduleFormSheet(props: ScheduleFormSheetProps) {
     setWasOpen(open);
     if (open && editing) {
       setDraft(draftFrom(editing));
+      setError(null);
+    } else if (open && !editing && (props.prefillName || props.prefillPrompt)) {
+      setDraft({
+        ...emptyDraft(phoneZone, asksIfMissed),
+        ...(props.prefillName ? { name: props.prefillName } : {}),
+        ...(props.prefillPrompt ? { prompt: props.prefillPrompt } : {}),
+      });
       setError(null);
     }
     // The list that says whether the Pond can ask may have loaded after this form was made.

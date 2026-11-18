@@ -7,9 +7,8 @@
  * the room never guesses a name.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { InkButton, InkCard, InkText, InkTitle } from '@/components/ui/ink';
@@ -17,7 +16,8 @@ import { InkButton, InkCard, InkText, InkTitle } from '@/components/ui/ink';
 import { Spacing } from '@/constants/spacing';
 import { formatScheduleTime } from '@/models/schedule';
 import { canInterrupt, interruptedWords, roomStateWords, unavailableWords } from '@/models/voice-room';
-import { selectionTick, tap } from '@/services/haptics';
+import { tap } from '@/services/haptics';
+import { dismissSnackbar, showSnackbar } from '@/services/snackbar';
 import type { VoiceRoom } from '@/services/types';
 import { useVoiceRoom, type UseVoiceRoom } from '@/view-models/use-voice-room';
 
@@ -107,51 +107,40 @@ export function RoomVoicePanel({ voice }: { voice: UseVoiceRoom }) {
   );
 }
 
-/** Home's card: shown where the Pond can listen in the room, gone where it cannot. */
+/** Shows a snackbar while the room voice is speaking so Home stays clean when idle. */
 export function RoomVoiceHome() {
   const { t } = useTranslation();
-  const router = useRouter();
   const voice = useVoiceRoom();
-  const { room, live } = voice;
-  if (!room || voice.missing || !room.available) return null;
+  const { room, live, actions } = voice;
+  const speaking = Boolean(room && !voice.missing && room.available && live.state === 'speak');
+  const snackbarIdRef = useRef<number | null>(null);
 
-  const stoppable = canInterrupt(live.state);
-  return (
-    <InkCard raised={false} contentStyle={styles.card}>
-      <InkTitle level={3}>{t('voiceRoom.title')}</InkTitle>
-      <InkText>{room.enabled ? roomStateWords(live.state) : t('voiceRoom.homeOff')}</InkText>
-      {room.enabled ? (
-        <InkText size="sm" tone="secondary">
-          {lastHeard(room, t)}
-        </InkText>
-      ) : null}
-      <View style={styles.actions}>
-        {stoppable ? (
-          <InkButton
-            variant="primary"
-            icon="stop"
-            disabled={voice.interrupting}
-            onPress={() => {
-              void tap();
-              void voice.actions.interrupt();
-            }}
-          >
-            {t('voiceRoom.interrupt')}
-          </InkButton>
-        ) : null}
-        <InkButton
-          variant="quiet"
-          icon="voice"
-          onPress={() => {
-            void selectionTick();
-            router.push('/(stack)/voice-agent');
-          }}
-        >
-          {t('voiceRoom.open')}
-        </InkButton>
-      </View>
-    </InkCard>
-  );
+  useEffect(() => {
+    if (speaking) {
+      snackbarIdRef.current = showSnackbar({
+        message: roomStateWords('speak'),
+        action: {
+          label: t('voiceRoom.interrupt'),
+          onPress: () => {
+            void tap();
+            void actions.interrupt();
+          },
+        },
+      });
+    } else if (snackbarIdRef.current !== null) {
+      dismissSnackbar(snackbarIdRef.current);
+      snackbarIdRef.current = null;
+    }
+
+    return () => {
+      if (snackbarIdRef.current !== null) {
+        dismissSnackbar(snackbarIdRef.current);
+        snackbarIdRef.current = null;
+      }
+    };
+  }, [actions, speaking, t]);
+
+  return null;
 }
 
 const styles = StyleSheet.create({

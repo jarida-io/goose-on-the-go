@@ -45,6 +45,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -55,7 +56,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NAVBAR_DEFAULTS, NavbarBehaviour, type NavbarStage } from '@jarida/ink/headless';
-import { InkNavbar, InkNotice, InkSpinner, inkText, useInkTheme, useReduceMotion } from '@/components/ui/ink';
+import { InkChoice, InkNavbar, InkNotice, InkSpinner, inkText, useInkTheme, useReduceMotion } from '@/components/ui/ink';
+import { api } from '@/services/api-client';
 
 import { ChatDock } from '@/components/patterns/chat-dock';
 import { GreetingCard } from '@/components/patterns/greeting-card';
@@ -102,6 +104,7 @@ import { useResearchOffer } from '@/view-models/use-deep-research';
 import { useGreetingName } from '@/view-models/use-greeting';
 import { useInterview } from '@/view-models/use-interview';
 import { useSuggestions, type OfferedPrompt } from '@/view-models/use-suggestions';
+import { useIdeaCards } from '@/view-models/use-idea-cards';
 import type { BubblePosition } from '@/components/ui/ink';
 
 /** The phone number for when the title bar condenses; see `chrome-provider.tsx`. */
@@ -188,6 +191,7 @@ export default function ChatScreen() {
   const { messages, queued, streaming, turnSeed, sessionId, title } = data;
   const name = useGreetingName();
   const suggestions = useSuggestions(sessionId);
+  const ideaCards = useIdeaCards(messages.length === 0 && !sessionId);
   const research = useResearchOffer();
   const [voice, setVoice] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -197,7 +201,7 @@ export default function ChatScreen() {
   // for it; without an id the screen opens a new conversation, which is what
   // the wall's compose button means. The ref is what stops a re-render
   // re-reading a conversation already on screen.
-  const { session, title: linkedTitle, ask, interview: interviewOf, card_kind, card_id, card_title } = useLocalSearchParams<{
+  const { session, title: linkedTitle, ask, interview: interviewOf, card_kind, card_id, card_title, incognito } = useLocalSearchParams<{
     session?: string;
     title?: string;
     /** A prompt handed over from Home's chips, to be asked on arrival. */
@@ -208,7 +212,19 @@ export default function ChatScreen() {
     card_title?: string;
     /** The member whose setup interview this conversation is, which turns its panels on. */
     interview?: string;
+    /** Started by long-pressing Compose: deleted from the Pond on exit. */
+    incognito?: string;
   }>();
+  const isIncognito = incognito === '1';
+  const incognitoSessionRef = useRef<string | null>(null);
+  incognitoSessionRef.current = sessionId;
+  useEffect(() => {
+    if (!isIncognito) return;
+    return () => {
+      const sid = incognitoSessionRef.current;
+      if (sid) void api.deleteSession(sid).catch(() => {});
+    };
+  }, [isIncognito]);
   // The link alone decides what opens. `open` changes whenever the chat's queue
   // is replaced, which starting a new conversation does; read through a ref, so
   // that change cannot open the linked conversation again over the new one.
@@ -237,7 +253,12 @@ export default function ChatScreen() {
     if (draftKey.current === NEW_DRAFT) moveDraft(NEW_DRAFT, sessionId);
     draftKey.current = sessionId;
   }, [sessionId]);
-  const onDraftChange = useCallback((text: string) => setDraft(draftKey.current, text), []);
+  const onDraftChange = useCallback(
+    (text: string) => {
+      if (!isIncognito) setDraft(draftKey.current, text);
+    },
+    [isIncognito],
+  );
 
   // The interview moves on a turn at a time, so it is read again as each reply ends.
   const interview = useInterview(interviewOf ?? null, Boolean(interviewOf));
@@ -435,7 +456,10 @@ export default function ChatScreen() {
   const onPick = useCallback(
     (prompt: OfferedPrompt) => {
       suggestions.actions.taken(prompt);
-      void actions.send(prompt.prompt);
+      const message = prompt.agentNotes
+        ? `${prompt.prompt}\n\n[Agent notes: ${prompt.agentNotes}]`
+        : prompt.prompt;
+      void actions.send(message);
     },
     [actions, suggestions.actions],
   );
@@ -537,7 +561,9 @@ export default function ChatScreen() {
           lead={<BackToWall />}
           title={
             title ? (
-              <ConversationTitle title={title} onPress={sessionId ? () => setRenaming(true) : null} />
+              <ConversationTitle title={title} onPress={sessionId && !isIncognito ? () => setRenaming(true) : null} />
+            ) : isIncognito ? (
+              <ConversationTitle title="Incognito" onPress={null} />
             ) : undefined
           }
           actions={[
@@ -561,6 +587,12 @@ export default function ChatScreen() {
         ) : null}
 
         {asking && current ? <InterviewProgress interview={current} /> : null}
+
+        {isIncognito ? (
+          <View style={styles.notice}>
+            <InkNotice tone="neutral">Incognito session · Not saved when you leave</InkNotice>
+          </View>
+        ) : null}
 
         {shown ? (
           <GPressable
@@ -614,8 +646,6 @@ export default function ChatScreen() {
                 name={name}
                 seed={turnSeed}
                 busy={streaming}
-                prompts={suggestions.data.prompts}
-                onPick={onPick}
               />
             </View>
           )}
@@ -652,6 +682,55 @@ export default function ChatScreen() {
                 </GPressable>
               </View>
             ) : null}
+            {!started && !loading && ideaCards.cards.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.ideaChipsRow}
+                style={styles.ideaChipsWrap}
+              >
+                {ideaCards.cards.map((idea) => {
+                  const notePreview = idea.notes.found || idea.notes.next || idea.why.text;
+                  const fullContext = [
+                    idea.title,
+                    idea.why.text ? `Why: ${idea.why.text}` : null,
+                    idea.notes.found ? `Context: ${idea.notes.found}` : null,
+                    idea.notes.next ? `Next: ${idea.notes.next}` : null,
+                    idea.notes.caveats ? `Caveats: ${idea.notes.caveats}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join('\n');
+                  return (
+                    <GPressable
+                      key={idea.id}
+                      onPress={() => {
+                        void selectionTick();
+                        void actions.send(fullContext);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={idea.title}
+                      style={[
+                        styles.ideaCardChip,
+                        {
+                          backgroundColor: ink.color.chrome,
+                          borderColor: ink.color.lineStrong,
+                        },
+                      ]}
+                    >
+                      <Text numberOfLines={1} style={[styles.ideaChipTitle, { color: ink.color.text }]}>
+                        {idea.title}
+                      </Text>
+                      {notePreview ? (
+                        <Text numberOfLines={1} style={[styles.ideaChipNote, { color: ink.color.textSecondary }]}>
+                          {notePreview}
+                        </Text>
+                      ) : null}
+                    </GPressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
             <ChatDock
               key={dock.key}
               initialDraft={dock.draft}
@@ -667,6 +746,7 @@ export default function ChatScreen() {
               conversation={sessionId}
               replyTo={replyTo}
               onClearReply={clearReply}
+              onOpenWatch={(id) => router.push({ pathname: '/(stack)/web-watch', params: { id } })}
             />
           </>
         )}
@@ -682,7 +762,7 @@ const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
     flex: { flex: 1 },
-    navbar: { alignSelf: 'stretch' },
+    navbar: { alignSelf: 'stretch', backgroundColor: c.background, borderBottomWidth: 0, borderBottomColor: 'transparent' },
 
     conversation: { flex: 1, overflow: 'hidden' },
     listContent: {
@@ -723,6 +803,32 @@ const makeStyles = (c: ThemeColors) =>
       justifyContent: 'flex-end',
       paddingHorizontal: Spacing.lg,
       paddingBottom: Spacing.lg,
+    },
+    ideaChipsWrap: {
+      flexGrow: 0,
+      marginBottom: Spacing.xs,
+    },
+    ideaChipsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: 2,
+    },
+    ideaCardChip: {
+      maxWidth: 250,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      gap: 2,
+    },
+    ideaChipTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    ideaChipNote: {
+      fontSize: 11,
     },
   });
 

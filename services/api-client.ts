@@ -2865,6 +2865,11 @@ export class PondApiClient {
     return this.get<WeatherResponse>('/api/v1/weather');
   }
 
+  /** Control active music playback on Spotify (`play`, `pause`, `next`, `previous`). */
+  musicControl(action: 'play' | 'pause' | 'next' | 'previous'): Promise<unknown> {
+    return this.post('/api/v1/music/control', { action });
+  }
+
   /** What Spotify is playing, as the Pond reports it. */
   nowPlaying(): Promise<NowPlayingResponse> {
     return this.get<NowPlayingResponse>('/api/v1/music/now-playing');
@@ -3061,6 +3066,17 @@ export class PondApiClient {
     return required(readUnlocked(await this.post<unknown>('/api/v1/admin/unlock', { password })), 'the unlock');
   }
 
+  async adminUnlockWithPin(pin: string): Promise<AdminUnlocked> {
+    return required(readUnlocked(await this.post<unknown>('/api/v1/admin/unlock', { pin })), 'the unlock');
+  }
+
+  async recoverPasscodeWithAdminCard(adminCard: string, pin: string): Promise<{ has_recovery_pin: boolean }> {
+    return this.post<{ has_recovery_pin: boolean }>('/api/v1/pairing/recovery-pin/recover', {
+      admin_card: adminCard,
+      pin,
+    });
+  }
+
   /** A 403 `admin_key_rejected` for a key the Pond revoked or replaced, which counts as a wrong guess. */
   async adminUnlockWithKey(key: string): Promise<AdminUnlocked> {
     return required(readUnlocked(await this.post<unknown>('/api/v1/admin/unlock', { key })), 'the unlock');
@@ -3142,9 +3158,103 @@ export class PondApiClient {
 
   // ── Web watches and saved cards ─────────────────────────────
 
+  /** Current Pond Wi-Fi, Ethernet, and Bluetooth status. */
+  async connections(): Promise<{
+    wifi: { state: string; ssid: string | null; address: string | null; signal: number | null };
+    bluetooth: { enabled: boolean | null; state: string; reason: string | null };
+    can_change: { allowed: boolean; reason: string | null };
+  }> {
+    return this.get('/api/v1/connections');
+  }
+
+  async wifiNetworks(): Promise<{
+    networks: { ssid: string; signal: number | null; secured: boolean; saved: boolean; active: boolean }[];
+  }> {
+    return this.get('/api/v1/connections/wifi/networks');
+  }
+
+  async wifiJoin(ssid: string, passphrase?: string): Promise<unknown> {
+    return this.post('/api/v1/connections/wifi/join', {
+      ssid,
+      ...(passphrase ? { passphrase } : {}),
+    });
+  }
+
+  async wifiForget(ssid: string): Promise<unknown> {
+    return this.del(`/api/v1/connections/wifi/networks/${encodeURIComponent(ssid)}?confirm=true`);
+  }
+
+  async bluetoothDevices(): Promise<{
+    powered?: boolean;
+    discoverable?: boolean;
+    pairable?: boolean;
+    devices: { address: string; name: string; device_type?: string | null; paired: boolean; connected: boolean }[];
+  }> {
+    return this.get('/api/v1/connections/bluetooth/devices');
+  }
+
+  async bluetoothScan(): Promise<{
+    powered?: boolean;
+    discoverable?: boolean;
+    pairable?: boolean;
+    devices: { address: string; name: string; device_type?: string | null; paired: boolean; connected: boolean }[];
+  }> {
+    return this.request('/api/v1/connections/bluetooth/scan', {
+      method: 'POST',
+      body: JSON.stringify({}),
+      signal: timeoutSignal(30_000),
+    });
+  }
+
+  async bluetoothPower(body: {
+    powered?: boolean;
+    discoverable?: boolean;
+    pairable?: boolean;
+  }): Promise<{ powered: boolean; discoverable: boolean; pairable: boolean }> {
+    return this.post('/api/v1/connections/bluetooth/power', body);
+  }
+
+  async bluetoothConnect(address: string): Promise<unknown> {
+    return this.request('/api/v1/connections/bluetooth/connect', {
+      method: 'POST',
+      body: JSON.stringify({ address }),
+      signal: timeoutSignal(30_000),
+    });
+  }
+
+  async bluetoothDisconnect(address: string): Promise<unknown> {
+    return this.post('/api/v1/connections/bluetooth/disconnect', { address });
+  }
+
+  async bluetoothForget(address: string): Promise<unknown> {
+    return this.del(`/api/v1/connections/bluetooth/devices/${encodeURIComponent(address)}`);
+  }
+
+  /** Current background inference / indexing / memory status from the Pond's lane. */
+  async laneStatus(): Promise<{
+    running: string | null;
+    running_title: string | null;
+    slot_busy: boolean;
+    embedding_slot?: { running: boolean; running_for_secs?: number | null };
+  }> {
+    return this.get('/api/v1/lane');
+  }
+
   /** The caller's own web watches, newest first. */
   async listWebWatches(): Promise<WebWatch[]> {
     return readList(await this.get<unknown>('/api/v1/web-watches'), readWebWatch);
+  }
+
+  /** Create a new web watch (Safari Notify Me style, or open internet search). */
+  async createWebWatch(body: {
+    url?: string;
+    looking_for: string;
+    interval_hours?: number;
+    title?: string;
+  }): Promise<WebWatch> {
+    const watch = readWebWatch(await this.post<unknown>('/api/v1/web-watches', body));
+    if (!watch) throw new Error('The Pond answered the watch with something unexpected');
+    return watch;
   }
 
   /** One watch with the items it last saw and its newest changes. */
@@ -3653,6 +3763,10 @@ export class PondApiClient {
 
   async ideaCards(): Promise<IdeaCardSet> {
     return readIdeaCardSet(await this.get<unknown>('/api/v1/me/idea-cards'));
+  }
+
+  async createIdeaCard(body: { title: string; why?: string; notes?: string; kind?: string }): Promise<IdeaCard> {
+    return required(readIdeaCard(await this.post<unknown>('/api/v1/me/idea-cards', body)), 'the idea');
   }
 
   /** 202 with the set's state; a set already on its way is not started twice. */

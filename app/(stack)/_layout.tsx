@@ -11,10 +11,11 @@ import { Stack } from 'expo-router';
 import React, { type ReactElement } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useReduceMotion } from '@/components/ui/ink';
 
-import { BackButton } from '@/components/navigation/back-button';
+import { BackButton, BackTitle, StackHeader } from '@/components/navigation/back-button';
 import { ConnectionStatus } from '@/components/patterns/connection-status';
-import { useTheme } from '@/providers/theme-provider';
+import { ACCENT_OPTIONS, useTheme } from '@/providers/theme-provider';
 import { JaridaPurple } from '@/constants/colors';
 import { face } from '@/constants/typography';
 
@@ -33,24 +34,32 @@ function ScreenWithStatus({ route, children }: { route: { name: string }; childr
 }
 
 export default function StackLayout() {
-  const { colors } = useTheme();
+  const { colors, accent } = useTheme();
+  const accentHex = ACCENT_OPTIONS.find((o) => o.name === accent)?.hex ?? JaridaPurple[500];
   const { t } = useTranslation();
+  const reduced = useReduceMotion();
+  const modalRise = reduced ? 'none' : ('fade_from_bottom' as const);
 
   return (
     <Stack
       screenLayout={ScreenWithStatus}
       screenOptions={{
         headerShown: true,
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: JaridaPurple[500],
+        header: (props) => <StackHeader {...props} />,
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: accentHex,
+        headerTitleAlign: 'center',
         headerTitleStyle: {
           color: colors.text,
           ...face('display', 'bold'),
         },
+        headerTitle: ({ children }) => <BackTitle>{children}</BackTitle>,
         headerShadowVisible: false,
         headerBackButtonDisplayMode: 'minimal',
         headerLeft: () => <BackButton />,
         contentStyle: { backgroundColor: colors.background },
+        animation: reduced ? 'none' : 'slide_from_right',
+        animationDuration: 220,
       }}
     >
       <Stack.Screen name="settings-assistant" options={{ title: t('screens.settingsAssistant') }} />
@@ -113,6 +122,9 @@ export default function StackLayout() {
       <Stack.Screen name="goose-cart-item" options={{ title: t('screens.gooseCartItem') }} />
       <Stack.Screen name="goose-connectors" options={{ title: t('screens.gooseConnectors') }} />
       <Stack.Screen name="goose-connector" options={{ title: t('screens.gooseConnector') }} />
+      <Stack.Screen name="devices" options={{ title: t('tabs.devices') }} />
+      <Stack.Screen name="weather" options={{ title: 'Weather', animation: modalRise }} />
+      <Stack.Screen name="music" options={{ title: 'Now Playing', animation: modalRise }} />
       <Stack.Screen name="goose-interests" options={{ title: t('screens.gooseInterests') }} />
       <Stack.Screen name="goose-interview" options={{ title: t('screens.gooseInterview') }} />
       <Stack.Screen name="goose-member-interview" options={{ title: t('screens.gooseMemberInterview') }} />
@@ -162,6 +174,7 @@ export default function StackLayout() {
       <Stack.Screen name="debug" options={{ title: t('screens.debug') }} />
       <Stack.Screen name="commission-device" options={{ title: t('screens.commissionDevice') }} />
       <Stack.Screen name="switch-pond" options={{ title: t('screens.switchPond') }} />
+      <Stack.Screen name="pond-connections" options={{ title: t('screens.pondWifi') }} />
       <Stack.Screen
         name="connect-desktop"
         options={{

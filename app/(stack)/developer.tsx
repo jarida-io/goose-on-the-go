@@ -41,16 +41,22 @@ const SCREEN_LABELS: Record<MigrationScreen, TranslationKey> = {
 };
 
 export default function DeveloperScreen() {
-  // Not linked from the You-tab menu in production (see constants/navigation.ts),
-  // but the route itself still exists — refuse to render it outside dev builds
-  // too, so a direct link/deep link can't reach it either. Kept in a separate
-  // component (rather than an early return here) so the hooks below always
-  // run in a consistent order for whichever component actually renders.
-  if (!__DEV__) {
-    return <Redirect href="/(tabs)" />;
-  }
   return <DeveloperScreenContent />;
 }
+
+const DEV_TOOLS = [
+  { label: 'Advanced Settings', route: '/(stack)/settings-advanced' },
+  { label: 'Tools & Extensions', route: '/(stack)/settings-tools' },
+  { label: 'Memory Tuning', route: '/(stack)/settings-memory-tuning' },
+  { label: 'Prompt Templates', route: '/(stack)/settings-prompt-templates' },
+  { label: 'Ngrok Tunnel', route: '/(stack)/ngrok-tunnel' },
+  { label: 'Logs', route: '/(stack)/logs' },
+  { label: 'Pond Caches', route: '/(stack)/pond-caches' },
+  { label: 'Pond Reliability', route: '/(stack)/pond-reliability' },
+  { label: 'Sessions', route: '/(stack)/sessions' },
+  { label: 'Schedule', route: '/(stack)/schedule' },
+  { label: 'Saved Items', route: '/(stack)/saved' },
+] as const;
 
 function DeveloperScreenContent() {
   const styles = useThemedStyles(makeStyles);
@@ -97,6 +103,20 @@ function DeveloperScreenContent() {
         </View>
         <GIcon name="chevron-right" size={16} color={JaridaPurple[500]} />
       </GPressable>
+
+      <Text style={styles.sectionTitle}>Advanced & Diagnostics</Text>
+      <View style={styles.card}>
+        {DEV_TOOLS.map((tool, i) => (
+          <GPressable
+            key={tool.route}
+            style={[styles.screenRow, i < DEV_TOOLS.length - 1 && styles.screenRowDivider]}
+            onPress={() => router.push(tool.route as never)}
+          >
+            <Text style={styles.screenLabel}>{tool.label}</Text>
+            <GIcon name="chevron-right" size={16} color={JaridaPurple[500]} />
+          </GPressable>
+        ))}
+      </View>
 
       <Text style={styles.sectionTitle}>{t('dev.screenMode')}</Text>
       <Text style={styles.sectionHint}>{t('developer.backendHint')}</Text>

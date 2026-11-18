@@ -161,18 +161,33 @@ export default function GooseAnchorScreen() {
               </ListSection>
             ) : null}
 
-            {owner && live ? (
-              <View style={styles.actions}>
-                <InkButton variant="quiet" icon="users" onPress={() => setSharing(true)} style={styles.left}>
-                  {t('goose.anchor.share')}
-                </InkButton>
-                {anchor.state === 'active' ? (
-                  <DangerQuietButton icon="stop" onPress={() => setStopping(true)}>
-                    {t('goose.anchor.stop')}
-                  </DangerQuietButton>
-                ) : null}
-              </View>
-            ) : null}
+            <View style={styles.actions}>
+              <InkButton
+                variant="primary"
+                icon="chat"
+                onPress={() =>
+                  router.push({
+                    pathname: '/conversation',
+                    params: { card_kind: 'anchor', card_id: anchor.id, card_title: anchor.title },
+                  })
+                }
+                style={styles.left}
+              >
+                Chat about this goal
+              </InkButton>
+              {owner && live ? (
+                <>
+                  <InkButton variant="quiet" icon="users" onPress={() => setSharing(true)} style={styles.left}>
+                    {t('goose.anchor.share')}
+                  </InkButton>
+                  {anchor.state === 'active' ? (
+                    <DangerQuietButton icon="stop" onPress={() => setStopping(true)}>
+                      {t('goose.anchor.stop')}
+                    </DangerQuietButton>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
           </>
         ) : null}
       </ScreenScroll>

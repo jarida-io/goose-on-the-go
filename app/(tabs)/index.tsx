@@ -17,6 +17,7 @@ import {
   InkEmptyState,
   InkText,
   InkTitle,
+  useInkTheme,
 } from '@/components/ui/ink';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -39,7 +40,6 @@ import { RemoteAccessOffer } from '@/components/patterns/remote-access-offer';
 import { AskRow, HomeIdeas } from '@/components/patterns/home-ideas';
 import { PlansWidget, QuestionsWidget, ReadyWidget } from '@/components/patterns/home-engine';
 import { IdeaCardSetView } from '@/components/goose/idea-cards';
-import { GlanceStrip, type Figure } from '@/components/patterns/glance-strip';
 import { PondSays } from '@/components/patterns/pond-says';
 import {
   ConversationsWidget,
@@ -129,6 +129,7 @@ function PondCard() {
 
 export default function HomeScreen() {
   const styles = useThemedStyles(makeStyles);
+  const theme = useInkTheme();
   const { t } = useTranslation();
   const { online, hydrated } = useServer();
   const offline = hydrated && !online;
@@ -199,7 +200,7 @@ export default function HomeScreen() {
   // while that list is unknown.
   const devicesKnown = devicesState === 'ready' || devicesState === 'empty';
   // Quiet is said above the board, by the Pond's own line; the widget is for suggestions.
-  const hasIdeas = ideas.data.proposals.length > 0 || !!ideas.data.agent;
+  const hasIdeas = engine.cardsOn && engine.cards.fresh.length + engine.cards.saved.length > 0;
 
   // Built in the saved order; a widget with nothing to say is left out rather than drawn empty.
   const widgets = useMemo(() => {
@@ -245,20 +246,10 @@ export default function HomeScreen() {
         ? {
             key: 'ideas',
             span: 2,
-            frame: ideas.data.proposals.length > 0 ? 'raised' : 'plain',
+            frame: 'plain',
             title: t('home.ideas.title'),
             icon: 'sparkle',
-            node: (
-              <HomeIdeas
-                proposals={ideas.data.proposals}
-                agent={ideas.data.agent}
-                deciding={ideas.deciding}
-                collapsed={ideas.collapsed}
-                onToggleCollapsed={ideas.actions.toggleCollapsed}
-                onAccept={(id) => void ideas.actions.approve(id)}
-                onDecline={(id) => void ideas.actions.decline(id)}
-              />
-            ),
+            node: <IdeaCardSetView vm={engine.cards} limit={HOME_CARD_LIMIT} onSeeAll={() => router.push('/(stack)/goose-cards')} />,
           }
         : null,
       ask: {
@@ -276,7 +267,7 @@ export default function HomeScreen() {
             frame: 'accent',
             title: t('home.nowPlaying'),
             icon: 'music',
-            node: <NowPlayingWidget playing={rightNow.nowPlaying} />,
+            node: <NowPlayingWidget playing={rightNow.nowPlaying} onOpen={() => router.push('/(stack)/music')} />,
           }
         : null,
       next: rightNow.nextRoutine
@@ -298,7 +289,7 @@ export default function HomeScreen() {
             frame: 'plain',
             title: t('home.widgets.outside'),
             icon: 'partly-sunny',
-            node: <OutsideWidget outdoor={rightNow.outdoor} />,
+            node: <OutsideWidget outdoor={rightNow.outdoor} onOpen={() => router.push('/(stack)/weather')} />,
           }
         : null,
       remember: ideas.data.reminders
@@ -348,7 +339,7 @@ export default function HomeScreen() {
             error={devices.error}
             onRetry={devices.actions.refresh}
             onToggle={handleDeviceToggle}
-            onSeeAll={() => router.push('/(tabs)/devices')}
+            onSeeAll={() => router.push('/(stack)/devices')}
             empty={
               <InkEmptyState
                 icon="device"
@@ -372,16 +363,6 @@ export default function HomeScreen() {
   const shown = widgets.map((w) => w.key);
 
   // Only phrases with a source behind them; the line hides when there are none.
-  const figures: Figure[] = [];
-  if (devicesKnown) {
-    figures.push({ key: 'devices', phrase: t('home.lineDevicesOn', { count: devices.data.onlineCount }) });
-  }
-  if (rightNow.outdoor) {
-    const { temp, place } = rightNow.outdoor;
-    // Where the Pond is configured to be, which is not always where the reader is.
-    figures.push({ key: 'outdoor', phrase: place ? t('home.lineOutdoorPlace', { temp, place }) : t('home.lineOutdoor', { temp }) });
-  }
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
@@ -395,8 +376,12 @@ export default function HomeScreen() {
       >
         <View style={styles.greetingRow}>
           <View style={styles.greetingText}>
-            <Text style={styles.greetingLabel}>{t(greetingKey(now.getHours()))}</Text>
-            <InkTitle level={1}>{firstName(member?.displayName) ?? t('home.you')}</InkTitle>
+            <InkTitle level={1} style={{ fontStyle: 'normal', fontWeight: '800', fontSize: 34, lineHeight: 42, transform: [] }}>
+              {`${t(greetingKey(now.getHours()))} `}
+              <Text style={{ color: theme.color.accentLine }}>
+                {firstName(member?.displayName) ?? t('home.you')}
+              </Text>
+            </InkTitle>
           </View>
           <GPressable feedback="lift"
             style={styles.avatar}
@@ -411,31 +396,6 @@ export default function HomeScreen() {
             )}
           </GPressable>
         </View>
-
-        {offline || !engine.cardsOn ? null : (
-          <View style={styles.ideaCards}>
-            <IdeaCardSetView vm={engine.cards} limit={HOME_CARD_LIMIT} onSeeAll={() => router.push('/(stack)/goose-cards')} />
-          </View>
-        )}
-
-        {/* Beside the ideas, since both wait on the member; a batch asked in chat leads back to it. */}
-        {offline || engine.questions.batches.length === 0 ? null : (
-          <InkEdge raised style={styles.questions} contentStyle={styles.questionsBody}>
-            <QuestionsWidget
-              vm={engine.questions}
-              onSeeAll={() => router.push('/(stack)/goose-questions')}
-              onOpenPlan={(id) => router.push({ pathname: '/(stack)/goose-anchor', params: { id } })}
-              onOpenChat={(session, title) => router.push({ pathname: '/conversation', params: { session, title } })}
-            />
-          </InkEdge>
-        )}
-
-        {/* Suggestions are the From your Pond widget's alone; the line says only what it cannot. */}
-        {offline || ideas.data.proposals.length > 0 ? null : (
-          <PondSays reminderCount={ideas.data.reminderCount} quiet={ideas.quiet && engine.quiet} />
-        )}
-
-        {offline ? null : <GlanceStrip figures={figures} />}
 
         {/* One column at the board's own gap, so a card that draws nothing leaves no space behind. */}
         <View style={styles.cards} onLayout={(e) => (cardsTop.current = e.nativeEvent.layout.y)}>
@@ -489,7 +449,7 @@ export default function HomeScreen() {
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
   safe: { flex: 1, backgroundColor: c.background },
-  scroll: { paddingHorizontal: Spacing.lg },
+  scroll: { paddingHorizontal: Spacing.sm },
 
   greetingRow: {
     flexDirection: 'row',

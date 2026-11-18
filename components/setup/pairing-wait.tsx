@@ -11,7 +11,7 @@ import { InkButton, InkNotice, InkSpinner, InkText } from '@/components/ui/ink';
 import { Spacing } from '@/constants/spacing';
 import type { HeldPairing } from '@/models/pairing-lock';
 import { usePairingWait, type PairingWaitDeps } from '@/view-models/use-pairing-wait';
-import { DigitsField } from './claim-fields';
+import { PasscodePad } from './passcode-pad';
 
 export function PairingWait({
   held,
@@ -54,24 +54,20 @@ export function PairingWait({
       <InkText tone="secondary">{t('pairingLock.wait.body')}</InkText>
       {recovery.open ? (
         <>
-          <InkText size="sm" tone="secondary">
-            {t('pairingLock.wait.pinLabel')}
-          </InkText>
-          <DigitsField
-            label={t('pairingLock.wait.pinLabel')}
+          <PasscodePad
+            title={t('pairingLock.wait.pinLabel')}
+            subtitle={t('pairingLock.pinPlaceholder')}
+            length={6}
             value={recovery.pin}
+            error={recovery.error}
+            busy={recovery.checking}
+            autoSubmit={false}
+            submitLabel={t('pairingLock.wait.usePin')}
             onChange={wait.actions.setPin}
-            placeholder={t('pairingLock.pinPlaceholder')}
-            disabled={recovery.checking}
-            secret
             onSubmit={wait.actions.submitPin}
           />
           {recovery.coolingSecs > 0 ? <InkNotice tone="warning">{t('pairingLock.wait.cooling', { count: recovery.coolingSecs })}</InkNotice> : null}
-          {recovery.error ? <InkNotice tone="danger">{recovery.error}</InkNotice> : null}
           <View style={styles.row}>
-            <InkButton variant="primary" disabled={!recovery.ready} loading={recovery.checking} onPress={wait.actions.submitPin}>
-              {t('pairingLock.wait.usePin')}
-            </InkButton>
             <InkButton variant="quiet" disabled={recovery.checking} onPress={wait.actions.closeRecovery}>
               {t('pairingLock.wait.keepWaiting')}
             </InkButton>

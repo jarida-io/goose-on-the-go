@@ -60,6 +60,8 @@ export interface AttachMenuProps {
   researching?: boolean;
   /** Research was chosen; called once the menu has closed, so the field can take the focus. */
   onResearch?: () => void;
+  /** Web watch was chosen; called once the menu has closed, so the guided sheet can open. */
+  onWebWatch?: () => void;
   /** Where the plus button's top edge is, measured up from the screen's foot. */
   anchorBottom: number;
   /** The plus button's left edge. */
@@ -73,6 +75,7 @@ export function AttachMenu({
   research,
   researching = false,
   onResearch,
+  onWebWatch,
   anchorBottom,
   anchorLeft,
 }: AttachMenuProps) {
@@ -104,13 +107,14 @@ export function AttachMenu({
   }, [open, reduced, progress]);
 
   // The choice, held until the menu has gone; see the header.
-  const chosen = useRef<AttachSource | 'research' | null>(null);
+  const chosen = useRef<AttachSource | 'research' | 'web-watch' | null>(null);
   const release = useCallback(() => {
     const source = chosen.current;
     chosen.current = null;
     if (source === 'research') onResearch?.();
+    else if (source === 'web-watch') onWebWatch?.();
     else if (source) onChoose(source);
-  }, [onChoose, onResearch]);
+  }, [onChoose, onResearch, onWebWatch]);
 
   const shown = open || exiting;
   useEffect(() => {
@@ -182,32 +186,56 @@ export function AttachMenu({
             </InkText>
           </View>
         ) : null}
+        {research?.shown || onWebWatch ? (
+          <View style={[styles.rule, { backgroundColor: theme.color.line, height: theme.edge.hairlineWidth }]} />
+        ) : null}
         {research?.shown ? (
-          <>
-            <View style={[styles.rule, { backgroundColor: theme.color.line, height: theme.edge.hairlineWidth }]} />
-            <GPressable
-              feedback="tint"
-              disabled={research.disabled || researching}
-              onPress={() => {
-                chosen.current = 'research';
-                onClose();
-              }}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: research.disabled || researching }}
-              accessibilityHint={research.noteKey ? t(research.noteKey) : t('chat.research.menuHint')}
-              style={[styles.row, styles.tall, { borderRadius: theme.radius.md }, research.disabled ? styles.dim : null]}
-            >
-              <GIcon name="search" size={20} color={theme.color.text} />
-              <View style={styles.words}>
-                <InkText size="md" weight="medium">
-                  {t('chat.research.menu')}
-                </InkText>
-                <InkText size="sm" tone="secondary">
-                  {research.noteKey ? t(research.noteKey) : t('chat.research.menuHint')}
-                </InkText>
-              </View>
-            </GPressable>
-          </>
+          <GPressable
+            feedback="tint"
+            disabled={research.disabled || researching}
+            onPress={() => {
+              chosen.current = 'research';
+              onClose();
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: research.disabled || researching }}
+            accessibilityHint={research.noteKey ? t(research.noteKey) : t('chat.research.menuHint')}
+            style={[styles.row, styles.tall, { borderRadius: theme.radius.md }, research.disabled ? styles.dim : null]}
+          >
+            <GIcon name="search" size={20} color={theme.color.text} />
+            <View style={styles.words}>
+              <InkText size="md" weight="medium">
+                {t('chat.research.menu')}
+              </InkText>
+              <InkText size="sm" tone="secondary">
+                {research.noteKey ? t(research.noteKey) : t('chat.research.menuHint')}
+              </InkText>
+            </View>
+          </GPressable>
+        ) : null}
+        {onWebWatch ? (
+          <GPressable
+            feedback="tint"
+            disabled={researching}
+            onPress={() => {
+              chosen.current = 'web-watch';
+              onClose();
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: researching }}
+            accessibilityHint="Watch a webpage or search the web for updates."
+            style={[styles.row, styles.tall, { borderRadius: theme.radius.md }, researching ? styles.dim : null]}
+          >
+            <GIcon name="eye" size={20} color={theme.color.text} />
+            <View style={styles.words}>
+              <InkText size="md" weight="medium">
+                Web watch
+              </InkText>
+              <InkText size="sm" tone="secondary">
+                Your Pond watches a page or searches the web and tells you when something matches.
+              </InkText>
+            </View>
+          </GPressable>
         ) : null}
       </Animated.View>
     </Modal>

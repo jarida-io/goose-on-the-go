@@ -21,6 +21,10 @@ import { deliverableKindKey, deliverableStateKey, isReadable } from '@/models/an
 import { isUnavailable } from '@/models/content-state';
 import { reportSections } from '@/models/long-tasks';
 import { routeId } from '@/models/me-read';
+import { api } from '@/services/api-client';
+import { copyText } from '@/services/clipboard';
+import { confirm } from '@/services/haptics';
+import { showSnackbar } from '@/services/snackbar';
 import { useContentState } from '@/view-models/use-content-state';
 import { useDeliverable } from '@/view-models/use-deliverable';
 import { usePullToRefresh } from '@/view-models/use-pull-to-refresh';
@@ -33,6 +37,7 @@ export default function GooseDeliverableScreen() {
   const vm = useDeliverable(id);
   const pull = usePullToRefresh(vm.actions.reload);
   const [rejecting, setRejecting] = useState(false);
+  const [usingBusy, setUsingBusy] = useState<'todo' | 'idea' | null>(null);
   const d = vm.data;
   const cited = useSources(d?.sources ?? []);
   const sections = useMemo(() => reportSections(d?.body ?? ''), [d?.body]);
@@ -117,6 +122,88 @@ export default function GooseDeliverableScreen() {
                 <SourcesChipRow state={cited} />
               </ListSection>
             ) : null}
+
+            <ListSection title="Use this">
+              <View style={styles.actions}>
+                <InkButton
+                  variant="primary"
+                  icon="chat"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/conversation',
+                      params: { card_kind: 'deliverable', card_id: d.id, card_title: d.title },
+                    })
+                  }
+                >
+                  Chat about this
+                </InkButton>
+                {d.body.trim() ? (
+                  <InkButton
+                    variant="quiet"
+                    icon="copy"
+                    onPress={async () => {
+                      const result = await copyText(`${d.title}\n\n${d.body}`.trim());
+                      if (result === 'copied') {
+                        void confirm();
+                        showSnackbar({ message: 'Copied to clipboard', tone: 'success' });
+                      } else if (result === 'failed') {
+                        showSnackbar({ message: 'Could not copy to clipboard', tone: 'danger' });
+                      }
+                    }}
+                  >
+                    Copy
+                  </InkButton>
+                ) : null}
+                <InkButton
+                  variant="quiet"
+                  icon="checklist"
+                  loading={usingBusy === 'todo'}
+                  disabled={usingBusy !== null}
+                  onPress={async () => {
+                    setUsingBusy('todo');
+                    try {
+                      await api.addTodo({
+                        kind: 'todo',
+                        text: d.title,
+                        notes: (d.hook || d.body).slice(0, 500) || null,
+                      });
+                      void confirm();
+                      showSnackbar({ message: 'Added to your to-dos', tone: 'success' });
+                    } catch {
+                      showSnackbar({ message: 'Could not create to-do', tone: 'danger' });
+                    } finally {
+                      setUsingBusy(null);
+                    }
+                  }}
+                >
+                  Make to-do
+                </InkButton>
+                <InkButton
+                  variant="quiet"
+                  icon="light"
+                  loading={usingBusy === 'idea'}
+                  disabled={usingBusy !== null}
+                  onPress={async () => {
+                    setUsingBusy('idea');
+                    try {
+                      await api.createIdeaCard({
+                        title: d.title,
+                        why: d.hook || undefined,
+                        notes: d.body.slice(0, 500),
+                      });
+                      void confirm();
+                      showSnackbar({ message: 'Saved as an idea', tone: 'success' });
+                    } catch {
+                      showSnackbar({ message: 'Could not save idea', tone: 'danger' });
+                    } finally {
+                      setUsingBusy(null);
+                    }
+                  }}
+                >
+                  Save as idea
+                </InkButton>
+              </View>
+            </ListSection>
 
             <View style={styles.actions}>
               {canAct ? (

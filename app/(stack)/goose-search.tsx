@@ -48,7 +48,7 @@ export default function GooseSearchScreen() {
     { key: 'instructions', icon: 'prompts', label: t('goose.you.instructions'), href: '/(stack)/settings-prompt-templates', shown: Boolean(hub?.about) },
     { key: 'screenshots', icon: 'photo', label: t('goose.you.screenshots'), href: '/(stack)/goose-screenshots', shown: Boolean(hub?.screenshots) },
     { key: 'news', icon: 'news', label: t('goose.find.news'), href: '/(stack)/goose-news', shown: Boolean(hub?.news) },
-    { key: 'ideas', icon: 'light', label: t('goose.find.ideas'), href: '/(stack)/goose-ideas', shown: Boolean(hub?.ideas) },
+    { key: 'ideas', icon: 'light', label: t('goose.find.ideas'), href: '/(stack)/goose-cards', shown: Boolean(hub?.ideaCards) },
     { key: 'todos', icon: 'checklist', label: t('goose.find.todos'), href: '/(stack)/goose-todos', shown: Boolean(hub?.todos) },
     { key: 'prices', icon: 'tag', label: t('goose.find.prices'), href: '/(stack)/goose-cart', shown: Boolean(hub?.cart) },
     { key: 'watching', icon: 'eye', label: t('goose.find.watching'), href: '/(stack)/web-watches', shown: true },

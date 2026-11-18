@@ -6,6 +6,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { InkButton, InkEdge, InkEyebrow, InkNotice, InkSpinner, InkText, InkTitle, inkText, useInkTheme } from '@/components/ui/ink';
 
+import { PasscodePad } from '@/components/setup/passcode-pad';
 import { LabelledSwitch } from '@/components/patterns/labelled-switch';
 import { IconTile, SettingsGroup } from '@/components/settings/settings-list';
 import { GIcon } from '@/components/ui/g-icon';
@@ -16,6 +17,7 @@ import { FontFamily } from '@/constants/typography';
 import { ADMIN_IDLE_MINUTES, ADMIN_PASSWORD_LENGTH } from '@/models/pond-admin';
 import { confirm, reject, tap } from '@/services/haptics';
 import { useAdminGate, useAdminUnlock, type UseAdminUnlock } from '@/view-models/use-admin-gate';
+import { usePairingLock } from '@/view-models/use-pairing-lock';
 
 /** The commands that make a card and print it again, run on the Pond itself; commands, so not translated. */
 // eslint-disable-next-line i18next/no-literal-string -- a command typed on the Pond, not copy
@@ -202,12 +204,48 @@ function CardForm({ vm }: { vm: UseAdminUnlock }) {
   );
 }
 
-/** The way in: the kept key when there is one, else the card's form, else why there is no card. */
+function PasscodeUnlockForm({ vm, minDigits }: { vm: UseAdminUnlock; minDigits: number }) {
+  const { t } = useTranslation();
+  const [digits, setDigits] = useState('');
+  const cooling = vm.coolingSecs > 0;
+  const submit = async (code: string) => {
+    void tap();
+    const ok = await vm.unlockWithPin(code);
+    void (ok ? confirm() : reject());
+    if (!ok) setDigits('');
+  };
+  return (
+    <InkEdge state="rest" contentStyle={styles.card}>
+      <PasscodePad
+        title="Enter Passcode"
+        subtitle="Use your Security passcode to manage this Pond"
+        length={minDigits}
+        value={digits}
+        error={vm.error}
+        busy={vm.unlocking || cooling}
+        autoSubmit={false}
+        submitLabel={vm.unlocking ? t('myPond.lock.unlocking') : t('myPond.lock.unlock')}
+        onChange={setDigits}
+        onSubmit={(code) => void submit(code)}
+      />
+      {vm.canKeep ? (
+        <View style={styles.remember}>
+          <LabelledSwitch label={t('myPond.key.remember')} checked={vm.remember} onChange={vm.setRemember} />
+        </View>
+      ) : null}
+    </InkEdge>
+  );
+}
+
+/** The way in: biometrics if kept, else Security passcode when set, else the card fallback. */
 function LockForm() {
   const { t } = useTranslation();
   const theme = useInkTheme();
   const { gate } = useAdminGate();
   const vm = useAdminUnlock();
+  const pairingLock = usePairingLock();
+  const hasPasscode = pairingLock.data.lock?.hasRecoveryPin === true;
+  const minPinDigits = pairingLock.data.lock?.minPinDigits ?? 6;
   const [cardChosen, setCardChosen] = useState(false);
   const noCard = gate.phase === 'no_card';
   const mono = inkText(theme, { role: 'mono', size: 'sm', color: theme.color.text }).style;
@@ -215,7 +253,9 @@ function LockForm() {
 
   let body: React.ReactNode;
   if (vm.kept && !cardChosen) {
-    body = <KeyCard vm={vm} onUseCard={noCard ? null : () => setCardChosen(true)} />;
+    body = <KeyCard vm={vm} onUseCard={noCard && !hasPasscode ? null : () => setCardChosen(true)} />;
+  } else if (hasPasscode) {
+    body = <PasscodeUnlockForm vm={vm} minDigits={minPinDigits} />;
   } else if (noCard) {
     body = (
       <>

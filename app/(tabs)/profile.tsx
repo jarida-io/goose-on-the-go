@@ -4,12 +4,14 @@
  */
 
 import { GPressable } from '@/components/ui/g-pressable';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Keyboard, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { InkButton, InkEdge, InkSearchField, InkTitle } from '@/components/ui/ink';
+import { InkButton, InkCard, InkEdge, InkSpinner, InkText, InkTitle } from '@/components/ui/ink';
+import { PUCK_SIZE } from '@/components/patterns/chrome-puck';
+import { DOCK_GAP, WallDock } from '@/components/patterns/wall-dock';
 
 import { IssueRows } from '@/components/settings/issue-page';
 import { PAGE_GUTTER } from '@/components/settings/settings-scroll';
@@ -29,6 +31,7 @@ import { Spacing } from '@/constants/spacing';
 import type { SummaryId } from '@/models/pond-settings';
 import { useBottomBarInset, useChromeScroll } from '@/providers/chrome-provider';
 import { useServer } from '@/providers/server-provider';
+import { api } from '@/services/api-client';
 import { hostOf } from '@/services/discovery';
 import { selectionTick } from '@/services/haptics';
 import { initialOf, useHousehold } from '@/view-models/use-household';
@@ -131,6 +134,56 @@ export default function ProfileHub() {
   const extras = useSummaryExtras(SUMMARY_IDS);
   const search = useSettingsSearch();
   const { clear: clearSearch } = search;
+  const { hydrated } = useServer();
+  const [pondActivity, setPondActivity] = useState<{
+    key: string;
+    label: string;
+    details: string[];
+  } | null>(null);
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    let alive = true;
+    const poll = async () => {
+      try {
+        const lane = await api.laneStatus();
+        if (!alive) return;
+        const parts: string[] = [];
+        const details: string[] = [];
+        if (lane.embedding_slot?.running) {
+          parts.push('Indexing memories');
+          const secs = lane.embedding_slot.running_for_secs;
+          details.push(secs != null ? `Memory embedder active (${secs}s)` : 'Memory embedder active');
+        }
+        if (lane.running_title) {
+          parts.push(lane.running_title);
+          if (lane.running) details.push(`Task: ${lane.running.replace(/_/g, ' ')}`);
+        } else if (lane.slot_busy) {
+          parts.push('Running background inference');
+          details.push('Inference slot active');
+        }
+        if (parts.length === 0) {
+          setPondActivity(null);
+          setDismissedKey(null);
+        } else {
+          details.push('Pauses automatically when you chat');
+          const label = parts.join(' · ');
+          const key = `${lane.embedding_slot?.running ? 'emb' : ''}:${lane.running ?? (lane.slot_busy ? 'busy' : '')}`;
+          setPondActivity({ key, label, details });
+        }
+      } catch {
+        // Ignore transient offline errors; other status cards handle reachability.
+      }
+    };
+    void poll();
+    const id = setInterval(() => void poll(), 5000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [hydrated]);
 
   // Leaving the tab puts the search away, so coming back shows the menu rather than results
   // that were typed for a different moment, with the keyboard still asking for more.
@@ -138,6 +191,7 @@ export default function ProfileHub() {
     useCallback(
       () => () => {
         Keyboard.dismiss();
+        setSearching(false);
         clearSearch();
       },
       [clearSearch],
@@ -161,25 +215,46 @@ export default function ProfileHub() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.page }]} edges={['top']}>
       <ScrollView
         {...chrome}
-        contentContainerStyle={[styles.content, { paddingBottom: bottomInset + Spacing.lg }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: bottomInset + DOCK_GAP + PUCK_SIZE + Spacing.lg },
+        ]}
         showsVerticalScrollIndicator={false}
         // A result can be tapped while the keyboard is still up, and a scroll puts it away.
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         refreshControl={<RefreshControl {...pull} />}
       >
-        <InkTitle style={styles.title}>{t('screens.settings')}</InkTitle>
+        <InkTitle style={[styles.title, { fontStyle: 'normal', fontWeight: '800', fontSize: 34, lineHeight: 42, transform: [] }]}>{t('screens.settings')}</InkTitle>
 
-        <InkSearchField
-          label={t('settings.search.label')}
-          value={search.query}
-          // Clearing through the field resets the search the same way its own clear did.
-          onChange={(q) => (q ? search.setQuery(q) : search.clear())}
-          placeholder={t('settings.search.placeholder')}
-          // The results are already on screen, so "Search" only puts the keyboard away.
-          onSubmit={() => Keyboard.dismiss()}
-          style={styles.search}
-        />
+        {pondActivity && dismissedKey !== pondActivity.key ? (
+          <InkCard style={styles.activityCard}>
+            <View style={styles.activityHeader}>
+              <View style={styles.activityTitleRow}>
+                <InkSpinner label={pondActivity.label} />
+                <View style={styles.activityWords}>
+                  <InkText size="sm" weight="semibold">Pond is working</InkText>
+                  <InkText size="xs" tone="secondary">{pondActivity.label}</InkText>
+                </View>
+              </View>
+              <GPressable
+                onPress={() => setDismissedKey(pondActivity.key)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+              >
+                <InkText size="md" tone="tertiary">✕</InkText>
+              </GPressable>
+            </View>
+            <View style={styles.activityMeta}>
+              {pondActivity.details.map((detail) => (
+                <InkText key={detail} size="xs" tone="tertiary">
+                  • {detail}
+                </InkText>
+              ))}
+            </View>
+          </InkCard>
+        ) : null}
 
         {search.result.mode === 'results' ? (
           <SearchResults results={search.result.results} query={search.query} onOpen={go} />
@@ -219,6 +294,14 @@ export default function ProfileHub() {
           </>
         )}
       </ScrollView>
+      <WallDock
+        query={search.query}
+        onQuery={(q) => (q ? search.setQuery(q) : search.clear())}
+        open={searching}
+        onOpenChange={setSearching}
+        placeholder={t('settings.search.placeholder')}
+        bottomInset={bottomInset}
+      />
     </SafeAreaView>
   );
 }
@@ -227,6 +310,11 @@ const makeStyles = (c: SettingsColors, type: SettingsType, m: SettingsMetrics) =
   safe: { flex: 1 },
   content: { paddingHorizontal: PAGE_GUTTER },
   title: { marginTop: Spacing.md, marginBottom: Spacing.lg },
+  activityCard: { marginBottom: Spacing.lg, gap: Spacing.sm },
+  activityHeader: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: Spacing.sm },
+  activityTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: Spacing.sm, flex: 1 },
+  activityWords: { flex: 1, gap: 2 },
+  activityMeta: { paddingLeft: 28, gap: 2 },
   search: { marginBottom: Spacing.lg },
   accountWrap: { marginBottom: Spacing.xl },
   account: {

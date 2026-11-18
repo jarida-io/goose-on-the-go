@@ -110,16 +110,16 @@ export interface SnackbarPalette {
  * Exported for the tests, which measure it.
  */
 export function snackbarPalette(theme: Pick<InkTheme, 'scheme' | 'accent'>): SnackbarPalette {
-  const other = createTheme({ scheme: theme.scheme === 'dark' ? 'light' : 'dark', accent: theme.accent }).color;
+  const same = createTheme({ scheme: theme.scheme, accent: theme.accent }).color;
   return {
-    ground: other.surface,
-    words: other.text,
-    action: other.accentLine,
-    pressed: other.pressed,
+    ground: same.surface,
+    words: same.text,
+    action: same.accentLine,
+    pressed: same.pressed,
     icon: {
-      success: toneColors('success', other).fg,
-      danger: toneColors('danger', other).fg,
-      neutral: toneColors('info', other).fg,
+      success: toneColors('success', same).fg,
+      danger: toneColors('danger', same).fg,
+      neutral: toneColors('info', same).fg,
     },
   };
 }

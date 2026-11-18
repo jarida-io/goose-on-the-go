@@ -9,7 +9,7 @@ import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
-import DevicesTab from '@/app/(tabs)/devices';
+import DevicesTab from '@/app/(stack)/devices';
 import { Colors } from '@/constants/colors';
 import { ThemeProvider } from '@/providers/theme-provider';
 import i18n from '@/services/i18n';

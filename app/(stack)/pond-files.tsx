@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Stack, useFocusEffect } from 'expo-router';
 import { InkButton, InkSpinner, useInkTheme } from '@/components/ui/ink';
 
-import { BackButton } from '@/components/navigation/back-button';
+import { BackButton, BackTitle } from '@/components/navigation/back-button';
 import { AdminLockView } from '@/components/pond/admin-lock';
 import { SettingsGroup, SettingsMessage } from '@/components/settings/settings-list';
 import { SettingsNotice, SettingsScroll } from '@/components/settings/settings-scroll';
@@ -138,7 +138,14 @@ export default function PondFilesScreen() {
       return () => sub.remove();
     }, [inFolder, stepUp]),
   );
-  const header = <Stack.Screen options={{ headerLeft: () => <BackButton onPress={inFolder ? stepUp : undefined} /> }} />;
+  const header = (
+    <Stack.Screen
+      options={{
+        headerLeft: () => <BackButton onPress={inFolder ? stepUp : undefined} />,
+        headerTitle: ({ children }) => <BackTitle onPress={inFolder ? stepUp : undefined}>{children}</BackTitle>,
+      }}
+    />
+  );
 
   const open = useCallback(
     (entry: AdminFileEntry) => {

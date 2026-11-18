@@ -31,6 +31,7 @@ export interface ChromePuckProps {
   /** Spoken, and the only name the control has — there is no visible label. */
   label: string;
   onPress: () => void;
+  onLongPress?: () => void;
   marked?: boolean;
   /** What the control currently shows, for a screen reader: "Chats", say. */
   value?: string;
@@ -42,6 +43,7 @@ export function ChromePuck({
   icon,
   label,
   onPress,
+  onLongPress,
   marked = false,
   value,
   expanded,
@@ -53,6 +55,7 @@ export function ChromePuck({
     <GPressable
       feedback="lift"
       onPress={onPress}
+      onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityValue={value ? { text: value } : undefined}

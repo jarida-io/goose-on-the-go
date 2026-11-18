@@ -48,7 +48,23 @@ export interface WatchChange {
   kind: 'new' | 'gone' | 'price_changed' | 'updated' | 'condition';
 }
 
+export interface WatchThinking {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface WatchPreview {
+  title: string;
+  snippet?: string;
+  link?: string;
+}
+
 export interface WebWatchDetail extends WebWatch {
+  active: boolean;
+  preview: WatchPreview | null;
+  initialThinking: string | null;
+  thinkingHistory: WatchThinking[];
   items: WatchItem[];
   changes: WatchChange[];
 }
@@ -194,7 +210,19 @@ export function readWebWatchDetail(raw: unknown): WebWatchDetail | null {
   const changes = Array.isArray(raw.changes)
     ? raw.changes.map(readChange).filter((c): c is WatchChange => c !== null)
     : [];
-  return { ...watch, items, changes };
+  const active = raw.active === true || (!watch.paused && watch.failures < 3 && watch.lastCheckedAt !== null);
+  const preview = isRecord(raw.preview) && typeof raw.preview.title === 'string'
+    ? { title: raw.preview.title, snippet: str(raw.preview.snippet), link: webUrl(raw.preview.link) }
+    : items[0]
+      ? { title: items[0].title, snippet: items[0].snippet, link: items[0].link }
+      : null;
+  const initialThinking = str(raw.initial_thinking) ?? null;
+  const thinkingHistory = Array.isArray(raw.thinking_history)
+    ? raw.thinking_history
+        .filter((t): t is Raw => isRecord(t) && typeof t.id === 'string' && typeof t.text === 'string')
+        .map((t) => ({ id: String(t.id), text: String(t.text), createdAt: str(t.created_at) ?? '' }))
+    : [];
+  return { ...watch, active, preview, initialThinking, thinkingHistory, items, changes };
 }
 
 const SAVED_KINDS: SavedKind[] = ['recipe', 'listing', 'place', 'report', 'note'];

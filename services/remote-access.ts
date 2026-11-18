@@ -108,7 +108,7 @@ function isStaleIdentity(cause: unknown): boolean {
 export async function enableRemoteAccess(profileId: string, localUrl: string, progress: (value: RemoteProgress) => void,
   commit: (endpoint: string, control: string, current: () => void) => Promise<void>,
   /** `keyPreview` is what the Pond's review should show for this request. */
-  recovery?: { onReview: (id: string, keyPreview: string) => void },
+  recovery?: { onReview: (id: string, keyPreview: string) => void; pin?: string },
   /** When this device's remote access lapses if it does not come home. */
   onLapse?: (lapsesAt: string | null) => void): Promise<void> {
   // Remote access enrolls over the Pond's HTTPS listener and runs on pinned TLS; a
@@ -162,8 +162,9 @@ export async function enableRemoteAccess(profileId: string, localUrl: string, pr
         // Never automatically replay this enrollment write after an ambiguous failure.
         const body = JSON.stringify({ authUrl: state.authUrl, nodeKey: state.nodeKey ?? '', machineKey: state.machineKey ?? '' });
         if (recovery) {
+          const recoveryHeaders = recovery.pin ? { 'X-Recovery-Pin': recovery.pin } : undefined;
           const request = await api
-            .requestLocal<{ id: string }>(localUrl, '/api/v1/remote-access/recovery', { method: 'POST', body })
+            .requestLocal<{ id: string; approved?: boolean }>(localUrl, '/api/v1/remote-access/recovery', { method: 'POST', body, headers: recoveryHeaders })
             .catch((cause) => {
               if (cause instanceof ApiError && cause.status === 409) {
                 throw new RemoteReplacementUnavailableError();
@@ -172,14 +173,16 @@ export async function enableRemoteAccess(profileId: string, localUrl: string, pr
             });
           if (!/^[a-f0-9-]{36}$/.test(request.id)) throw new Error(i18n.t('remote.failed'));
           pendingRecovery = { endpoint: localUrl, id: request.id };
-          check(); recovery.onReview(request.id, machineKeyPreview(state.machineKey ?? '')); progress('review');
-          let approved = false;
-          for (let reviewAttempt = 0; reviewAttempt < 24; reviewAttempt++) {
-            check();
-            const review = await api.requestLocal<{ approved: boolean }>(localUrl, `/api/v1/remote-access/recovery/${request.id}`);
-            check();
-            if (review.approved === true) { approved = true; break; }
-            await new Promise<void>((resolve) => setTimeout(resolve, 5000));
+          let approved = request.approved === true;
+          if (!approved) {
+            check(); recovery.onReview(request.id, machineKeyPreview(state.machineKey ?? '')); progress('review');
+            for (let reviewAttempt = 0; reviewAttempt < 24; reviewAttempt++) {
+              check();
+              const review = await api.requestLocal<{ approved: boolean }>(localUrl, `/api/v1/remote-access/recovery/${request.id}`);
+              check();
+              if (review.approved === true) { approved = true; break; }
+              await new Promise<void>((resolve) => setTimeout(resolve, 5000));
+            }
           }
           if (!approved) throw new Error(i18n.t('remote.reviewExpired'));
           check(); progress('enrolling');

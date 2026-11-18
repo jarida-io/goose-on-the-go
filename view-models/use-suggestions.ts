@@ -34,6 +34,8 @@ export interface OfferedPrompt {
   composed: boolean;
   /** Why the Pond offers it, in its own words; a starter has none. */
   because?: string;
+  /** Deep operational instructions for the chat agent when tapped. */
+  agentNotes?: string;
 }
 
 export interface UseSuggestions {
@@ -72,7 +74,13 @@ export function useSuggestions(sessionId: string | null): UseSuggestions {
 
   const prompts: OfferedPrompt[] =
     offered.length > 0
-      ? offered.map((s) => ({ id: s.id, prompt: s.prompt, composed: s.composed, because: s.because?.trim() || undefined }))
+      ? offered.map((s) => ({
+          id: s.id,
+          prompt: s.prompt,
+          composed: s.composed,
+          because: s.because?.trim() || undefined,
+          agentNotes: s.agent_notes?.trim() || undefined,
+        }))
       : STARTERS.map((key) => ({ id: null, prompt: t(key), composed: false }));
 
   return { data: { prompts }, actions: { taken } };

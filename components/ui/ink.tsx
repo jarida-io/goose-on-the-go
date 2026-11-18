@@ -18,10 +18,12 @@ import {
   InkRadioGroup as InkRadioGroupBase,
   InkSegmented as InkSegmentedBase,
   InkSelect as InkSelectBase,
+  InkSheet as InkSheetBase,
   InkSwitch as InkSwitchBase,
   InkIcon,
   inkText,
   renderIconSlot,
+  useInkInsets,
   useInkTheme,
   type InkButtonProps,
   type InkCardProps,
@@ -29,10 +31,11 @@ import {
   type InkChoiceProps,
   type InkNoticeProps,
   type InkSegmentedProps,
+  type InkSheetProps,
   type InkSwitchProps,
 } from '@jarida/ink/native';
-import React, { type ComponentProps } from 'react';
-import { Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, type ComponentProps } from 'react';
+import { Animated, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { selectionTick, tap, toggle } from '@/services/haptics';
 
@@ -126,3 +129,149 @@ export function InkNotice({ tone = 'neutral', icon, action, children }: InkNotic
     </View>
   );
 }
+
+/**
+ * Bottom sheet with a responsive vertical-drag nub so every modal sheet can be
+ * dragged up (elastic expand) or down (dismiss) system-wide.
+ */
+export function InkSheet(props: InkSheetProps) {
+  const { open, onClose, side = 'bottom', title, description, dismissible = true, scroll = true, children, style } = props;
+  const theme = useInkTheme();
+  const insets = useInkInsets();
+  const dragY = useRef(new Animated.Value(0)).current;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (open) dragY.setValue(0);
+  }, [open, dragY]);
+
+  const pan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => dismissible,
+        onMoveShouldSetPanResponder: (_e, g) => dismissible && Math.abs(g.dy) > 4 && Math.abs(g.dy) >= Math.abs(g.dx),
+        onPanResponderMove: (_e, g) => {
+          dragY.setValue(g.dy >= 0 ? g.dy : g.dy * 0.35);
+        },
+        onPanResponderRelease: (_e, g) => {
+          if (g.dy > 85 || g.vy > 0.55) {
+            Animated.timing(dragY, { toValue: 480, duration: 160, useNativeDriver: true }).start(() => {
+              dragY.setValue(0);
+              onCloseRef.current();
+            });
+          } else {
+            Animated.spring(dragY, { toValue: 0, useNativeDriver: true, bounciness: 5 }).start();
+          }
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(dragY, { toValue: 0, useNativeDriver: true, bounciness: 5 }).start();
+        },
+      }),
+    [dismissible, dragY],
+  );
+
+  if (side !== 'bottom') {
+    return <InkSheetBase {...props} />;
+  }
+
+  const heading = inkText(theme, {
+    role: 'display',
+    size: 'xl',
+    weight: theme.weight.bold,
+    italic: true,
+    tracking: 'title',
+    leading: 'tight',
+  });
+  const body = inkText(theme, { size: 'base', color: theme.color.textSecondary });
+  const radius = theme.radius['2xl'];
+  const gutter = theme.space[5];
+
+  return (
+    <Modal
+      visible={open}
+      transparent
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={() => (dismissible ? onClose() : undefined)}
+      supportedOrientations={['portrait', 'landscape']}
+    >
+      <View style={sheetStyles.backdrop}>
+        <Pressable
+          accessible={false}
+          disabled={!dismissible}
+          onPress={onClose}
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.color.scrim }]}
+        />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={sheetStyles.kav}>
+          <Animated.View
+            style={[
+              sheetStyles.panel,
+              {
+                maxHeight: '88%',
+                borderWidth: theme.edge.borderWidth,
+                borderColor: theme.color.edge,
+                borderBottomWidth: 0,
+                backgroundColor: theme.color.surface,
+                borderTopLeftRadius: radius,
+                borderTopRightRadius: radius,
+                paddingBottom: Math.max(theme.space[5], insets.bottom + theme.space[2]),
+                transform: [{ translateY: dragY }],
+              },
+              style,
+            ]}
+          >
+            <View
+              {...(dismissible ? pan.panHandlers : {})}
+              style={{
+                gap: theme.space[2],
+                paddingTop: theme.space[2],
+                paddingBottom: theme.space[4],
+                paddingHorizontal: gutter,
+              }}
+            >
+              {dismissible ? (
+                <View style={sheetStyles.grabberHit}>
+                  <View
+                    style={{
+                      width: 40,
+                      height: 5,
+                      borderRadius: theme.radius.pill,
+                      backgroundColor: theme.color.textDisabled,
+                    }}
+                  />
+                </View>
+              ) : null}
+              <Text accessibilityRole="header" style={heading.style}>
+                {title}
+              </Text>
+              {typeof description === 'string' ? <Text style={body.style}>{description}</Text> : description}
+            </View>
+            {scroll ? (
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                alwaysBounceVertical={false}
+                style={sheetStyles.scroll}
+                contentContainerStyle={{ gap: theme.space[4], paddingHorizontal: gutter }}
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              <View style={[sheetStyles.scroll, { gap: theme.space[4], paddingHorizontal: gutter }]}>
+                {children}
+              </View>
+            )}
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
+const sheetStyles = StyleSheet.create({
+  backdrop: { flex: 1, justifyContent: 'flex-end' },
+  kav: { width: '100%', justifyContent: 'flex-end' },
+  panel: { width: '100%', flexShrink: 1 },
+  grabberHit: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 32 },
+  scroll: { flexShrink: 1 },
+});

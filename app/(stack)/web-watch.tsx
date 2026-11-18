@@ -69,7 +69,12 @@ export default function WebWatchScreen() {
       {watch ? (
         <>
           <InkCard>
-            <InkText weight="semibold">{watch.title}</InkText>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.sm }}>
+              <InkText weight="semibold" style={{ flex: 1 }}>{watch.title}</InkText>
+              <InkNotice tone={watch.paused ? 'neutral' : watch.active ? 'success' : 'warning'}>
+                {watch.paused ? 'Paused' : watch.active ? 'Active' : 'Checking...'}
+              </InkNotice>
+            </View>
             <InkText size="sm" tone="secondary">{siteOf(watch.address)}</InkText>
             {watch.hasRule ? (
               <InkText>{t('goose.watching.tellsYou', { rule: watch.filtersWords })}</InkText>
@@ -104,6 +109,37 @@ export default function WebWatchScreen() {
               ))}
             </View>
             {watch.failures >= 3 ? <InkNotice tone="warning">{t('webWatches.failing')}</InkNotice> : null}
+          </InkCard>
+
+          <InkEyebrow>Webpage Preview</InkEyebrow>
+          <InkCard>
+            {watch.preview ? (
+              <>
+                <InkText weight="semibold" numberOfLines={2}>{watch.preview.title}</InkText>
+                {watch.preview.snippet ? <InkText size="sm" tone="secondary" numberOfLines={4}>{watch.preview.snippet}</InkText> : null}
+              </>
+            ) : (
+              <InkText size="sm" tone="secondary">
+                {watch.lastCheckedAt ? 'Page reached (no preview snippet extracted).' : 'Reading webpage to capture initial preview...'}
+              </InkText>
+            )}
+            <InkButton variant="quiet" icon="external" onPress={() => void WebBrowser.openBrowserAsync(watch.preview?.link ?? watch.address)}>
+              Open webpage
+            </InkButton>
+          </InkCard>
+
+          <InkEyebrow>Goose&apos;s Thinking</InkEyebrow>
+          <InkCard>
+            <InkText size="sm" weight="semibold">Initial check</InkText>
+            <InkText size="sm" tone="secondary">
+              {watch.initialThinking ?? `Watching ${watch.title} for: ${watch.lookingFor}`}
+            </InkText>
+            {watch.thinkingHistory.map((entry) => (
+              <View key={entry.id} style={styles.change}>
+                <InkText size="xs" weight="semibold">On change</InkText>
+                <InkText size="sm" tone="secondary">{entry.text}</InkText>
+              </View>
+            ))}
           </InkCard>
 
           <InkEyebrow>{t('webWatches.changes')}</InkEyebrow>

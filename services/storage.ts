@@ -14,6 +14,7 @@ const KEYS = {
   settings: '@goose/settings',
   devScreenModes: '@goose/dev-screen-modes',
   themePreference: '@goose/theme-preference',
+  accentPreference: '@goose/accent-preference',
   /** Whether this phone plays haptic feedback. A preference of the phone, not of the Pond. */
   hapticsEnabled: '@goose/haptics-enabled',
   /** Whether this phone keeps its notification stream open in the background (Android). Not a secret. */
