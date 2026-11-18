@@ -18,9 +18,10 @@ import { Labelled } from '@/components/goose/labelled';
 import { LocationSheet, hookIcon, useHookWords } from '@/components/goose/todo-parts';
 import { DangerQuietButton } from '@/components/pond/danger-quiet-button';
 import { GIcon } from '@/components/ui/g-icon';
+import { GPressable } from '@/components/ui/g-pressable';
 import { SendToChat } from '@/components/goose/send-to-chat';
 import { Spacing } from '@/constants/spacing';
-import { cleanSteps, draftOf, MAX_LIST_CHARS, MAX_STEP_CHARS, MAX_STEPS, PRIORITIES, priorityKey, type Hook, type TodoDraft, type TodoKind } from '@/models/todos';
+import { cleanSteps, draftOf, hookToOpen, MAX_LIST_CHARS, MAX_STEP_CHARS, MAX_STEPS, pickerSeedOf, PRIORITIES, priorityKey, replaceHook, type Hook, type TodoDraft, type TodoKind } from '@/models/todos';
 import { useConfirm } from '@/providers/confirm-provider';
 import { toggle } from '@/services/haptics';
 import { useAnchor } from '@/view-models/use-anchors';
@@ -58,6 +59,11 @@ export default function GooseTodoScreen() {
   const [saving, setSaving] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [step, setStep] = useState('');
+  // The hook the member tapped to change; the picker below opens on it. Until they tap one, a
+  // saved to-do opens on its only time (`hookToOpen`): a picker showing 18:00 under a reminder set
+  // for 15:00 read as the reminder's time not having been kept.
+  const [tapped, setEditing] = useState<number | null | undefined>(undefined);
+  const editing = tapped === undefined ? (existing ? hookToOpen(draft.hooks) : null) : tapped;
 
   useEffect(() => {
     navigation.setOptions({ title: id ? t('goose.todo.editTitle') : t('goose.todo.newTitle') });
@@ -65,7 +71,15 @@ export default function GooseTodoScreen() {
 
   const set = (change: Partial<TodoDraft>) => setEdited({ ...draft, ...change });
   const addHook = (hook: Hook) => set({ hooks: [...draft.hooks, hook] });
-  const removeHook = (index: number) => set({ hooks: draft.hooks.filter((_, i) => i !== index) });
+  const removeHook = (index: number) => {
+    set({ hooks: draft.hooks.filter((_, i) => i !== index) });
+    setEditing(editing === null || editing === index ? null : editing > index ? editing - 1 : editing);
+  };
+  const changeHook = (hook: Hook) => {
+    if (editing === null) return;
+    set({ hooks: replaceHook(draft.hooks, editing, hook) });
+    setEditing(null);
+  };
   const addStep = () => {
     const typed = step.trim();
     if (!typed || draft.steps.length >= MAX_STEPS) return;
@@ -178,16 +192,50 @@ export default function GooseTodoScreen() {
 
         <View style={styles.section}>
           <SectionHead title={t('goose.todo.when')} subtitle={t('goose.todo.whenBody')} size="small" />
-          {draft.hooks.map((hook, i) => (
-            <View key={`${hook.id}-${i}`} style={[styles.hook, { backgroundColor: theme.color.accentSofter, borderColor: theme.color.line }]}>
-              <GIcon name={hookIcon(hook)} size={16} color={theme.color.accentLine} />
-              <InkText weight="semibold" style={styles.hookWords}>
-                {words(hook, todos.sources)}
-              </InkText>
-              <RoundButton icon="x" size={28} label={t('goose.todo.removeHook', { hook: words(hook, todos.sources) })} onPress={() => removeHook(i)} />
-            </View>
-          ))}
-          <HookPicker sources={todos.sources} access={todos.access} onAdd={addHook} onSavePlace={todos.actions.addPlaceHere} onNeedsLocation={() => setSheet(true)} />
+          {draft.hooks.map((hook, i) => {
+            const said = words(hook, todos.sources);
+            const changeable = pickerSeedOf(hook) !== null;
+            const chosen = editing === i;
+            return (
+              <View
+                key={`${hook.id}-${i}`}
+                style={[styles.hook, { backgroundColor: theme.color.accentSofter, borderColor: chosen ? theme.color.accentLine : theme.color.line }]}
+              >
+                <GPressable
+                  style={styles.hookTap}
+                  haptic="selection"
+                  disabled={!changeable}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: chosen, disabled: !changeable }}
+                  accessibilityLabel={t('goose.todo.changeHook', { hook: said })}
+                  onPress={() => setEditing(chosen ? null : i)}
+                >
+                  <GIcon name={hookIcon(hook)} size={16} color={theme.color.accentLine} />
+                  <InkText weight="semibold" style={styles.hookWords}>
+                    {said}
+                  </InkText>
+                  {changeable ? <GIcon name="edit" size={14} color={theme.color.textTertiary} /> : null}
+                </GPressable>
+                <RoundButton icon="x" size={28} label={t('goose.todo.removeHook', { hook: said })} onPress={() => removeHook(i)} />
+              </View>
+            );
+          })}
+          {editing !== null ? (
+            <InkText size="sm" tone="secondary">
+              {t('goose.todo.changing')}
+            </InkText>
+          ) : null}
+          <HookPicker
+            key={editing === null ? 'new' : `edit-${editing}`}
+            sources={todos.sources}
+            access={todos.access}
+            editing={editing === null ? null : (draft.hooks[editing] ?? null)}
+            onAdd={addHook}
+            onReplace={changeHook}
+            onCancelEdit={() => setEditing(null)}
+            onSavePlace={todos.actions.addPlaceHere}
+            onNeedsLocation={() => setSheet(true)}
+          />
         </View>
 
         <View style={styles.actions}>
@@ -211,6 +259,7 @@ const styles = StyleSheet.create({
   switchWords: { flex: 1, gap: 2 },
   section: { gap: Spacing.md },
   hook: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingLeft: Spacing.md, paddingRight: 6, paddingVertical: 6, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
+  hookTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   hookWords: { flex: 1 },
   actions: { gap: Spacing.sm },
   left: { alignSelf: 'flex-start' },
