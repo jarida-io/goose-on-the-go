@@ -195,6 +195,10 @@ export const SAMPLE_SETTINGS: PondSettings = {
   weather_location_name: 'Nairobi',
   weather_latitude: -1.2864,
   weather_longitude: 36.8172,
+  // Listed so `readSettings` keeps it: it drops every key not named here, and without this one the
+  // phone took a Pond holding a phone's fix for a guess and asked for home's location on every start.
+  // Empty is what an older Pond sends, which counts as a guess.
+  weather_location_source: '',
   prompt_style: 'balanced',
   prompt_addendum: '',
   custom_system_prompt: null,
