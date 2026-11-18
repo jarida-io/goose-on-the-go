@@ -128,6 +128,7 @@ export type SummaryId =
   | 'home'
   | 'household'
   | 'people'
+  | 'rooms'
   | 'cameras'
   | 'visionEvents'
   | 'faces'

@@ -95,6 +95,8 @@ export interface Extras {
   chatModel: string | null;
   extensions: number | null;
   people: number | null;
+  /** How many rooms the household has; null until read, or on a Pond from before rooms had ids. */
+  rooms: number | null;
   /** Events nobody has acknowledged, among the latest the Pond lists. */
   visionNew: number | null;
   /** How many people the pond knows by face, or that it has no face model. */
@@ -121,6 +123,8 @@ export function summarize(id: SummaryId, s: PondSettings | null, x: Extras, t: T
       return x.extensions === null ? null : t('settings.summary.extensions', { count: x.extensions });
     case 'people':
       return x.people === null ? null : t('settings.summary.people', { count: x.people });
+    case 'rooms':
+      return x.rooms === null ? null : t('settings.summary.rooms', { count: x.rooms });
     case 'visionEvents':
       if (x.visionNew === null) return null;
       return x.visionNew === 0 ? t('settings.summary.eventsNone') : t('settings.summary.eventsNew', { count: x.visionNew });
@@ -204,6 +208,7 @@ export function useSummaryExtras(ids: readonly SummaryId[], cameraId: string | n
   const [chatModel, setChatModel] = useState<string | null>(null);
   const [extensions, setExtensions] = useState<number | null>(null);
   const [people, setPeople] = useState<number | null>(null);
+  const [rooms, setRooms] = useState<number | null>(null);
   const [visionNew, setVisionNew] = useState<number | null>(null);
   const [facesKnown, setFacesKnown] = useState<Extras['facesKnown']>(null);
   const [visionRules, setVisionRules] = useState<number | null>(null);
@@ -222,6 +227,7 @@ export function useSummaryExtras(ids: readonly SummaryId[], cameraId: string | n
     if (want.has('models')) jobs.push(api.activeModelRoles().then((r) => setChatModel(chatModelTitle(r)), () => undefined));
     if (want.has('extensions')) jobs.push(api.listExtensions().then((l) => setExtensions(l.length), () => undefined));
     if (want.has('people')) jobs.push(api.listProfiles().then((l) => setPeople(l.length), () => undefined));
+    if (want.has('rooms')) jobs.push(api.listRooms().then((l) => setRooms(l.length), () => undefined));
     if (want.has('visionEvents') && cameraId) {
       jobs.push(api.listCameraEvents(cameraId, 100).then((l) => setVisionNew(unacknowledgedCount(l)), () => undefined));
     }
@@ -254,6 +260,7 @@ export function useSummaryExtras(ids: readonly SummaryId[], cameraId: string | n
     chatModel: real ? chatModel : null,
     extensions: real ? extensions : 0,
     people: real ? people : 1,
+    rooms: real ? rooms : null,
     visionNew: real ? visionNew : 0,
     facesKnown: real ? facesKnown : 0,
     visionRules: real ? visionRules : 0,

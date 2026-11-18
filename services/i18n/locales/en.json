@@ -893,7 +893,8 @@
       "whatItRemembers": "What Goose remembers",
       "visionEvents": "Vision events",
       "faces": "Faces",
-      "visionAutomations": "Vision automations"
+      "visionAutomations": "Vision automations",
+      "rooms": "Rooms"
     },
     "unit": {
       "ms": "ms",
@@ -1667,6 +1668,8 @@
       "tools": "{{on}} of {{total}} on",
       "people_one": "{{count}} person",
       "people_other": "{{count}} people",
+      "rooms_one": "{{count}} room",
+      "rooms_other": "{{count}} rooms",
       "extensions_one": "{{count}} installed",
       "extensions_other": "{{count}} installed",
       "quiet": "Quiet {{start}}–{{end}}",
