@@ -18,7 +18,7 @@ import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import { SendToChat } from '@/components/goose/send-to-chat';
 import { Spacing } from '@/constants/spacing';
-import { draftOf, pickerSeedOf, replaceHook, type Hook, type TodoDraft, type TodoKind } from '@/models/todos';
+import { draftOf, hookToOpen, pickerSeedOf, replaceHook, type Hook, type TodoDraft, type TodoKind } from '@/models/todos';
 import { useConfirm } from '@/providers/confirm-provider';
 import { toggle } from '@/services/haptics';
 import { useTodo, useTodos } from '@/view-models/use-todos';
@@ -38,8 +38,11 @@ export default function GooseTodoScreen() {
   const draft = edited ?? (existing ? draftOf(existing) : draftOf(null, kind === 'reminder' ? 'reminder' : 'todo'));
   const [saving, setSaving] = useState(false);
   const [sheet, setSheet] = useState(false);
-  // The hook the member tapped to change; the picker below opens on it.
-  const [editing, setEditing] = useState<number | null>(null);
+  // The hook the member tapped to change; the picker below opens on it. Until they tap one, a
+  // saved to-do opens on its only time (`hookToOpen`): a picker showing 18:00 under a reminder set
+  // for 15:00 read as the reminder's time not having been kept.
+  const [tapped, setEditing] = useState<number | null | undefined>(undefined);
+  const editing = tapped === undefined ? (existing ? hookToOpen(draft.hooks) : null) : tapped;
 
   useEffect(() => {
     navigation.setOptions({ title: id ? t('goose.todo.editTitle') : t('goose.todo.newTitle') });
@@ -49,7 +52,7 @@ export default function GooseTodoScreen() {
   const addHook = (hook: Hook) => set({ hooks: [...draft.hooks, hook] });
   const removeHook = (index: number) => {
     set({ hooks: draft.hooks.filter((_, i) => i !== index) });
-    setEditing((e) => (e === null || e === index ? null : e > index ? e - 1 : e));
+    setEditing(editing === null || editing === index ? null : editing > index ? editing - 1 : editing);
   };
   const changeHook = (hook: Hook) => {
     if (editing === null) return;

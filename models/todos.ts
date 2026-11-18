@@ -172,6 +172,17 @@ export function draftOf(todo: Todo | null, kind: TodoKind = 'todo'): TodoDraft {
 }
 
 /**
+ * Which hook a saved to-do's editor opens on: its only one, when that is a time or a repeat, so the
+ * picker shows the time it was saved with. With several, or a place or an event, none: the member
+ * picks the one they mean.
+ */
+export function hookToOpen(hooks: Hook[]): number | null {
+  if (hooks.length !== 1) return null;
+  const kind = pickerSeedOf(hooks[0])?.kind;
+  return kind === 'time' || kind === 'repeat' ? 0 : null;
+}
+
+/**
  * The hooks with the one at `index` changed. The replacement carries no Pond sentence, so the row
  * reads the new choice rather than the old one's label until the Pond sends its own on save.
  */

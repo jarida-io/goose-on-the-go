@@ -10,6 +10,7 @@ import {
   hookWrite,
   inOrder,
   isAsking,
+  hookToOpen,
   pickerSeedOf,
   placesWatched,
   readHookSources,
@@ -186,5 +187,17 @@ describe('changing a hook in place', () => {
   it('opens events and connectors on the event list, and leaves an unknown kind remove-only', () => {
     expect(pickerSeedOf(hook({ kind: 'connector', connectorId: 'c', event: 'e', filter: null }))?.kind).toBe('event');
     expect(pickerSeedOf(hook({ kind: 'other', rawKind: 'future', raw: {} }))).toBeNull();
+  });
+
+  // A reminder saved for 15:00 opened with the picker on 18:00, which read as the time not kept.
+  it('opens a saved to-do on its only time or repeat, and on nothing when there is a choice to make', () => {
+    const time = hook({ kind: 'time', at: '2026-11-18T12:00:00.000Z' });
+    const repeat = hook({ kind: 'repeat', every: 'day', at: '07:30', days: [] });
+    const place = hook({ kind: 'place', placeId: 'p', transition: 'arrive' });
+    expect(hookToOpen([time])).toBe(0);
+    expect(hookToOpen([repeat])).toBe(0);
+    expect(hookToOpen([place])).toBeNull();
+    expect(hookToOpen([time, repeat])).toBeNull();
+    expect(hookToOpen([])).toBeNull();
   });
 });
