@@ -286,7 +286,7 @@ export function todoPromptFromData(data: unknown): TodoPrompt | null {
 type ScreenHref =
   | '/(stack)/schedule'
   | { pathname: '/(stack)/schedule'; params: { schedule_id: string } }
-  | '/(tabs)/devices'
+  | '/(stack)/devices'
   | '/(tabs)/chat'
   | '/(stack)/models'
   | '/(stack)/extensions'
@@ -324,7 +324,7 @@ export function screenPath(route: OpenRoute): ScreenHref {
         ? { pathname: '/(stack)/schedule', params: { schedule_id: route.scheduleId } }
         : '/(stack)/schedule';
     case 'devices':
-      return '/(tabs)/devices';
+      return '/(stack)/devices';
     case 'chat':
       return '/(tabs)/chat';
     case 'models':

@@ -92,6 +92,7 @@ export const ScheduleCard = React.memo(function ScheduleCard({
         {canRun ? (
           <InkButton
             variant="quiet"
+            size="sm"
             icon="play"
             disabled={schedule.currently_running || schedule.paused}
             onPress={() => onRunNow(schedule)}
@@ -112,10 +113,11 @@ const styles = StyleSheet.create({
   status: { marginTop: Spacing.sm },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.sm,
     marginTop: Spacing.md,
   },
-  // Keeps Run now on the right when a one-off has no switch beside it.
-  runNow: { marginLeft: 'auto' },
+  runNow: { alignSelf: 'flex-start' },
 });

@@ -20,7 +20,6 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
-  InkChoice,
   InkEdge,
   InkEyebrow,
   inkText,
@@ -37,8 +36,6 @@ import {
   pick,
   subtitleKey,
 } from '@/constants/quips';
-import { selectionTick } from '@/services/haptics';
-import type { OfferedPrompt } from '@/view-models/use-suggestions';
 
 /** pond-desktop's `ch-arrive`: 14px of rise over 320ms on its ease-out. */
 const ARRIVE_MS = 320;
@@ -49,11 +46,9 @@ export interface GreetingCardProps {
   seed: number;
   /** A turn is being sent: the goose paddles. */
   busy: boolean;
-  prompts: OfferedPrompt[];
-  onPick: (prompt: OfferedPrompt) => void;
 }
 
-export function GreetingCard({ name, seed, busy, prompts, onPick }: GreetingCardProps) {
+export function GreetingCard({ name, seed, busy }: GreetingCardProps) {
   const theme = useInkTheme();
   // The conversation stays mounted under screens pushed over it; its goose rests while it is hidden.
   const focused = useIsFocused();
@@ -106,21 +101,6 @@ export function GreetingCard({ name, seed, busy, prompts, onPick }: GreetingCard
           <Goose state={busy ? 'working' : 'idle'} size={104} still={!focused} />
         </View>
       </InkEdge>
-      <View style={styles.prompts}>
-        {prompts.map((p) => (
-          <InkChoice
-            key={p.id ?? p.prompt}
-            shape="pill"
-            selected={false}
-            onSelect={() => {
-              void selectionTick();
-              onPick(p);
-            }}
-          >
-            {p.prompt}
-          </InkChoice>
-        ))}
-      </View>
     </Animated.View>
   );
 }
@@ -130,5 +110,4 @@ const styles = StyleSheet.create({
   card: { padding: 22, gap: 14 },
   body: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   copy: { flex: 1, gap: 6 },
-  prompts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

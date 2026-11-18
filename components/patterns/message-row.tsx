@@ -42,6 +42,7 @@ import { Markdown } from '@/components/patterns/markdown';
 import { FromLine, OfferPanel, ReceiptChips } from '@/components/patterns/message-note';
 import { sourcesOf } from '@/constants/tools';
 import { usePagePictures } from '@/view-models/use-page-pictures';
+import { useKokoroVoiceNote } from '@/view-models/use-kokoro-voice-note';
 import { useReadAloud } from '@/view-models/use-read-aloud';
 import { ReplyThoughts } from '@/components/patterns/reply-thoughts';
 import { ToolTrail, foldedTools } from '@/components/patterns/tool-card';
@@ -49,6 +50,7 @@ import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import { clockWords } from '@/components/patterns/voice-note-mic';
 import type { ChatImage, ChatVoiceNote, Message, ToolCall } from '@/models/chat';
+import { copyText } from '@/services/clipboard';
 import { markdownToPlain } from '@/services/markdown';
 import { REPLY_CARD, splitReply, type ReplyPicture, type ReplyTarget } from '@/services/reply';
 import { selectionTick } from '@/services/haptics';
@@ -335,9 +337,12 @@ function TheirMessage({
   onReply?: (target: ReplyTarget) => void;
   onLayout?: (height: number) => void;
 }) {
+  const theme = useInkTheme();
   const done = !message.pending;
   const [viewing, setViewing] = useState<ReplyPicture | null>(null);
   const [part, setPart] = useState<string | null>(null);
+  const [copyPart, setCopyPart] = useState<string | null>(null);
+  const { note: kokoroNote, generating: kokoroGenerating, sendVoiceNote } = useKokoroVoiceNote(message.id);
   // Answered as the words it reads as, not the markdown it was written in.
   const plain = useMemo(() => (done && message.content ? markdownToPlain(message.content) : ''), [done, message.content]);
   const answer = done ? onReply : undefined;
@@ -386,7 +391,25 @@ function TheirMessage({
           trail={shown}
           tools={folded}
           onReply={answer && plain ? () => setPart(plain) : undefined}
+          onReplyWhole={answer && plain ? () => answer({ kind: 'text', from: 'goose', text: plain, part: false }) : undefined}
+          onCopyPart={done && message.content ? () => setCopyPart(plain || message.content) : undefined}
+          onVoiceNote={done && plain ? () => sendVoiceNote(plain) : undefined}
         />,
+        kokoroGenerating ? (
+          <View
+            key="kokoro-generating"
+            style={[styles.voice, { backgroundColor: theme.color.neutralSoft, borderRadius: theme.radius.pill, alignSelf: 'flex-start' }]}
+          >
+            <GIcon name="voice" size={15} color={theme.color.accentLine} />
+            <Text style={inkText(theme, { size: 'xs', color: theme.color.textSecondary }).style}>
+              Goose is recording a voice note…
+            </Text>
+          </View>
+        ) : kokoroNote ? (
+          <View key="kokoro-note" style={{ alignSelf: 'flex-start' }}>
+            <VoiceNoteChip note={kokoroNote} />
+          </View>
+        ) : null,
         /* The thread's own padding (app/conversation.tsx), which the pictures reach past. */
         <PagePictures
           key="pictures"
@@ -401,6 +424,7 @@ function TheirMessage({
   return (
     <SwipeToReply
       onReply={answer && plain ? () => answer({ kind: 'text', from: 'goose', text: plain, part: false }) : undefined}
+      onVoiceNote={done && plain ? () => sendVoiceNote(plain) : undefined}
     >
       <View style={styles.theirs} onLayout={onLayout ? (e) => onLayout(e.nativeEvent.layout.height) : undefined}>
         {note?.from ? <FromLine from={note.from} /> : null}
@@ -423,6 +447,17 @@ function TheirMessage({
           onReply={(text, chosen) => answer({ kind: 'text', from: 'goose', text, part: chosen })}
         />
       ) : null}
+      <ReplyPartSheet
+        text={copyPart}
+        onClose={() => setCopyPart(null)}
+        onReply={(text) => {
+          void copyText(text);
+        }}
+        title="Copy part"
+        hint="Select the words you want to copy."
+        selectionLabel="Copy selection"
+        allLabel="Copy all"
+      />
     </SwipeToReply>
   );
 }
@@ -433,12 +468,21 @@ function ReplyActions({
   trail,
   tools,
   onReply,
+  onReplyWhole,
+  onCopyPart,
+  onVoiceNote,
 }: {
   message: Message;
   trail: TrailState;
   tools: ToolCall[];
   /** Opens the reply's words to answer all of them or a part. */
   onReply?: () => void;
+  /** Long-press on reply: immediately reply to the whole message. */
+  onReplyWhole?: () => void;
+  /** Long-press on copy: select part of the message to copy. */
+  onCopyPart?: () => void;
+  /** Long-press on speaker: Kokoro sends a voice note of the message. */
+  onVoiceNote?: () => void;
 }) {
   const theme = useInkTheme();
   const { t } = useTranslation();
@@ -454,6 +498,14 @@ function ReplyActions({
               void selectionTick();
               toggle(message.content);
             }}
+            onLongPress={
+              onVoiceNote
+                ? () => {
+                    void selectionTick();
+                    onVoiceNote();
+                  }
+                : undefined
+            }
             accessibilityRole="button"
             accessibilityLabel={reading ? t('chat.reply.stopReading') : t('chat.reply.readAloud')}
             hitSlop={hitSlop(ACTION_HEIGHT)}
@@ -461,7 +513,7 @@ function ReplyActions({
           >
             <GIcon name={reading ? 'stop' : 'volume'} size={15} color={reading ? theme.color.accentLine : theme.color.textSecondary} />
           </GPressable>
-          <CopyButton text={message.content} />
+          <CopyButton text={message.content} onLongPress={onCopyPart} />
           {onReply ? (
             <GPressable
               feedback="tint"
@@ -469,6 +521,14 @@ function ReplyActions({
                 void selectionTick();
                 onReply();
               }}
+              onLongPress={
+                onReplyWhole
+                  ? () => {
+                      void selectionTick();
+                      onReplyWhole();
+                    }
+                  : undefined
+              }
               accessibilityRole="button"
               accessibilityLabel={t('chat.reply.reply')}
               hitSlop={hitSlop(ACTION_HEIGHT)}

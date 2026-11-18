@@ -38,7 +38,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     id: 'deviceOffline',
     titleKey: 'help.guide.deviceOffline.title',
     bodyKey: 'help.guide.deviceOffline.body',
-    link: { screenKey: 'tabs.devices', route: '/(tabs)/devices' },
+    link: { screenKey: 'tabs.devices', route: '/(stack)/devices' },
   },
   { id: 'pairingCode', titleKey: 'help.guide.pairingCode.title', bodyKey: 'help.guide.pairingCode.body' },
   {

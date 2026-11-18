@@ -4,7 +4,7 @@
 
 import { list, oneOf, record, text } from './me-read';
 
-export const CARD_KINDS = ['idea', 'news', 'digest', 'todo', 'cart', 'watch'] as const;
+export const CARD_KINDS = ['idea', 'news', 'digest', 'todo', 'cart', 'watch', 'anchor', 'deliverable'] as const;
 export type CardKind = (typeof CARD_KINDS)[number];
 
 /** A card as a chat turn names it. `title` is only for the chip the phone shows. */

@@ -17,7 +17,7 @@
 
 import { GPressable } from '@/components/ui/g-pressable';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {Animated, Easing, Keyboard, Platform, StyleSheet, TextInput} from 'react-native';
+import { Animated, Easing, Keyboard, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { glassLift, hitSlop } from '@jarida/ink';
 import { inkText, useInkTheme, useReduceMotion } from '@/components/ui/ink';
@@ -41,7 +41,9 @@ export interface WallDockProps {
   onQuery: (query: string) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCompose: () => void;
+  onCompose?: () => void;
+  onComposeIncognito?: () => void;
+  placeholder?: string;
   /** The bar's strip, which the dock floats above. */
   bottomInset: number;
 }
@@ -52,6 +54,8 @@ export function WallDock({
   open,
   onOpenChange,
   onCompose,
+  onComposeIncognito,
+  placeholder,
   bottomInset,
 }: WallDockProps) {
   const theme = useInkTheme();
@@ -61,6 +65,28 @@ export function WallDock({
   const [width, setWidth] = useState(0);
   const [progress] = useState(() => new Animated.Value(open ? 1 : 0));
   const [lift] = useState(() => new Animated.Value(0));
+  const [showTip, setShowTip] = useState(false);
+
+  // Periodically inform the user that long-pressing Compose starts an incognito session.
+  useEffect(() => {
+    if (!onComposeIncognito || open) {
+      setShowTip(false);
+      return;
+    }
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    const flash = () => {
+      setShowTip(true);
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setShowTip(false), 5000);
+    };
+    const initialTimer = setTimeout(flash, 1500);
+    const interval = setInterval(flash, 45000);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [onComposeIncognito, open]);
 
   // No stop in between: starting a spring on a moving value hands the new one
   // the old one's velocity, which is the whole point of using a spring here.
@@ -178,7 +204,7 @@ export function WallDock({
             ref={input}
             value={query}
             onChangeText={onQuery}
-            placeholder={t('chat.history.searchPlaceholder')}
+            placeholder={placeholder ?? t('chat.history.searchPlaceholder')}
             placeholderTextColor={theme.color.textTertiary}
             accessibilityLabel={t('chat.history.search')}
             returnKeyType="search"
@@ -205,13 +231,51 @@ export function WallDock({
         </Animated.View>
       </Animated.View>
 
-      <Animated.View
-        style={[styles.compose, { opacity: composeOpacity }]}
-        pointerEvents={open ? 'none' : 'box-none'}
-        aria-hidden={open}
-      >
-        <ChromePuck icon="compose" label={t('chat.newConversation')} onPress={onCompose} />
-      </Animated.View>
+      {showTip && !open && onComposeIncognito ? (
+        <GPressable
+          feedback="none"
+          onPress={() => setShowTip(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Long-press Compose to start an incognito session"
+          style={[
+            styles.tip,
+            {
+              backgroundColor: theme.color.chrome,
+              borderColor: theme.color.lineStrong,
+              borderWidth: theme.edge.hairlineWidth,
+              borderRadius: theme.radius.pill,
+            },
+            glassLift(theme),
+          ]}
+        >
+          <GIcon name="eye-off" size={13} color={theme.color.accentLine} />
+          <Text style={inkText(theme, { size: 'xs', color: theme.color.textSecondary }).style}>
+            Hold to start incognito chat
+          </Text>
+        </GPressable>
+      ) : null}
+
+      {onCompose ? (
+        <Animated.View
+          style={[styles.compose, { opacity: composeOpacity }]}
+          pointerEvents={open ? 'none' : 'box-none'}
+          aria-hidden={open}
+        >
+          <ChromePuck
+            icon="compose"
+            label={t('chat.newConversation')}
+            onPress={onCompose}
+            onLongPress={
+              onComposeIncognito
+                ? () => {
+                    setShowTip(false);
+                    onComposeIncognito();
+                  }
+                : undefined
+            }
+          />
+        </Animated.View>
+      ) : null}
     </Animated.View>
   );
 }
@@ -253,4 +317,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   compose: { position: 'absolute', right: 0, top: 0 },
+  tip: {
+    position: 'absolute',
+    right: 0,
+    bottom: PUCK_SIZE + 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
 });

@@ -57,8 +57,8 @@ export async function phonePlaceForTurn(): Promise<string | undefined> {
   if (!enabled) return undefined;
   if (cached && Date.now() - cached.at < PLACE_TTL_MS) return cached.name ?? undefined;
   const fix = await readPhoneFix(false, wider);
-  // Only a named place is kept: an unnamed one is asked for again with the next turn.
-  if (fix.kind !== 'fix' || !fix.name) return undefined;
+  // Only a named place is kept: an unnamed one falls back to the last known name if any.
+  if (fix.kind !== 'fix' || !fix.name) return cached?.name ?? undefined;
   cached = { name: fix.name, at: Date.now() };
   return fix.name;
 }

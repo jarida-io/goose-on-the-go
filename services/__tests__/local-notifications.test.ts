@@ -76,12 +76,12 @@ describe('openTapped', () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/(stack)/schedule', params: { schedule_id: 'sched-1' } });
   });
 
-  it('opens the devices tab and the chat tab', () => {
+  it('opens the devices screen and the chat tab', () => {
     tap({ open: 'devices' });
     tap({ open: 'chat', proposal_id: 'p-1' });
     // A tab is gone back to rather than pushed, so the history holds one tab bar.
-    expect(mockNavigate.mock.calls).toEqual([['/(tabs)/devices'], ['/(tabs)/chat']]);
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockPush.mock.calls).toEqual([['/(stack)/devices']]);
+    expect(mockNavigate.mock.calls).toEqual([['/(tabs)/chat']]);
   });
 
   it('opens the models, extensions and remote access screens', () => {
@@ -175,7 +175,7 @@ describe('openTapped', () => {
   it('acts on one tap once, however many times it is delivered', () => {
     tap({ open: 'devices' }, 'same');
     tap({ open: 'devices' }, 'same');
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
   it('opens the page that answers a phone asking to pair', () => {

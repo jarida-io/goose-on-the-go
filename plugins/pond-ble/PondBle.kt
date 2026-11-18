@@ -127,7 +127,10 @@ class PondBleModule(private val context: ReactApplicationContext) : ReactContext
     val filter = ScanFilter.Builder().apply {
       if (bits == null) setServiceUuid(ParcelUuid(base)) else setServiceUuid(ParcelUuid(base), ParcelUuid(bits))
     }.build()
-    val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
+    val settings = ScanSettings.Builder().apply {
+      setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) setLegacy(false)
+    }.build()
     try {
       scanner.startScan(listOf(filter), settings, callback)
       scanning = callback

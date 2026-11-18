@@ -17,7 +17,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -25,14 +25,17 @@ import {
   InkCard,
   InkChoice,
   InkEmptyState,
+  InkEyebrow,
   InkNotice,
   InkSpinner,
   InkSwitch,
   InkText,
   InkTitle,
+  useInkTheme,
 } from '@/components/ui/ink';
 
 import { GIcon } from '@/components/ui/g-icon';
+import { GPressable } from '@/components/ui/g-pressable';
 import { GRoundButton } from '@/components/ui/g-round-button';
 import { useBottomBarInset, useChromeScroll } from '@/providers/chrome-provider';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
@@ -125,6 +128,56 @@ const DeviceCard = React.memo(function DeviceCard({
   );
 });
 
+type DeviceSubMenu = 'smart' | 'pairing' | 'cameras' | 'audio';
+
+const SUB_MENUS: ReadonlyArray<{ id: DeviceSubMenu; label: string }> = [
+  { id: 'smart', label: 'Smart devices' },
+  { id: 'pairing', label: 'Pairing' },
+  { id: 'cameras', label: 'Cameras' },
+  { id: 'audio', label: 'Audio' },
+];
+
+function SubMenuRow({
+  icon,
+  title,
+  description,
+  onPress,
+  divided = false,
+}: {
+  icon: Parameters<typeof GIcon>[0]['name'];
+  title: string;
+  description: string;
+  onPress: () => void;
+  divided?: boolean;
+}) {
+  const theme = useInkTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <GPressable
+      onPress={() => {
+        void selectionTick();
+        onPress();
+      }}
+      accessibilityRole="button"
+      style={[
+        styles.subRow,
+        divided && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.chrome },
+      ]}
+    >
+      <View style={[styles.subIcon, { backgroundColor: theme.color.chrome }]}>
+        <GIcon name={icon} size={17} color={theme.color.accentLine} />
+      </View>
+      <View style={styles.subText}>
+        <InkText weight="semibold">{title}</InkText>
+        <InkText size="xs" tone="secondary">
+          {description}
+        </InkText>
+      </View>
+      <GIcon name="chevron-right" size={16} color={theme.color.textTertiary} />
+    </GPressable>
+  );
+}
+
 export default function DevicesTab() {
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -134,6 +187,7 @@ export default function DevicesTab() {
   // A pull draws its own spinner at the top of the list, so the one in the
   // list body stands down while it runs rather than showing two.
   const [pulling, setPulling] = useState(false);
+  const [subMenu, setSubMenu] = useState<DeviceSubMenu>('smart');
   const [activeRoom, setActiveRoom] = useState(ALL_ROOMS);
   const [editing, setEditing] = useState<Device | null>(null);
   const chrome = useChromeScroll();
@@ -188,67 +242,188 @@ export default function DevicesTab() {
   const nothingReachable = total > 0 && data.onlineCount === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Title and count on the left, the two actions as a matched pair of
-          round buttons on the right. Add lives up here rather than under the
-          grid, so it stays in reach however many devices there are; with none,
-          the empty state below carries it instead, and the screen still has a
-          single primary. Add used to be a full-width labelled bar beside a
-          small round Refresh, one row with two sizes for two actions of one
-          rank; now both are the same circle, Add filled as the primary. */}
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <InkTitle level={1}>{t('devices.title')}</InkTitle>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {t('devices.count', { count: total })}
-            {total > 0 ? ` · ${t('devices.online', { count: data.onlineCount })}` : ''}
-            {/* Only when the Pond has stopped answering: what is shown is its last word, and this is its age. */}
-            {data.staleFor ? ` · ${t('devices.updatedAgo', { ago: data.staleFor })}` : ''}
-          </Text>
-        </View>
-        <View style={styles.headerActions}>
-          <GRoundButton
-            icon="refresh"
-            label={t('devices.refreshList')}
-            onPress={handleRefresh}
-            busy={loading}
-          />
-          {total > 0 ? (
-            <GRoundButton
-              icon="plus"
-              tone="primary"
-              label={t('devices.addDevice')}
-              onPress={() => router.push('/(stack)/commission-device')}
-            />
-          ) : null}
-        </View>
-      </View>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              <GRoundButton
+                icon="refresh"
+                label={t('devices.refreshList')}
+                onPress={handleRefresh}
+                busy={loading}
+              />
+              {total > 0 ? (
+                <GRoundButton
+                  icon="plus"
+                  tone="primary"
+                  label={t('devices.addDevice')}
+                  onPress={() => router.push('/(stack)/commission-device')}
+                />
+              ) : null}
+            </View>
+          ),
+        }}
+      />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabsRow}
+      >
+        {SUB_MENUS.map((item) => (
+          <InkChoice
+            key={item.id}
+            role="radio"
+            shape="pill"
+            selected={subMenu === item.id}
+            onSelect={() => {
+              void selectionTick();
+              setSubMenu(item.id);
+            }}
+          >
+            {item.label}
+          </InkChoice>
+        ))}
+      </ScrollView>
 
-      {/* Room tabs, derived from the rooms devices are actually in. The
-          view-model returns none when there is only one room to show. A tab
-          is a room id, not a name: "All" and "Unassigned" are ids too, and
-          each comes with its words. */}
-      {data.roomTabs.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.tabsScroll}
-          contentContainerStyle={styles.tabsRow}
-        >
-          {data.roomTabs.map((tab) => (
-            <InkChoice
-              key={tab.id}
-              role="radio"
-              shape="pill"
-              selected={activeRoom === tab.id}
-              onSelect={() => pickRoom(tab.id)}
+      {subMenu === 'smart' ? (
+        <>
+          <View style={styles.header}>
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {t('devices.count', { count: total })}
+              {total > 0 ? ` · ${t('devices.online', { count: data.onlineCount })}` : ''}
+              {data.staleFor ? ` · ${t('devices.updatedAgo', { ago: data.staleFor })}` : ''}
+            </Text>
+          </View>
+
+          {/* Room tabs, derived from the rooms devices are actually in. The
+              view-model returns none when there is only one room to show. A tab
+              is a room id, not a name: "All" and "Unassigned" are ids too, and
+              each comes with its words. */}
+          {data.roomTabs.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.tabsScroll}
+              contentContainerStyle={styles.tabsRow}
             >
-              {tab.label}
-            </InkChoice>
-          ))}
-        </ScrollView>
+              {data.roomTabs.map((tab) => (
+                <InkChoice
+                  key={tab.id}
+                  role="radio"
+                  shape="pill"
+                  selected={activeRoom === tab.id}
+                  onSelect={() => pickRoom(tab.id)}
+                >
+                  {tab.label}
+                </InkChoice>
+              ))}
+            </ScrollView>
+          ) : null}
+        </>
       ) : null}
 
+      {subMenu === 'pairing' ? (
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset + Spacing['2xl'] }]}>
+          <InkCard raised={false} contentStyle={styles.subCard}>
+            <InkEyebrow>PAIRING & ACCESS</InkEyebrow>
+            <SubMenuRow
+              icon="lock"
+              title={t('screens.pairingLock')}
+              description={pairing.data?.locked ? 'Locked — new phones require approval' : 'Unlocked — pairing codes work directly'}
+              onPress={() => router.push('/(stack)/pairing-lock')}
+            />
+            <SubMenuRow
+              icon="plus"
+              title="Pair smart device"
+              description="Add a Matter or smart home device to your Pond"
+              divided
+              onPress={() => router.push('/(stack)/commission-device')}
+            />
+            <SubMenuRow
+              icon="link"
+              title="Pond Wi-Fi & Bluetooth"
+              description="Connect speakers, keyboards, sensors, and Wi-Fi networks"
+              divided
+              onPress={() => router.push('/(stack)/pond-connections')}
+            />
+            <SubMenuRow
+              icon="device"
+              title="Pair another phone"
+              description="Set up Goose On The Go on a household phone"
+              divided
+              onPress={() => router.push('/(stack)/pond-pairing')}
+            />
+          </InkCard>
+        </ScrollView>
+      ) : subMenu === 'cameras' ? (
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset + Spacing['2xl'] }]}>
+          <InkCard raised={false} contentStyle={styles.subCard}>
+            <InkEyebrow>CAMERAS & VISION</InkEyebrow>
+            <SubMenuRow
+              icon="camera"
+              title={t('screens.settingsCameras')}
+              description="Camera feeds, detection settings, and room coverage"
+              onPress={() => router.push('/(stack)/settings-cameras')}
+            />
+            <SubMenuRow
+              icon="eye"
+              title={t('screens.visionEvents')}
+              description="Recent people, pets, and motion sightings"
+              divided
+              onPress={() => router.push('/(stack)/vision-events')}
+            />
+            <SubMenuRow
+              icon="face"
+              title={t('screens.faces')}
+              description="Manage known household faces for recognition"
+              divided
+              onPress={() => router.push('/(stack)/faces')}
+            />
+            <SubMenuRow
+              icon="bolt"
+              title={t('screens.visionAutomations')}
+              description="Automations triggered by camera sightings"
+              divided
+              onPress={() => router.push('/(stack)/vision-automations')}
+            />
+          </InkCard>
+        </ScrollView>
+      ) : subMenu === 'audio' ? (
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset + Spacing['2xl'] }]}>
+          <InkCard raised={false} contentStyle={styles.subCard}>
+            <InkEyebrow>POND AUDIO & VOICE</InkEyebrow>
+            <SubMenuRow
+              icon="voice"
+              title={t('screens.voiceAgent')}
+              description="In-room microphone, speaker, and wake word activity"
+              onPress={() => router.push('/(stack)/voice-agent')}
+            />
+            <SubMenuRow
+              icon="speaker"
+              title={t('screens.settingsSpeaking')}
+              description="Speaking voice, accent, pace, and quality"
+              divided
+              onPress={() => router.push('/(stack)/settings-speaking')}
+            />
+            <SubMenuRow
+              icon="ear"
+              title={t('screens.settingsListening')}
+              description="Wake word sensitivity and listening preferences"
+              divided
+              onPress={() => router.push('/(stack)/settings-listening')}
+            />
+            <SubMenuRow
+              icon="link"
+              title="Bluetooth speakers & accessories"
+              description="Scan and connect audio devices to your Pond"
+              divided
+              onPress={() => router.push('/(stack)/pond-connections')}
+            />
+          </InkCard>
+        </ScrollView>
+      ) : (
       <ScrollView
         {...chrome}
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset }]}
@@ -364,6 +539,7 @@ export default function DevicesTab() {
         ))}
 
       </ScrollView>
+      )}
 
       {editing ? (
         <DeviceEditSheet
@@ -394,8 +570,8 @@ const makeStyles = (c: ThemeColors) =>
       alignItems: 'center',
       gap: Spacing.md,
       paddingHorizontal: Spacing.lg,
-      paddingTop: Spacing.lg,
-      paddingBottom: Spacing.md,
+      paddingTop: Spacing.xs,
+      paddingBottom: Spacing.xs,
     },
     // Takes the width the buttons leave, and may shrink so the count line
     // truncates rather than pushing the buttons off the row.
@@ -404,7 +580,6 @@ const makeStyles = (c: ThemeColors) =>
       ...face('body', 'regular'),
       fontSize: FontSize.sm,
       color: c.textTertiary,
-      marginTop: Spacing.xs,
     },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
 
@@ -416,7 +591,8 @@ const makeStyles = (c: ThemeColors) =>
     tabsScroll: { flexGrow: 0, flexShrink: 0 },
     tabsRow: {
       paddingHorizontal: Spacing.lg,
-      paddingBottom: Spacing.md,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.xs,
       /* Room for the plate under each pill. */
       gap: Spacing.sm,
       alignItems: 'center',
@@ -453,4 +629,8 @@ const makeStyles = (c: ThemeColors) =>
       color: c.textSecondary,
     },
     detailMuted: { color: c.textTertiary },
+    subCard: { padding: Spacing.md, gap: Spacing.xs },
+    subRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.sm },
+    subIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    subText: { flex: 1, gap: 2 },
   });

@@ -14,11 +14,19 @@ export function ReplyPartSheet({
   text,
   onClose,
   onReply,
+  title,
+  hint: hintText,
+  selectionLabel,
+  allLabel,
 }: {
   /** The message's words; the sheet is open while there are some. */
   text: string | null;
   onClose: () => void;
   onReply: (words: string, part: boolean) => void;
+  title?: string;
+  hint?: string;
+  selectionLabel?: string;
+  allLabel?: string;
 }) {
   const theme = useInkTheme();
   const { t } = useTranslation();
@@ -41,8 +49,8 @@ export function ReplyPartSheet({
     onClose();
   };
   return (
-    <InkSheet open={text !== null} onClose={onClose} title={t('chat.replyPart.title')}>
-      <Text style={hint.style}>{t('chat.replyPart.hint')}</Text>
+    <InkSheet open={text !== null} onClose={onClose} title={title ?? t('chat.replyPart.title')}>
+      <Text style={hint.style}>{hintText ?? t('chat.replyPart.hint')}</Text>
       <TextInput
         value={words}
         multiline
@@ -52,7 +60,7 @@ export function ReplyPartSheet({
         showSoftInputOnFocus={false}
         onChangeText={() => {}}
         onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-        accessibilityLabel={t('chat.replyPart.hint')}
+        accessibilityLabel={hintText ?? t('chat.replyPart.hint')}
         style={[
           body.style,
           styles.words,
@@ -61,10 +69,10 @@ export function ReplyPartSheet({
       />
       <View style={styles.actions}>
         <InkButton disabled={chosen === ''} onPress={() => answer(true)}>
-          {t('chat.replyPart.selection')}
+          {selectionLabel ?? t('chat.replyPart.selection')}
         </InkButton>
         <InkButton variant="quiet" onPress={() => answer(false)}>
-          {t('chat.replyPart.all')}
+          {allLabel ?? t('chat.replyPart.all')}
         </InkButton>
       </View>
     </InkSheet>

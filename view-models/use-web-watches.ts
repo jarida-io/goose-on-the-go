@@ -46,7 +46,22 @@ export function useWebWatches() {
   const refresh = useCallback(() => load(true), [load]);
   useLive(() => load(false), WEB_WATCHES_MS, hydrated);
 
-  return { data: { watches }, loading, error, actions: { refresh } };
+  const create = useCallback(
+    async (body: { url?: string; looking_for: string; interval_hours?: number; title?: string }) => {
+      try {
+        const created = await api.createWebWatch(body);
+        setWatches((prev) => [created, ...prev]);
+        setError(null);
+        return created;
+      } catch (e) {
+        setError(failure(e));
+        return null;
+      }
+    },
+    [],
+  );
+
+  return { data: { watches }, loading, error, actions: { refresh, create } };
 }
 
 export function useWebWatch(id: string) {
@@ -76,7 +91,8 @@ export function useWebWatch(id: string) {
   }, [id]);
 
   const refresh = useCallback(() => load(true), [load]);
-  useLive(() => load(false), WEB_WATCHES_MS, hydrated);
+  const pollMs = watch && watch.lastCheckedAt === null ? 3_000 : WEB_WATCHES_MS;
+  useLive(() => load(false), pollMs, hydrated);
 
   const edit = useCallback(
     async (change: { paused?: boolean; interval_hours?: number }) => {

@@ -5,10 +5,12 @@
  */
 
 import { Share } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 
 type ClipboardModule = typeof import('expo-clipboard');
 
 function load(): ClipboardModule | null {
+  if (!requireOptionalNativeModule('ExpoClipboard')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('expo-clipboard') as ClipboardModule;

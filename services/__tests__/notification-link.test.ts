@@ -162,7 +162,7 @@ describe('openRouteFromData', () => {
 
 describe('screenPath', () => {
   it('maps each route to its screen', () => {
-    expect(screenPath({ open: 'devices' })).toBe('/(tabs)/devices');
+    expect(screenPath({ open: 'devices' })).toBe('/(stack)/devices');
     expect(screenPath({ open: 'chat' })).toBe('/(tabs)/chat');
     expect(screenPath({ open: 'models' })).toBe('/(stack)/models');
     expect(screenPath({ open: 'reminders' })).toBe('/(stack)/reminders');

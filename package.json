@@ -6,6 +6,8 @@
     "postinstall": "patch-package && node scripts/patch-expo-fetch.cjs",
     "prepare": "git config core.hooksPath .githooks || true",
     "start": "expo start",
+    "dev": "expo start --dev-client --clear",
+    "build": "bash scripts/release-build.sh",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

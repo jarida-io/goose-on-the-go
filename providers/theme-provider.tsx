@@ -26,6 +26,15 @@ import { Storage } from '@/services/storage';
 
 export type ColorScheme = 'light' | 'dark';
 export type ThemePreference = 'system' | 'light' | 'dark';
+export type AccentName = 'Purple' | 'Blue' | 'Teal' | 'Coral' | 'Magenta';
+
+export const ACCENT_OPTIONS: ReadonlyArray<{ name: AccentName; hex: string }> = [
+  { name: 'Purple', hex: '#7C3AED' },
+  { name: 'Blue', hex: '#2563EB' },
+  { name: 'Teal', hex: '#0D9488' },
+  { name: 'Coral', hex: '#F97316' },
+  { name: 'Magenta', hex: '#DB2777' },
+];
 
 interface ThemeContextValue {
   colors: ThemeColors;
@@ -33,6 +42,8 @@ interface ThemeContextValue {
   isDark: boolean;
   preference: ThemePreference;
   setPreference: (next: ThemePreference) => void;
+  accent: AccentName;
+  setAccent: (next: AccentName) => void;
   /** False until the stored preference has been read back. */
   hydrated: boolean;
 }
@@ -43,16 +54,23 @@ function isPreference(value: string | null): value is ThemePreference {
   return value === 'system' || value === 'light' || value === 'dark';
 }
 
+function isAccentName(value: string | null): value is AccentName {
+  return ACCENT_OPTIONS.some((o) => o.name === value);
+}
+
 export function ThemeProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [accent, setAccentState] = useState<AccentName>('Purple');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void Storage.get('themePreference')
-      .then((stored) => {
-        if (active && isPreference(stored)) setPreferenceState(stored);
+    void Promise.all([Storage.get('themePreference'), Storage.get('accentPreference')])
+      .then(([storedTheme, storedAccent]) => {
+        if (!active) return;
+        if (isPreference(storedTheme)) setPreferenceState(storedTheme);
+        if (isAccentName(storedAccent)) setAccentState(storedAccent);
       })
       .finally(() => {
         if (active) setHydrated(true);
@@ -67,6 +85,11 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     void Storage.set('themePreference', next);
   }, []);
 
+  const setAccent = useCallback((next: AccentName) => {
+    setAccentState(next);
+    void Storage.set('accentPreference', next);
+  }, []);
+
   // RN 0.85's useColorScheme may return 'unspecified'; collapse to light/dark.
   const colorScheme: ColorScheme =
     preference === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : preference;
@@ -78,9 +101,11 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       isDark: colorScheme === 'dark',
       preference,
       setPreference,
+      accent,
+      setAccent,
       hydrated,
     }),
-    [colorScheme, preference, setPreference, hydrated],
+    [colorScheme, preference, setPreference, accent, setAccent, hydrated],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

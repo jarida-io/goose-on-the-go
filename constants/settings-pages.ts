@@ -42,7 +42,6 @@ const assistant: SettingsPage = {
       items: [
         { kind: 'text', key: 'prompt_addendum', multiline: true, labelKey: 'settings.field.prompt_addendum.label', placeholderKey: 'settings.field.prompt_addendum.placeholder' },
         { kind: 'link', route: '/(stack)/settings-prompt-templates', icon: 'sparkle', tile: 'amber', labelKey: 'screens.settingsPromptTemplates' },
-        { kind: 'link', route: '/(stack)/settings-prompt-notes', icon: 'prompts', tile: 'purple', labelKey: 'screens.settingsPromptNotes' },
       ],
     },
     {
@@ -178,22 +177,6 @@ const thinking: SettingsPage = {
   descriptionKey: 'settings.page.thinking',
   sections: [
     {
-      titleKey: 'settings.section.beforeAnswering',
-      items: [
-        {
-          kind: 'choice',
-          key: 'thinking_mode',
-          display: 'radio',
-          labelKey: 'settings.field.thinking_mode.label',
-          options: [
-            { value: 'auto', labelKey: 'settings.option.thinking_mode.auto.label', hintKey: 'settings.option.thinking_mode.auto.hint' },
-            { value: 'on', labelKey: 'settings.option.thinking_mode.on.label', hintKey: 'settings.option.thinking_mode.on.hint' },
-            { value: 'off', labelKey: 'settings.option.thinking_mode.off.label', hintKey: 'settings.option.thinking_mode.off.hint' },
-          ],
-        },
-      ],
-    },
-    {
       titleKey: 'settings.section.howLong',
       items: [
         {
@@ -207,33 +190,6 @@ const thinking: SettingsPage = {
             { value: 'thorough', labelKey: 'settings.option.reasoning_effort.thorough.label', hintKey: 'settings.option.reasoning_effort.thorough.hint' },
           ],
         },
-      ],
-    },
-    {
-      items: [
-        { kind: 'switch', key: 'show_thinking', labelKey: 'settings.field.show_thinking.label', hintKey: 'settings.field.show_thinking.hint' },
-        { kind: 'switch', key: 'persist_thinking', labelKey: 'settings.field.persist_thinking.label', hintKey: 'settings.field.persist_thinking.hint' },
-        { kind: 'switch', key: 'goal_check_enabled', labelKey: 'settings.field.goal_check_enabled.label', hintKey: 'settings.field.goal_check_enabled.hint' },
-      ],
-    },
-    {
-      titleKey: 'settings.section.checkingAnswers',
-      footerKey: 'settings.footer.restartReview',
-      items: [
-        {
-          kind: 'choice',
-          key: 'review_mode',
-          display: 'radio',
-          restart: true,
-          labelKey: 'settings.field.review_mode.label',
-          options: [
-            { value: 'off', labelKey: 'settings.option.review_mode.off.label', hintKey: 'settings.option.review_mode.off.hint' },
-            { value: 'auto', labelKey: 'settings.option.review_mode.auto.label', hintKey: 'settings.option.review_mode.auto.hint' },
-            { value: 'on', labelKey: 'settings.option.review_mode.on.label', hintKey: 'settings.option.review_mode.on.hint' },
-          ],
-        },
-        { kind: 'number', key: 'review_max_rounds', min: 0, max: 5, step: 1, restart: true, labelKey: 'settings.field.review_max_rounds.label', hintKey: 'settings.field.review_max_rounds.hint' },
-        { kind: 'number', key: 'review_pass_threshold', min: 1, max: 5, step: 1, restart: true, labelKey: 'settings.field.review_pass_threshold.label', hintKey: 'settings.field.review_pass_threshold.hint' },
       ],
     },
   ],
@@ -416,6 +372,9 @@ const internet: SettingsPage = {
       footerKey: 'settings.footer.mesh',
       items: [
         { kind: 'switch', key: 'mesh_enabled', labelKey: 'settings.field.mesh_enabled.label', hintKey: 'settings.field.mesh_enabled.hint' },
+        { kind: 'link', route: '/(stack)/web-search', icon: 'search', tile: 'blue', labelKey: 'screens.webSearch', summary: 'webSearch' },
+        { kind: 'link', route: '/(stack)/pond-connections', icon: 'wifi', tile: 'blue', labelKey: 'screens.pondWifi' },
+        { kind: 'link', route: '/(stack)/pond-pairing', icon: 'bluetooth', tile: 'blue', labelKey: 'screens.pondPairing' },
       ],
     },
   ],
@@ -432,6 +391,8 @@ const home: SettingsPage = {
       items: [
         { kind: 'text', key: 'home_name', labelKey: 'settings.field.home_name.label', hintKey: 'settings.field.home_name.hint', placeholderKey: 'settings.field.home_name.placeholder' },
         { kind: 'special', id: 'timezone' },
+        { kind: 'link', route: '/(stack)/add-users', icon: 'users', tile: 'green', labelKey: 'screens.addUsers', summary: 'people' },
+        { kind: 'link', route: '/(stack)/home-management', icon: 'bridge', tile: 'slate', labelKey: 'nav.roomsAndPonds' },
       ],
     },
     {
@@ -450,11 +411,6 @@ const home: SettingsPage = {
         { kind: 'number', key: 'weather_longitude', min: -180, max: 180, step: 0.0001, unitKey: 'settings.unit.degrees', restart: true, labelKey: 'settings.field.weather_longitude.label' },
       ],
     },
-    {
-      items: [
-        { kind: 'link', route: '/(stack)/settings-cameras', icon: 'camera', tile: 'slate', labelKey: 'screens.settingsCameras', summary: 'cameras' },
-      ],
-    },
   ],
 };
 
@@ -463,7 +419,7 @@ const UNSEEN_PHONE_DAYS = [0, 7, 14, 30, 60, 90, 180, 365] as const;
 
 const household: SettingsPage = {
   id: 'household',
-  icon: 'users',
+  icon: 'profile',
   tile: 'green',
   titleKey: 'screens.settingsHousehold',
   descriptionKey: 'settings.page.household',
@@ -472,18 +428,34 @@ const household: SettingsPage = {
       titleKey: 'settings.section.you',
       items: [
         { kind: 'text', key: 'user_name', labelKey: 'settings.field.user_name.label', hintKey: 'settings.field.user_name.hint', placeholderKey: 'settings.field.user_name.placeholder' },
-        { kind: 'special', id: 'primaryProfile' },
+        { kind: 'special', id: 'timezone' },
+        { kind: 'link', route: '/(stack)/settings-speaking', icon: 'speaker', tile: 'pink', labelKey: 'screens.settingsSpeaking', summary: 'speaking' },
       ],
     },
     {
-      titleKey: 'settings.section.inTheRoom',
+      titleKey: 'settings.section.writingStyle',
       items: [
-        { kind: 'switch', key: 'lone_voice_sets_reminders', labelKey: 'settings.field.lone_voice_sets_reminders.label', hintKey: 'settings.field.lone_voice_sets_reminders.hint' },
+        {
+          kind: 'choice',
+          key: 'prompt_style',
+          display: 'radio',
+          labelKey: 'settings.field.prompt_style.label',
+          options: [
+            { value: 'balanced', labelKey: 'settings.option.prompt_style.balanced.label', hintKey: 'settings.option.prompt_style.balanced.hint' },
+            { value: 'concise', labelKey: 'settings.option.prompt_style.concise.label', hintKey: 'settings.option.prompt_style.concise.hint' },
+            { value: 'technical', labelKey: 'settings.option.prompt_style.technical.label', hintKey: 'settings.option.prompt_style.technical.hint' },
+            { value: 'warm', labelKey: 'settings.option.prompt_style.warm.label', hintKey: 'settings.option.prompt_style.warm.hint' },
+          ],
+        },
+        { kind: 'link', route: '/(stack)/settings-prompt-notes', icon: 'prompts', tile: 'purple', labelKey: 'screens.settingsPromptNotes' },
       ],
     },
     {
       items: [
-        { kind: 'link', route: '/(stack)/add-users', icon: 'users', tile: 'green', labelKey: 'screens.addUsers', summary: 'people' },
+        { kind: 'link', route: '/(stack)/voice-match', icon: 'voice', tile: 'pink', labelKey: 'screens.voiceMatch' },
+        { kind: 'link', route: '/(stack)/goose-facts', icon: 'profile', tile: 'teal', labelKey: 'goose.you.facts' },
+        { kind: 'link', route: '/(stack)/goose-interests', icon: 'sparkle', tile: 'indigo', labelKey: 'goose.find.interests' },
+        { kind: 'link', route: '/(stack)/goose-member-interview', icon: 'chat', tile: 'green', labelKey: 'goose.you.interview' },
       ],
     },
   ],
@@ -681,11 +653,12 @@ const appearance: SettingsPage = {
   descriptionKey: 'settings.page.appearance',
   sections: [
     { items: [{ kind: 'special', id: 'theme' }] },
+    { items: [{ kind: 'special', id: 'accent' }] },
     { footerKey: 'settings.footer.haptics', items: [{ kind: 'special', id: 'haptics' }] },
   ],
 };
 
-/** How this phone hears from its Pond while the app is closed. Stored on the phone, not the Pond. */
+/** How this phone hears from its Pond while the app is closed, plus Pond announcements. */
 const phoneNotifications: SettingsPage = {
   id: 'phoneNotifications',
   icon: 'bell',
@@ -695,6 +668,7 @@ const phoneNotifications: SettingsPage = {
   sections: [
     { footerKey: 'settings.footer.stayConnected', items: [{ kind: 'special', id: 'stayConnected' }] },
     { footerKey: 'settings.footer.replyNotices', items: [{ kind: 'special', id: 'replyNotices' }] },
+    ...announcements.sections,
   ],
 };
 

@@ -22,7 +22,16 @@ import { useLive } from './use-live';
 
 export type Greeting = 'morning' | 'afternoon' | 'evening';
 
-export type NowPlaying = { state: 'playing'; track: string; artist: string | null } | { state: 'idle' };
+export type NowPlaying =
+  | {
+      state: 'playing';
+      track: string;
+      artist: string | null;
+      albumArt?: string | null;
+      progressMs?: number;
+      durationMs?: number;
+    }
+  | { state: 'idle' };
 
 export interface NextRoutine {
   label: string;
@@ -37,6 +46,12 @@ export interface Outdoor {
   place: string | null;
   /** The sky's icon: the condition by day or night, a plain cloud when the Pond names none. */
   icon: IconName;
+  cond?: string | null;
+  hi?: number | null;
+  lo?: number | null;
+  hum?: number | null;
+  wind?: number | null;
+  isDay?: boolean | null;
 }
 
 export interface RightNow {
@@ -85,7 +100,16 @@ export function greetingFor(hour: number): Greeting {
 export function nowPlayingOf(r: NowPlayingResponse): NowPlaying | null {
   if (!r.connected || r.error) return null;
   if (r.playing === false) return { state: 'idle' };
-  if (r.playing && r.track) return { state: 'playing', track: r.track, artist: r.artist ?? null };
+  if (r.playing && r.track) {
+    return {
+      state: 'playing',
+      track: r.track,
+      artist: r.artist ?? null,
+      ...(r.album_art ? { albumArt: r.album_art } : {}),
+      ...(typeof r.progress_ms === 'number' ? { progressMs: r.progress_ms } : {}),
+      ...(typeof r.duration_ms === 'number' ? { durationMs: r.duration_ms } : {}),
+    };
+  }
   return null;
 }
 
@@ -135,6 +159,12 @@ export async function readOutdoor(client: Pick<RightNowReader, 'weather'> = api)
       temp: w.temp,
       place: w.location_name?.trim() || null,
       icon: conditionIcon(w.cond ?? '', typeof w.is_day === 'boolean' ? w.is_day : null),
+      ...(w.cond ? { cond: w.cond } : {}),
+      ...(typeof w.hi === 'number' ? { hi: w.hi } : {}),
+      ...(typeof w.lo === 'number' ? { lo: w.lo } : {}),
+      ...(typeof w.hum === 'number' ? { hum: w.hum } : {}),
+      ...(typeof w.wind === 'number' ? { wind: w.wind } : {}),
+      ...(typeof w.is_day === 'boolean' ? { isDay: w.is_day } : {}),
     };
   } catch {
     return null;

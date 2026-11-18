@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useMemo, useState, type ReactElement } from 'react';
-import { Platform, RefreshControl } from 'react-native';
+import { Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -21,7 +21,7 @@ import {
   type SpecialId,
   type SummaryId,
 } from '@/models/pond-settings';
-import { useTheme } from '@/providers/theme-provider';
+import { ACCENT_OPTIONS, useTheme } from '@/providers/theme-provider';
 import { hapticsEnabled, saveHapticsPreference, selectionTick } from '@/services/haptics';
 import { saveStayConnectedPreference, stayConnectedEnabled } from '@/services/background-connection';
 import { replyNoticesEnabled, saveReplyNoticePreference } from '@/services/reply-notices';
@@ -247,6 +247,53 @@ function specialRows(id: SpecialId, ctx: Context): ReactElement[] {
         onChange: (next) => ctx.theme.setPreference(next as 'system' | 'light' | 'dark'),
         t,
       });
+    case 'accent':
+      return [
+        <View key={id} style={accentStyles.row}>
+          <Text style={[accentStyles.label, { color: ctx.theme.colors.text }]}>Accent</Text>
+          <View style={accentStyles.swatches}>
+            {ACCENT_OPTIONS.map((opt) => {
+              const selected = ctx.theme.accent === opt.name;
+              return (
+                <Pressable
+                  key={opt.name}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={opt.name}
+                  onPress={() => {
+                    if (selected) return;
+                    void selectionTick();
+                    ctx.theme.setAccent(opt.name);
+                  }}
+                  style={accentStyles.swatchItem}
+                >
+                  <View
+                    style={[
+                      accentStyles.ring,
+                      {
+                        borderColor: selected ? opt.hex : 'transparent',
+                      },
+                    ]}
+                  >
+                    <View style={[accentStyles.dot, { backgroundColor: opt.hex }]} />
+                  </View>
+                  <Text
+                    style={[
+                      accentStyles.name,
+                      {
+                        color: selected ? ctx.theme.colors.text : ctx.theme.colors.textSecondary,
+                        fontWeight: selected ? '600' : '400',
+                      },
+                    ]}
+                  >
+                    {opt.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>,
+      ];
     case 'haptics':
       return [
         <SwitchRow key={id} label={t('settings.hapticsLabel')} value={ctx.haptics.on} onChange={ctx.haptics.set} />,
@@ -369,3 +416,42 @@ export function SettingsPageScreen({ page: id }: { page: SettingsPageId }) {
     </SettingsScroll>
   );
 }
+
+const accentStyles = StyleSheet.create({
+  row: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  swatches: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  swatchItem: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  ring: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  name: {
+    fontSize: 12,
+  },
+});

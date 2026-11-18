@@ -3,7 +3,7 @@
  * (soul, heartbeat, scratchpad, and conversation presets).
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/ink';
 
 import { ContentUnavailable } from '@/components/patterns/content-unavailable';
+import { PromptVisualBuilder } from '@/components/settings/prompt-visual-builder';
 import { Spacing } from '@/constants/spacing';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { PRESET_DESCRIPTIONS, templateLabel } from '@/models/prompt-templates';
@@ -36,6 +37,7 @@ export default function SettingsPromptTemplatesScreen() {
 
   const { data, loading, saving, resetting, error, failed, actions } = usePromptTemplates();
   const pull = usePullToRefresh(actions.refresh);
+  const [editorMode, setEditorMode] = useState<'visual' | 'raw'>('visual');
 
   const active = data.activeTemplate;
 
@@ -131,12 +133,25 @@ export default function SettingsPromptTemplatesScreen() {
                 </View>
               </View>
 
-              <InkTextArea
-                value={data.content}
-                onChange={actions.setContent}
-                rows={14}
-                placeholder={templateLabel(active.name)}
-              />
+              <View style={styles.modeRow}>
+                <InkChip selected={editorMode === 'visual'} onPress={() => setEditorMode('visual')}>
+                  Visual
+                </InkChip>
+                <InkChip selected={editorMode === 'raw'} onPress={() => setEditorMode('raw')}>
+                  Raw
+                </InkChip>
+              </View>
+
+              {editorMode === 'visual' ? (
+                <PromptVisualBuilder content={data.content} onChange={actions.setContent} />
+              ) : (
+                <InkTextArea
+                  value={data.content}
+                  onChange={actions.setContent}
+                  rows={14}
+                  placeholder={templateLabel(active.name)}
+                />
+              )}
 
               <View style={styles.footer}>
                 <InkButton
@@ -190,6 +205,11 @@ const makeStyles = (c: ThemeColors) =>
       paddingVertical: 4,
       borderRadius: 6,
       alignSelf: 'flex-start',
+    },
+    modeRow: {
+      flexDirection: 'row',
+      gap: Spacing.xs,
+      marginBottom: Spacing.sm,
     },
     footer: {
       flexDirection: 'row',

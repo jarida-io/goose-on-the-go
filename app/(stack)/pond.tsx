@@ -24,7 +24,7 @@ import type { AdminCheckStatus } from '@/services/types';
 import { areaGroupLabel } from '@/view-models/pond-admin-words';
 import { useMyPond, type MyPondPart } from '@/view-models/use-my-pond';
 
-type PlaceId = 'files' | 'caches' | 'tasks' | 'health' | 'reliability' | 'power' | 'pairing';
+type PlaceId = 'files' | 'caches' | 'tasks' | 'health' | 'reliability' | 'power' | 'pairing' | 'switchPond' | 'pairPond';
 
 const PLACES: { id: PlaceId; route: string; labelKey: TranslationKey; descriptionKey: TranslationKey; icon: IconName; tile: TileColor }[] = [
   { id: 'files', route: '/(stack)/pond-files', labelKey: 'screens.pondFiles', descriptionKey: 'myPond.menu.files', icon: 'folder', tile: 'blue' },
@@ -34,6 +34,8 @@ const PLACES: { id: PlaceId; route: string; labelKey: TranslationKey; descriptio
   { id: 'reliability', route: '/(stack)/pond-reliability', labelKey: 'screens.pondReliability', descriptionKey: 'myPond.menu.reliability', icon: 'bell-ring', tile: 'blue' },
   { id: 'power', route: '/(stack)/pond-power', labelKey: 'screens.pondPower', descriptionKey: 'myPond.menu.power', icon: 'power', tile: 'amber' },
   { id: 'pairing', route: '/(stack)/pairing-lock', labelKey: 'screens.pairingLock', descriptionKey: 'myPond.menu.pairing', icon: 'lock', tile: 'slate' },
+  { id: 'switchPond', route: '/(stack)/switch-pond', labelKey: 'screens.switchPond', descriptionKey: 'myPond.menu.pairing', icon: 'updown', tile: 'amber' },
+  { id: 'pairPond', route: '/(stack)/pond-pairing', labelKey: 'screens.pondPairing', descriptionKey: 'myPond.menu.pairing', icon: 'bluetooth', tile: 'blue' },
 ];
 
 const COLUMNS = 3;

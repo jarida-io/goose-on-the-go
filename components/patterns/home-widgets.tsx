@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { InkEmptyState, InkSwitch, InkText, inkText, useInkTheme } from '@/components/ui/ink';
 
@@ -65,13 +65,17 @@ export function WidgetHeader({ icon, title, meta, action, onAccent = false }: Wi
  * What is playing, on the one widget allowed to be loud. Idle is said in words; the bars move only
  * while something plays, because bars over silence would say music is on.
  */
-export function NowPlayingWidget({ playing }: { playing: NowPlaying }) {
+export function NowPlayingWidget({ playing, onOpen }: { playing: NowPlaying; onOpen?: () => void }) {
   const theme = useInkTheme();
   const styles = makeStyles(theme);
   const { t } = useTranslation();
   const on = theme.color.textOnAccent;
+  const pct =
+    playing.state === 'playing' && playing.durationMs && playing.durationMs > 0 && typeof playing.progressMs === 'number'
+      ? Math.max(0, Math.min(100, (playing.progressMs / playing.durationMs) * 100))
+      : null;
 
-  return (
+  const content = (
     <View
       accessible
       accessibilityLabel={
@@ -83,23 +87,47 @@ export function NowPlayingWidget({ playing }: { playing: NowPlaying }) {
       <WidgetHeader icon="music" title={t('home.nowPlaying')} onAccent />
       {playing.state === 'playing' ? (
         <>
-          <Text style={[styles.value, { color: on }]} numberOfLines={3}>
-            {playing.track}
-          </Text>
-          {playing.artist ? (
-            <Text style={[styles.detail, styles.onAccentQuiet]} numberOfLines={1}>
-              {playing.artist}
-            </Text>
+          <View style={styles.mediaRow}>
+            {playing.albumArt ? (
+              <Image source={{ uri: playing.albumArt }} style={styles.mediaArt} resizeMode="cover" />
+            ) : null}
+            <View style={styles.mediaMeta}>
+              <Text style={[styles.value, { color: on }]} numberOfLines={2}>
+                {playing.track}
+              </Text>
+              {playing.artist ? (
+                <Text style={[styles.detail, styles.onAccentQuiet]} numberOfLines={1}>
+                  {playing.artist}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          {pct !== null ? (
+            <View style={styles.mediaTrack}>
+              <View style={[styles.mediaFill, { width: `${pct}%`, backgroundColor: on }]} />
+            </View>
           ) : null}
           <View style={styles.bars}>
             <EqualizerBars color={on} count={8} height={18} />
           </View>
         </>
       ) : (
-        <Text style={[styles.value, styles.onAccentQuiet]}>{t('home.nothingPlaying')}</Text>
+        <View style={styles.mediaIdle}>
+          <Text style={[styles.value, styles.onAccentQuiet]}>{t('home.nothingPlaying')}</Text>
+          <Text style={[styles.detail, styles.onAccentQuiet, { opacity: 0.68 }]}>Tap to open player</Text>
+        </View>
       )}
     </View>
   );
+
+  if (onOpen) {
+    return (
+      <GPressable onPress={onOpen} accessibilityRole="button">
+        {content}
+      </GPressable>
+    );
+  }
+  return content;
 }
 
 /** The soonest routine that will run. A routine, never an event: these are the Pond's own schedules. */
@@ -109,6 +137,10 @@ export function NextRoutineWidget({ routine, now, onOpen }: { routine: NextRouti
   const { t } = useTranslation();
   const time = routine.nextRun.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const until = untilText(routine.nextRun, now);
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const span = Math.max(1, midnight.getTime() - now.getTime());
+  const posPct = Math.max(6, Math.min(94, ((routine.nextRun.getTime() - now.getTime()) / span) * 100));
 
   return (
     <GPressable
@@ -120,23 +152,49 @@ export function NextRoutineWidget({ routine, now, onOpen }: { routine: NextRouti
       <Text style={styles.value} numberOfLines={2}>
         {routine.label}
       </Text>
-      <Text style={styles.detail}>{time}</Text>
-      <Text style={styles.when}>{until}</Text>
+      <View style={styles.routineMeta}>
+        <Text style={styles.detail}>{time}</Text>
+        <View style={[styles.untilBadge, { backgroundColor: theme.color.accentSoft }]}>
+          <Text style={[styles.untilText, { color: theme.color.accentLine }]}>{until}</Text>
+        </View>
+      </View>
+      <View style={styles.timeline}>
+        <View style={[styles.timelineTrack, { backgroundColor: theme.color.lineStrong }]} />
+        <View style={[styles.timelineDot, { left: `${posPct}%`, backgroundColor: theme.color.accent }]} />
+      </View>
     </GPressable>
   );
 }
 
 /** The temperature where the Pond is, which is not necessarily where the phone is. */
-export function OutsideWidget({ outdoor }: { outdoor: Outdoor }) {
+export function OutsideWidget({ outdoor, onOpen }: { outdoor: Outdoor; onOpen?: () => void }) {
   const theme = useInkTheme();
   const styles = makeStyles(theme);
   const { t } = useTranslation();
   const temp = t('home.widgets.temp', { temp: Math.round(outdoor.temp) });
+  const hasRange = typeof outdoor.hi === 'number' && typeof outdoor.lo === 'number';
 
-  return (
+  const content = (
     <View accessible accessibilityLabel={[t('home.widgets.outside'), temp, outdoor.place].filter(Boolean).join(', ')}>
       <WidgetHeader icon={outdoor.icon} title={t('home.widgets.outside')} />
-      <Text style={styles.big}>{temp}</Text>
+      <View style={styles.weatherHero}>
+        <GIcon
+          name={outdoor.icon}
+          size={30}
+          color={outdoor.isDay === false ? '#A5B4FC' : '#FBBF24'}
+        />
+        <Text style={styles.big}>{temp}</Text>
+      </View>
+      {outdoor.cond ? (
+        <Text style={styles.weatherCond} numberOfLines={1}>
+          {outdoor.cond}
+        </Text>
+      ) : null}
+      {hasRange ? (
+        <Text style={styles.weatherRange}>
+          H:{outdoor.hi}° · L:{outdoor.lo}°
+        </Text>
+      ) : null}
       {outdoor.place ? (
         <Text style={styles.detail} numberOfLines={1}>
           {outdoor.place}
@@ -144,6 +202,15 @@ export function OutsideWidget({ outdoor }: { outdoor: Outdoor }) {
       ) : null}
     </View>
   );
+
+  if (onOpen) {
+    return (
+      <GPressable onPress={onOpen} accessibilityRole="button">
+        {content}
+      </GPressable>
+    );
+  }
+  return content;
 }
 
 /** The first thing the Pond was asked to remember, and how many more wait behind it. */
@@ -327,6 +394,21 @@ const makeStyles = (theme: Theme) =>
       fontVariant: ['tabular-nums'],
     },
     bars: { marginTop: theme.space[3] },
+    mediaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space[3] },
+    mediaArt: { width: 48, height: 48, borderRadius: theme.radius.md },
+    mediaMeta: { flex: 1 },
+    mediaIdle: { gap: 4 },
+    mediaTrack: { height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.24)', marginTop: theme.space[3], overflow: 'hidden' },
+    mediaFill: { height: '100%', borderRadius: 2 },
+    routineMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.space[2], gap: theme.space[2] },
+    untilBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: theme.radius.pill },
+    untilText: { ...inkText(theme, { size: 'xs', weight: theme.weight.semibold }).style, fontVariant: ['tabular-nums'] },
+    timeline: { height: 10, justifyContent: 'center', marginTop: theme.space[3] },
+    timelineTrack: { height: 2, borderRadius: 1, width: '100%' },
+    timelineDot: { position: 'absolute', width: 8, height: 8, borderRadius: 4, marginLeft: -4 },
+    weatherHero: { flexDirection: 'row', alignItems: 'center', gap: theme.space[2], marginTop: 2 },
+    weatherCond: { ...inkText(theme, { size: 'sm', weight: theme.weight.medium, color: theme.color.text }).style, marginTop: 4 },
+    weatherRange: { ...inkText(theme, { size: 'xs', color: theme.color.textTertiary }).style, marginTop: 2, fontVariant: ['tabular-nums'] },
 
     // Top-aligned: a row now runs as long as its preview, and the time belongs beside its name.
     row: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space[3], minHeight: theme.rowHeight.md },

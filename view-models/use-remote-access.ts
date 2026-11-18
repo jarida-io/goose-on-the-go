@@ -92,7 +92,7 @@ export function useRemoteAccess() {
     const subscription = AppState.addEventListener('change', (next) => { if (next === 'active') check(); });
     return () => subscription.remove();
   }, [remoteEnabled]);
-  const start = useCallback(async (recovery = false) => {
+  const start = useCallback(async (recovery = false, pin?: string) => {
     if (busy) return;
     setBusy(true); setError(null); setReviewId(null); setReviewKey(null); setProgress(null); setSetupUnavailable(false);
     try {
@@ -100,7 +100,7 @@ export function useRemoteAccess() {
         async (endpoint, control, current) => {
           if (!alive.current) throw new Error(i18n.t('remote.cancelled'));
           await setRemoteEndpoint(endpoint, control, current);
-        }, recovery ? { onReview: (id, key) => { if (alive.current) { setReviewId(id); setReviewKey(key); } } } : undefined,
+        }, recovery ? { onReview: (id, key) => { if (alive.current) { setReviewId(id); setReviewKey(key); } }, pin } : undefined,
         (at) => {
           void (at ? Storage.set('remoteLapsesAt', at) : Storage.remove('remoteLapsesAt')).catch(() => undefined);
           if (alive.current) setLapsesAt(at);
@@ -127,5 +127,5 @@ export function useRemoteAccess() {
   // Shown whether or not anything failed: the point is to say it before access
   // lapses, and nothing has gone wrong yet at that stage.
   const lapse = describeLapse(lapseIn(lapsesAt));
-  return { setupUnavailable, reviewId, reviewKey, lapse, backgroundPaused: remoteEnabled && backgroundPaused, recover: () => start(true), progress: remoteEnabled ? 'enabled' as const : progress, error, busy, enable: () => start(false), localOnly };
+  return { setupUnavailable, reviewId, reviewKey, lapse, backgroundPaused: remoteEnabled && backgroundPaused, recover: (pin?: string) => start(true, pin), progress: remoteEnabled ? 'enabled' as const : progress, error, busy, enable: () => start(false), localOnly };
 }

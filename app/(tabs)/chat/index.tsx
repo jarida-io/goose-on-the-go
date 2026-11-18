@@ -30,8 +30,8 @@
  * phone's wall and cannot be deleted from it.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Keyboard, LayoutAnimation, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BackHandler, Keyboard, LayoutAnimation, PanResponder, ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -87,6 +87,7 @@ const FILTER_LABELS = {
 } as const satisfies Record<HistoryFilter, TranslationKey>;
 
 const TAB_LABELS = {
+  all: 'chat.history.filterAll',
   phone: 'chat.history.tabPhone',
   room: 'chat.history.tabRoom',
   scheduled: 'chat.history.tabScheduled',
@@ -95,6 +96,7 @@ const TAB_LABELS = {
 
 /** What an empty tab says: nothing begun there yet, and what would show if something were. */
 const TAB_EMPTY = {
+  all: { title: 'home.noConversations', body: 'home.noConversationsBody' },
   phone: { title: 'home.noConversations', body: 'home.noConversationsBody' },
   room: { title: 'chat.history.noRoom', body: 'chat.history.noRoomBody' },
   scheduled: { title: 'chat.history.noScheduled', body: 'chat.history.noScheduledBody' },
@@ -161,6 +163,9 @@ export default function ConversationsScreen() {
     [cards, router],
   );
 
+  const tabsScrollRef = useRef<ScrollView>(null);
+  const didInitialScroll = useRef(false);
+
   // Another tab is another wall: nothing asked or chosen on the last one carries over.
   const pickTab = useCallback(
     (next: HistoryTab) => {
@@ -170,14 +175,45 @@ export default function ConversationsScreen() {
       setSelected(NOTHING_SELECTED);
       setConfirmingMany(false);
       setTab(next);
+      if (next === 'all') {
+        tabsScrollRef.current?.scrollTo({ x: 0, animated: true });
+      }
       restoreChrome();
     },
     [restoreChrome, setTab],
   );
 
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const pickTabRef = useRef(pickTab);
+  pickTabRef.current = pickTab;
+
+  const swipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_e, g) =>
+          Math.abs(g.dx) > 18 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+        onPanResponderRelease: (_e, g) => {
+          if (Math.abs(g.dx) < 40) return;
+          const idx = HISTORY_TABS.indexOf(tabRef.current);
+          if (idx === -1) return;
+          const nextIdx = g.dx > 0 ? idx - 1 : idx + 1;
+          if (nextIdx >= 0 && nextIdx < HISTORY_TABS.length) {
+            pickTabRef.current(HISTORY_TABS[nextIdx]);
+          }
+        },
+      }),
+    [],
+  );
+
   const compose = useCallback(() => {
     void selectionTick();
     router.push('/conversation');
+  }, [router]);
+
+  const composeIncognito = useCallback(() => {
+    void selectionTick();
+    router.push({ pathname: '/conversation', params: { incognito: '1' } });
   }, [router]);
 
   const askDelete = useCallback(
@@ -321,8 +357,9 @@ export default function ConversationsScreen() {
           </InkText>
         ) : null}
       </View>
-      {/* The Devices tab's room pills: a row that scrolls rather than wraps. */}
+      {/* The Devices tab's room pills: "All" sits off the left edge with a slight peek unless dragged/swiped right. */}
       <ScrollView
+        ref={tabsScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         accessibilityRole="radiogroup"
@@ -331,9 +368,26 @@ export default function ConversationsScreen() {
         contentContainerStyle={styles.tabsRow}
       >
         {HISTORY_TABS.map((id) => (
-          <InkChoice key={id} role="radio" shape="pill" selected={tab === id} onSelect={() => pickTab(id)}>
-            {t(TAB_LABELS[id])}
-          </InkChoice>
+          <View
+            key={id}
+            style={{ opacity: tab === id ? 1 : 0.45 }}
+            onLayout={
+              id === 'all'
+                ? (e) => {
+                    if (!didInitialScroll.current) {
+                      didInitialScroll.current = true;
+                      const peek = 18;
+                      const x = Math.max(0, e.nativeEvent.layout.width + Spacing.xs - peek);
+                      tabsScrollRef.current?.scrollTo({ x, animated: false });
+                    }
+                  }
+                : undefined
+            }
+          >
+            <InkChoice role="radio" shape="pill" selected={tab === id} onSelect={() => pickTab(id)}>
+              {t(TAB_LABELS[id])}
+            </InkChoice>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -383,7 +437,7 @@ export default function ConversationsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* No padding on this box, so every absolute inset inside it is measured
           from the same corner on both platforms. */}
-      <View style={styles.stage}>
+      <View style={styles.stage} {...swipeResponder.panHandlers}>
         {view === 'list' ? (
           <ConversationList sections={sections} {...shared} />
         ) : (
@@ -429,6 +483,7 @@ export default function ConversationsScreen() {
             open={searching}
             onOpenChange={setSearching}
             onCompose={compose}
+            onComposeIncognito={composeIncognito}
             bottomInset={barInset}
           />
         )}

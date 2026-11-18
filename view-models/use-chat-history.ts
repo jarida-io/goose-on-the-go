@@ -58,15 +58,16 @@ export const WEIGHT_SPAN: Record<CardWeight, number> = { tile: 3, card: 4, colum
 export type HistoryFilter = 'all' | 'chats' | 'routines';
 
 /** Where the conversations shown were begun. `scheduled` is what the schedules reported, read from the Goose thread. */
-export type HistoryTab = 'phone' | 'room' | 'scheduled' | 'other';
+export type HistoryTab = 'all' | 'phone' | 'room' | 'scheduled' | 'other';
 
-export const HISTORY_TABS: readonly HistoryTab[] = ['phone', 'room', 'scheduled', 'other'];
+export const HISTORY_TABS: readonly HistoryTab[] = ['all', 'phone', 'room', 'scheduled', 'other'];
 
 /**
  * What each tab asks the Pond for. `here` is what this phone began and `elsewhere` what another
  * phone did; `unknown` is a conversation begun before the Pond recorded where.
  */
 export const TAB_SURFACES: Record<HistoryTab, readonly string[]> = {
+  all: [],
   phone: ['here', 'goose'],
   room: ['room'],
   scheduled: ['goose'],
@@ -97,6 +98,9 @@ export function ignoresSurfaces(rows: readonly Pick<SessionSummary, 'surface'>[]
  * stays under This phone, as it was, and the other tabs are empty.
  */
 export function rowsForTab<T extends Pick<SessionSummary, 'surface' | 'started_here'>>(rows: readonly T[], tab: HistoryTab, unsurfaced: boolean): T[] {
+  if (tab === 'all') {
+    return [...rows.filter((row) => row.surface === 'goose'), ...rows.filter((row) => row.surface !== 'goose')];
+  }
   if (unsurfaced) return tab === 'phone' ? [...rows] : [];
   const kept = rows.filter((row) => answers(row, TAB_SURFACES[tab]));
   return [...kept.filter((row) => row.surface === 'goose'), ...kept.filter((row) => row.surface !== 'goose')];

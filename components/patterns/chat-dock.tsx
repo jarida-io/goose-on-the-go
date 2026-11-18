@@ -49,12 +49,14 @@ import {
   type FieldBox,
 } from '@/components/patterns/answering';
 import { AttachMenu } from '@/components/patterns/attach-menu';
+import { WebWatchGuidedSheet } from '@/components/patterns/web-watch-guided-sheet';
 import { VoiceNoteMic, VoiceNoteStrip } from '@/components/patterns/voice-note-mic';
 import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import { reject, selectionTick, tap } from '@/services/haptics';
 import type { Attachment, AttachSource } from '@/services/media';
 import type { ResearchOffer } from '@/models/long-tasks';
+import type { WebWatch } from '@/models/web-watches';
 import type { SendOptions } from '@/view-models/use-chat';
 import { RESEARCH_ANSWERS, researchAnswerWords, researchItem, useResearchMode } from '@/view-models/use-deep-research';
 import { useVoiceNote, type VoiceNote } from '@/view-models/use-voice-note';
@@ -116,6 +118,8 @@ export interface ChatDockProps {
   replyTo?: ReplyTarget | null;
   /** The reply was sent or set aside. */
   onClearReply?: () => void;
+  /** Open a newly created web watch. */
+  onOpenWatch?: (id: string) => void;
 }
 
 export function ChatDock({
@@ -132,6 +136,7 @@ export function ChatDock({
   onDraftChange,
   replyTo = null,
   onClearReply,
+  onOpenWatch,
 }: ChatDockProps) {
   const theme = useInkTheme();
   const field = inkText(theme, { size: 'md' });
@@ -146,6 +151,8 @@ export function ChatDock({
   );
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [menu, setMenu] = useState(false);
+  const [watchSheetOpen, setWatchSheetOpen] = useState(false);
+  const [createdWatch, setCreatedWatch] = useState<WebWatch | null>(null);
   // The keyboard's height, 0 while it is down.
   const [keyboard, setKeyboard] = useState(0);
   const { width, height: screen } = useWindowDimensions();
@@ -289,6 +296,48 @@ export function ChatDock({
             }}
           />
           <Text style={hint.style}>{t(researchAnswerWords(mode.answer).hintKey)}</Text>
+        </View>
+      ) : null}
+
+      {createdWatch ? (
+        <View
+          style={[
+            styles.replying,
+            material,
+            {
+              borderLeftColor: theme.color.accentLine,
+              borderLeftWidth: 3,
+              borderRadius: theme.radius.md,
+            },
+          ]}
+        >
+          <GIcon name="eye" size={16} color={theme.color.accentLine} />
+          <View style={styles.replyWords}>
+            <Text style={replyWho.style} numberOfLines={1}>
+              Watching: {createdWatch.title || createdWatch.lookingFor}
+            </Text>
+            {onOpenWatch ? (
+              <Text
+                onPress={() => {
+                  const id = createdWatch.id;
+                  setCreatedWatch(null);
+                  onOpenWatch(id);
+                }}
+                accessibilityRole="link"
+                style={[hint.style, { color: theme.color.accentLine, fontWeight: '600' }]}
+              >
+                View watch
+              </Text>
+            ) : null}
+          </View>
+          <GPressable
+            onPress={() => setCreatedWatch(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            hitSlop={12}
+          >
+            <GIcon name="x" size={16} color={theme.color.textSecondary} />
+          </GPressable>
         </View>
       ) : null}
 
@@ -496,8 +545,14 @@ export function ChatDock({
         research={researchItem(research, attachments.length)}
         researching={mode.on}
         onResearch={startResearch}
+        onWebWatch={() => setWatchSheetOpen(true)}
         anchorBottom={foot + CONTROL}
         anchorLeft={Spacing.lg}
+      />
+      <WebWatchGuidedSheet
+        open={watchSheetOpen}
+        onClose={() => setWatchSheetOpen(false)}
+        onCreated={(watch) => setCreatedWatch(watch)}
       />
     </Animated.View>
   );

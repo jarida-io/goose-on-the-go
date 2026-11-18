@@ -17,19 +17,18 @@
  * None of it is reachable without a paired Pond; see `TabLayout`.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect, Tabs, useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
-  InkBottomBar,
-  InkProvider,
+  useReduceMotion,
   useInkTheme,
-  type InkNavDestination,
 } from '@/components/ui/ink';
-import { Image, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GIcon } from '@/components/ui/g-icon';
+import { GPressable } from '@/components/ui/g-pressable';
 import { GlassBlur } from '@/components/ui/glass-blur';
 import {
   ChromeProvider,
@@ -50,7 +49,7 @@ const DESTINATIONS: { name: string; labelKey: TranslationKey; icon: IconName | '
   { name: 'index', labelKey: 'tabs.home', icon: 'home' },
   { name: 'chat', labelKey: 'tabs.chat', icon: 'chat' },
   { name: 'goose', labelKey: 'tabs.goose', icon: 'mark' },
-  { name: 'devices', labelKey: 'tabs.devices', icon: 'device' },
+  { name: 'schedules', labelKey: 'screens.schedule', icon: 'schedule' },
   { name: 'profile', labelKey: 'tabs.you', icon: 'profile' },
 ];
 
@@ -61,16 +60,18 @@ const MARK_ON_DARK = require('@/assets/images/tab-goose-dark.png');
  * My Goose is drawn with the brand mark, which is never recoloured: so it is not tinted as the
  * other glyphs are, and an unselected one steps back by opacity instead.
  */
-function MarkGlyph({ selected }: { selected: boolean }) {
+const MarkGlyph = React.memo(function MarkGlyph({ selected }: { selected: boolean }) {
   const theme = useInkTheme();
   return (
     <Image
       source={theme.scheme === 'dark' ? MARK_ON_DARK : MARK}
+      fadeDuration={0}
+      resizeMode="contain"
       style={[styles.mark, { opacity: selected ? 1 : 0.62 }]}
       accessibilityIgnoresInvertColors
     />
   );
-}
+});
 
 /**
  * What the bar reads of the navigator. expo-router and @react-navigation ship
@@ -95,57 +96,11 @@ function AppTabBar({ state, navigation }: TabBarProps) {
   const restore = useChromeRestore();
 
   const current = state.routes[state.index]?.name ?? 'index';
-  // Settings lists what needs attention, so its tab says when something does.
   const issueTone = useSettingsIssues()[0]?.tone ?? null;
   const [height, setHeight] = useState(0);
-  // A message about an action sits above the bar, but only while the tabs are in front: a screen
-  // pushed over them has no bar under it.
   const focused = useIsFocused();
   useSnackbarClearance(focused ? height : 0);
 
-  const items = useMemo<InkNavDestination[]>(
-    () =>
-      DESTINATIONS.map((d) => ({
-        key: d.name,
-        label: t(d.labelKey),
-        // Ink's own text tokens, because the label beside the icon is already
-        // drawn in them — `textOnBrand` is white, which read as selected only
-        // for as long as the bar was assumed to be dark.
-        // The dot is drawn on the glyph rather than through Ink's `badge`, which sits at 60% of
-        // the whole item and so off the icon, and which the collapsed bar does not draw.
-        icon: (
-          <View style={styles.glyph}>
-            {d.icon === 'mark' ? (
-              <MarkGlyph selected={d.name === current} />
-            ) : (
-              <GIcon
-                name={d.icon}
-                size={22}
-                color={d.name === current ? theme.color.text : theme.color.textSecondary}
-              />
-            )}
-            {d.name === 'profile' && issueTone ? (
-              <View style={[styles.dot, { backgroundColor: issueTone === 'info' ? theme.color.accent : theme.color.danger }]} />
-            ) : null}
-          </View>
-        ),
-      })),
-    [current, theme.color.text, theme.color.textSecondary, theme.color.accent, theme.color.danger, issueTone, t],
-  );
-
-  // The bar draws a dash over the selected destination in `accentLine`, and
-  // exposes no way to turn it off. Selection is already carried by the icon and
-  // label going from tertiary to full contrast, so the dash is a third telling
-  // of the same fact. A theme scoped to the bar is Ink's own escape hatch, and
-  // inside the bar that token draws nothing else.
-  const barTheme = useMemo(
-    () => ({ ...theme, color: { ...theme.color, accentLine: 'transparent' } }),
-    [theme],
-  );
-
-  // Every press is announced as `tabPress`, the current tab's included, so a
-  // screen can listen for it (and veto it) exactly as with the stock bar. Only
-  // a press that moves somewhere navigates.
   const onChange = useCallback(
     (key: string) => {
       const route = state.routes.find((r) => r.name === key);
@@ -159,9 +114,32 @@ function AppTabBar({ state, navigation }: TabBarProps) {
     [current, navigation, state.routes],
   );
 
+  const isDark = theme.scheme === 'dark';
+  const glassFill = isDark ? 'rgba(20, 18, 30, 0.56)' : 'rgba(255, 255, 255, 0.68)';
+  const glassEdge = isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)';
+  const activeBg = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.07)';
+  const activeDest = DESTINATIONS.find((d) => d.name === current) ?? DESTINATIONS[0];
+  const bottomPad = Math.max(insets.bottom, 12);
+  const collapsed = stage === 'collapsed';
+  const reduced = useReduceMotion();
+  const collapseAnim = useRef(new Animated.Value(collapsed ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(collapseAnim, {
+      toValue: collapsed ? 1 : 0,
+      duration: reduced ? 0 : 210,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+      useNativeDriver: true,
+    }).start();
+  }, [collapseAnim, collapsed, reduced]);
+
+  const barOpacity = collapseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  const barScale = collapseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] });
+  const barTranslateY = collapseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 8] });
+  const puckOpacity = collapseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const puckScale = collapseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.76, 1] });
+
   return (
-    // `box-none` so that once the bar is a puck, the width it no longer covers
-    // belongs to the content underneath again.
     <View
       pointerEvents="box-none"
       onLayout={(e) => {
@@ -170,53 +148,85 @@ function AppTabBar({ state, navigation }: TabBarProps) {
         setHeight(next);
         measure(next);
       }}
-      style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
+      style={[styles.barWrap, { paddingBottom: bottomPad }]}
     >
-      <InkProvider theme={barTheme}>
-        <InkBottomBar
-          label={t('tabs.label')}
-          items={items}
-          value={current}
-          onChange={onChange}
-          variant="floating"
-          stage={stage}
-          collapse
-          // Ink would otherwise answer its own puck with local state the stage
-          // machine never hears about, and it cannot see a scroll that leaves
-          // the stage unchanged — so a reader who pressed and kept scrolling
-          // down would hold a bar that never contracted again.
-          onExpand={restore}
-          // Ink's scroll edge is a top bar's rule: nothing until content has
-          // passed under it, because at the top of a page nothing has. At the
-          // bottom that inverts — an offset of zero means the bar is over the
-          // first screenful — so `auto` spends the whole scroll drawing labels
-          // straight onto cards.
-          material="always"
-          // Real blur behind Ink's tint, in both schemes. Ink drops it for its
-          // solid fill when Reduce Transparency is on, so that needs no second
-          // path here.
-          blurComponent={GlassBlur}
-          bottomInset={insets.bottom}
-          style={{
-            // Two placements, one prop. Ink's shell is `alignSelf: flex-end`
-            // with a width it only learns from its first layout, so before that
-            // layout it has to stretch or it measures its own content and the
-            // destinations bunch into a corner. After it, the width is
-            // Ink's animated one, and `flex-end` is what makes the bar contract
-            // towards the right rather than the left.
-            alignSelf: height > 0 ? 'flex-end' : 'stretch',
-            // The tint is `surface`, the colour the cards are made of, so on its
-            // own it cannot tell the bar from a card passing under it, in dark
-            // or in light. In light the lift does that; on a dark ground a
-            // shadow is nothing. An edge is what says this is a plane, in both
-            // schemes, and the blur keeps a card's label from reading straight
-            // across it. The web glass draws the same hairline; the native
-            // binding does not.
-            borderWidth: theme.edge.hairlineWidth,
-            borderColor: theme.color.lineStrong,
-          }}
-        />
-      </InkProvider>
+      <Animated.View
+        pointerEvents={collapsed ? 'none' : 'auto'}
+        accessibilityRole="tablist"
+        style={[
+          styles.barShell,
+          {
+            borderColor: glassEdge,
+            opacity: barOpacity,
+            transform: [{ translateY: barTranslateY }, { scale: barScale }],
+          },
+        ]}
+      >
+        <GlassBlur intensity={56} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: glassFill }]} />
+        {DESTINATIONS.map((d) => {
+          const selected = d.name === current;
+          return (
+            <GPressable
+              key={d.name}
+              feedback="tint"
+              onPress={() => onChange(d.name)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              accessibilityLabel={t(d.labelKey)}
+              style={[styles.tabItem, selected && { backgroundColor: activeBg }]}
+            >
+              <View style={styles.glyph}>
+                {d.icon === 'mark' ? (
+                  <MarkGlyph selected={selected} />
+                ) : (
+                  <GIcon
+                    name={d.icon}
+                    size={26}
+                    color={selected ? theme.color.text : theme.color.textSecondary}
+                  />
+                )}
+                {d.name === 'profile' && issueTone ? (
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: issueTone === 'info' ? theme.color.accent : theme.color.danger },
+                    ]}
+                  />
+                ) : null}
+              </View>
+            </GPressable>
+          );
+        })}
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents={collapsed ? 'auto' : 'none'}
+        style={[
+          styles.puckAnchor,
+          {
+            bottom: bottomPad,
+            opacity: puckOpacity,
+            transform: [{ scale: puckScale }],
+          },
+        ]}
+      >
+        <GPressable
+          feedback="lift"
+          onPress={restore}
+          accessibilityRole="button"
+          accessibilityLabel={t(activeDest.labelKey)}
+          style={[styles.collapsedPuck, { borderColor: glassEdge }]}
+        >
+          <GlassBlur intensity={56} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: glassFill }]} />
+          {activeDest.icon === 'mark' ? (
+            <MarkGlyph selected />
+          ) : (
+            <GIcon name={activeDest.icon} size={26} color={theme.color.text} />
+          )}
+        </GPressable>
+      </Animated.View>
     </View>
   );
 }
@@ -226,6 +236,7 @@ export default function TabLayout() {
   const onboarding = useOnboarding();
   const setup = useSetupGate();
   const { t } = useTranslation();
+  const reduced = useReduceMotion();
 
   // `hydrated` is what says the stored identity has been read back. Without
   // it, every cold start would bounce through pairing before discovering it is
@@ -261,7 +272,10 @@ export default function TabLayout() {
 
   return (
     <ChromeProvider>
-      <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <AppTabBar {...props} />}>
+      <Tabs
+        screenOptions={{ headerShown: false, animation: reduced ? 'none' : 'shift' }}
+        tabBar={(props) => <AppTabBar {...props} />}
+      >
         {DESTINATIONS.map((d) => (
           <Tabs.Screen key={d.name} name={d.name} options={{ title: t(d.labelKey) }} />
         ))}
@@ -271,8 +285,48 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  glyph: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+  barWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    alignItems: 'flex-end',
+  },
+  barShell: {
+    width: '100%',
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  tabItem: {
+    flex: 1,
+    height: '100%',
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  puckAnchor: {
+    position: 'absolute',
+    right: 20,
+  },
+  collapsedPuck: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  glyph: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   // The mark is wider than it is tall, so it is given more room than a glyph to read at the same weight.
-  mark: { width: 30, height: 30 },
+  mark: { width: 34, height: 34 },
   dot: { position: 'absolute', top: -3, right: -5, width: 9, height: 9, borderRadius: 4.5 },
 });

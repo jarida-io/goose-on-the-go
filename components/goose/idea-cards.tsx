@@ -5,10 +5,11 @@
  */
 
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslation } from 'react-i18next';
-import { InkButton, InkCard, InkEyebrow, InkSheet, InkSpinner, InkText, InkTextArea, inkText, useInkTheme } from '@/components/ui/ink';
+import { InkButton, InkCard, InkEyebrow, InkInput, InkSheet, InkSpinner, InkText, InkTextArea, inkText, useInkTheme } from '@/components/ui/ink';
 
 import { GIcon } from '@/components/ui/g-icon';
 import { GPressable } from '@/components/ui/g-pressable';
@@ -44,6 +45,7 @@ export function IdeaCardView({ card, busy, onDo, onAnswer, onAskOther, onDeeper,
   const theme = useInkTheme();
   const styles = makeStyles(theme);
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
   const [asking, setAsking] = useState(false);
   const action = card.action;
   const question = action?.question ?? null;
@@ -55,26 +57,48 @@ export function IdeaCardView({ card, busy, onDo, onAnswer, onAskOther, onDeeper,
   ].filter((f) => f.words);
   const source = card.why.source.label ? `${t(sourceKindKey(card.why.source.kind))}: ${card.why.source.label}` : t(sourceKindKey(card.why.source.kind));
   return (
-    <InkCard raised>
+    <InkCard raised contentStyle={styles.cardPad}>
       <View style={styles.card}>
-        <GPressable style={styles.words} accessibilityRole="button" accessibilityLabel={t('goose.ideaCards.openLabel', { title: card.title })} onPress={onOpen}>
+        <GPressable
+          style={styles.words}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={t('goose.ideaCards.openLabel', { title: card.title })}
+          onPress={() => {
+            void selectionTick();
+            setExpanded((v) => !v);
+          }}
+        >
           <View style={styles.eyebrowRow}>
             <Text style={styles.eyebrow} numberOfLines={1}>
               {t(ideaKindKey(card.kind))}
             </Text>
             {card.state === 'saved' ? <GIcon name="archive" size={12} color={theme.color.accentLine} strokeWidth={2.5} /> : null}
+            <View style={styles.spacer} />
+            <View style={{ transform: [{ rotate: expanded ? '-90deg' : '90deg' }] }}>
+              <GIcon name="chevron-right" size={14} color={theme.color.textTertiary} strokeWidth={2.5} />
+            </View>
           </View>
           <Text style={styles.title}>{card.title}</Text>
-          <Text style={styles.why}>{card.why.text}</Text>
-          <Text style={styles.source} numberOfLines={1}>
-            {source}
+          <Text style={styles.why} numberOfLines={expanded ? undefined : 1}>
+            {card.why.text}
           </Text>
-          {facts.map((f) => (
-            <View key={f.key} style={styles.fact}>
-              <GIcon name={f.icon} size={14} color={theme.color.textSecondary} strokeWidth={2.25} />
-              <Text style={styles.factText}>{f.words}</Text>
-            </View>
-          ))}
+          {expanded ? (
+            <>
+              <Text style={styles.source} numberOfLines={1}>
+                {source}
+              </Text>
+              {facts.map((f) => (
+                <View key={f.key} style={styles.fact}>
+                  <GIcon name={f.icon} size={14} color={theme.color.textSecondary} strokeWidth={2.25} />
+                  <Text style={styles.factText}>{f.words}</Text>
+                </View>
+              ))}
+              {card.notes.found ? (
+                <Text style={styles.why}>{card.notes.found}</Text>
+              ) : null}
+            </>
+          ) : null}
         </GPressable>
         {asking && question ? (
           <AskQuestion
@@ -90,15 +114,29 @@ export function IdeaCardView({ card, busy, onDo, onAnswer, onAskOther, onDeeper,
               {action.label || t('goose.ideaCards.doIt')}
             </InkButton>
           ) : null}
-          <InkButton variant={doable ? 'quiet' : 'primary'} size="sm" loading={busy === 'deeper'} disabled={busy !== null} onPress={onDeeper}>
-            {t('goose.ideaCards.goDeeper')}
-          </InkButton>
-          <InkButton variant="quiet" size="sm" loading={busy === 'save'} disabled={busy !== null} onPress={onSave}>
-            {card.state === 'saved' ? t('goose.ideaCards.saved') : t('goose.ideaCards.save')}
-          </InkButton>
-          <InkButton variant="quiet" size="sm" disabled={busy !== null} onPress={onNotThis}>
-            {t('goose.ideaCards.notThis')}
-          </InkButton>
+          {expanded ? (
+            <>
+              <InkButton variant={doable ? 'quiet' : 'primary'} size="sm" loading={busy === 'deeper'} disabled={busy !== null} onPress={onDeeper}>
+                {t('goose.ideaCards.goDeeper')}
+              </InkButton>
+              <InkButton variant="quiet" size="sm" loading={busy === 'save'} disabled={busy !== null} onPress={onSave}>
+                {card.state === 'saved' ? t('goose.ideaCards.saved') : t('goose.ideaCards.save')}
+              </InkButton>
+              <InkButton variant="quiet" size="sm" disabled={busy !== null} onPress={onNotThis}>
+                {t('goose.ideaCards.notThis')}
+              </InkButton>
+              <InkButton variant="quiet" size="sm" icon="chat" onPress={() => openIdeaChat(card)}>
+                Chat about this
+              </InkButton>
+              <InkButton variant="quiet" size="sm" onPress={onOpen}>
+                Details
+              </InkButton>
+            </>
+          ) : !doable ? (
+            <InkButton variant="primary" size="sm" loading={busy === 'deeper'} disabled={busy !== null} onPress={onDeeper}>
+              {t('goose.ideaCards.goDeeper')}
+            </InkButton>
+          ) : null}
         </View>
       </View>
     </InkCard>
@@ -189,8 +227,87 @@ export function IdeaCardSheet({ card, onClose }: { card: IdeaCard | null; onClos
               ),
             )}
           </View>
+          <InkButton variant="primary" icon="chat" block onPress={() => openIdeaChat(card, onClose)}>
+            Chat about this
+          </InkButton>
         </View>
       ) : null}
+    </InkSheet>
+  );
+}
+
+function openIdeaChat(card?: IdeaCard, onBefore?: () => void): void {
+  onBefore?.();
+  const delay = onBefore && Platform.OS === 'ios' ? 320 : 0;
+  setTimeout(() => {
+    if (card) {
+      router.push({
+        pathname: '/conversation',
+        params: { card_kind: 'idea', card_id: card.id, card_title: card.title },
+      });
+    } else {
+      router.push({
+        pathname: '/conversation',
+        params: {
+          ask: "Let's brainstorm ideas together based on my interests and saved ideas. Ask me what I'm curious about or want to explore, and we can shape new ideas I can try later.",
+        },
+      });
+    }
+  }, delay);
+}
+
+export function AddIdeaSheet({
+  open,
+  onClose,
+  onCreate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (body: { title: string; why?: string; notes?: string }) => Promise<IdeaCard | null>;
+}) {
+  const theme = useInkTheme();
+  const styles = makeStyles(theme);
+  const [title, setTitle] = useState('');
+  const [why, setWhy] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const close = () => {
+    setTitle('');
+    setWhy('');
+    setNotes('');
+    onClose();
+  };
+  return (
+    <InkSheet
+      open={open}
+      onClose={close}
+      title="Add an idea"
+      description="Save your own idea. Goose will learn from it alongside your interests to suggest better ideas."
+      scroll
+    >
+      <View style={styles.sheet}>
+        <InkInput label="Idea" value={title} onChange={setTitle} placeholder="e.g. Weekend pottery workshop" />
+        <InkInput label="Why or inspiration" value={why} onChange={setWhy} placeholder="Optional" />
+        <InkTextArea label="Notes" value={notes} onChange={setNotes} placeholder="Optional" rows={2} maxRows={4} />
+        <InkButton
+          variant="primary"
+          block
+          loading={saving}
+          disabled={!title.trim() || saving}
+          onPress={async () => {
+            setSaving(true);
+            const created = await onCreate({
+              title: title.trim(),
+              why: why.trim() || undefined,
+              notes: notes.trim() || undefined,
+            });
+            setSaving(false);
+            if (created) close();
+          }}
+        >
+          Save idea
+        </InkButton>
+      </View>
     </InkSheet>
   );
 }
@@ -246,8 +363,10 @@ export function IdeaCardSetView({ vm, cards, limit, onSeeAll }: { vm: UseIdeaCar
   const ago = useAgo();
   const [opened, setOpened] = useState<IdeaCard | null>(null);
   const [dismissing, setDismissing] = useState<IdeaCard | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [widgetCollapsed, setWidgetCollapsed] = useState(Boolean(limit));
   const all = cards ?? vm.cards;
-  const shown = limit ? all.slice(0, limit) : all;
+  const shown = widgetCollapsed ? all.slice(0, 1) : limit ? all.slice(0, limit) : all;
   const hidden = all.length - shown.length;
   const waiting = makingWords(vm.data.set);
   const making = t(waiting.key, { count: waiting.count });
@@ -265,6 +384,21 @@ export function IdeaCardSetView({ vm, cards, limit, onSeeAll }: { vm: UseIdeaCar
           </Text>
         ) : null}
         <View style={styles.spacer} />
+        {all.length > 1 ? (
+          <GPressable
+            style={styles.more}
+            hitSlop={8}
+            accessibilityRole="button"
+            onPress={() => {
+              void selectionTick();
+              setWidgetCollapsed((v) => !v);
+            }}
+          >
+            <Text style={styles.link}>{widgetCollapsed ? `Show ${all.length}` : 'Collapse'}</Text>
+          </GPressable>
+        ) : null}
+        <RoundButton icon="chat" size={32} label="Brainstorm ideas" onPress={() => openIdeaChat()} />
+        <RoundButton icon="plus" size={32} label="Add idea" onPress={() => setAdding(true)} />
         <RoundButton icon="refresh" size={32} label={t('goose.ideaCards.refreshLabel')} onPress={() => void (vm.making || vm.refreshing ? undefined : vm.actions.refresh())} />
       </View>
       {vm.loading && all.length === 0 ? <InkSpinner label={t('goose.ideaCards.loading')} /> : null}
@@ -302,6 +436,7 @@ export function IdeaCardSetView({ vm, cards, limit, onSeeAll }: { vm: UseIdeaCar
       ) : null}
       <IdeaCardSheet card={opened} onClose={() => setOpened(null)} />
       <DismissCardSheet card={dismissing} onClose={() => setDismissing(null)} onDismiss={vm.actions.dismiss} />
+      <AddIdeaSheet open={adding} onClose={() => setAdding(false)} onCreate={vm.actions.create} />
     </View>
   );
 }
@@ -313,6 +448,7 @@ const makeStyles = (theme: Theme) =>
     headerTitle: inkText(theme, { size: 'sm', weight: theme.weight.semibold, color: theme.color.accentLine }).style,
     headerMeta: inkText(theme, { size: 'xs', color: theme.color.textTertiary }).style,
     spacer: { flex: 1 },
+    cardPad: { padding: 14 },
     card: { gap: theme.space[3] },
     words: { gap: 4 },
     eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space[1] },

@@ -192,6 +192,8 @@ export type ListenState = 'idle' | 'loading' | 'playing';
  * Listen on the phone: the digest's audio, fetched with the member's token, written to the cache,
  * and played to its end. Stopping, or leaving the screen, stops it and drops the file.
  */
+const digestAudioCache = new Map<string, string>();
+
 export function useListen() {
   const source = useHubSource();
   const [state, setState] = useState<ListenState>('idle');
@@ -205,7 +207,6 @@ export function useListen() {
     playing.current = null;
     if (current) {
       current.stop();
-      discardFile(current.uri);
     }
     setState('idle');
   }, []);
@@ -219,16 +220,19 @@ export function useListen() {
       const abort = new AbortController();
       aborter.current = abort;
       try {
-        const bytes = await source.digestAudio(path, abort.signal);
-        if (abort.signal.aborted) return;
-        const uri = cacheFile('digest', new Uint8Array(bytes));
+        let uri = digestAudioCache.get(path);
+        if (!uri) {
+          const bytes = await source.digestAudio(path, abort.signal);
+          if (abort.signal.aborted) return;
+          uri = cacheFile('digest', new Uint8Array(bytes));
+          digestAudioCache.set(path, uri);
+        }
         const player = playFile(uri, () => {});
         playing.current = { stop: player.stop, uri };
         setState('playing');
         await player.done;
         if (playing.current?.uri === uri) {
           playing.current = null;
-          discardFile(uri);
           setState('idle');
         }
       } catch (e) {
