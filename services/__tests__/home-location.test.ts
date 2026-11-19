@@ -3,7 +3,7 @@
  * and at most one unasked offer per run of the app.
  */
 
-import { homeLocationIsPinned, offerHomeLocationOnce, placeName, readPhoneFix } from '@/services/home-location';
+import { homeLocationIsPinned, placeName, readPhoneFix, sendHomeLocationOnce } from '@/services/home-location';
 
 const mockLocation = {
   getForegroundPermissionsAsync: jest.fn(),
@@ -54,36 +54,35 @@ it('keeps the fix when the phone cannot name the place', async () => {
   await expect(readPhoneFix(false)).resolves.toMatchObject({ kind: 'fix', name: null });
 });
 
-it('offers once per run, with a grant already given, and sends only on a yes, never replacing a set place', async () => {
+// 2026-11-18: with location already allowed, the phone asked on every start while the Pond guessed.
+it('sends once per run with the grant already given, never asking, and never replacing a set place', async () => {
   mockLocation.getForegroundPermissionsAsync.mockResolvedValue(granted);
   mockSet.mockResolvedValue({ applied: true, name: 'Ndenderu', latitude: -1.193, longitude: 36.744 });
-  const yes = jest.fn().mockResolvedValue(true);
-  await expect(offerHomeLocationOnce(yes)).resolves.toBe(true);
-  expect(yes).toHaveBeenCalledTimes(1);
+  await expect(sendHomeLocationOnce()).resolves.toMatchObject({ applied: true, name: 'Ndenderu' });
   expect(mockSet).toHaveBeenCalledWith({ latitude: -1.193421, longitude: 36.744088, accuracy_m: 14, name: 'Ndenderu', replace: false });
-  await expect(offerHomeLocationOnce(yes)).resolves.toBe(false);
-  expect(yes).toHaveBeenCalledTimes(1);
+  await expect(sendHomeLocationOnce()).resolves.toBeNull();
   expect(mockSet).toHaveBeenCalledTimes(1);
   expect(mockLocation.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
 });
 
-it('reads and sends nothing when the offer is not taken, or location was never allowed', async () => {
+it('reads and sends nothing when location was never allowed, and says nothing when the Pond keeps its place', async () => {
   // The once-per-run flag is the module's own: a fresh copy for each case.
   const fresh = () => {
-    let offer!: typeof offerHomeLocationOnce;
+    let send!: typeof sendHomeLocationOnce;
     jest.isolateModules(() => {
-      offer = (jest.requireActual('@/services/home-location') as typeof import('@/services/home-location')).offerHomeLocationOnce;
+      send = (jest.requireActual('@/services/home-location') as typeof import('@/services/home-location')).sendHomeLocationOnce;
     });
-    return offer;
+    return send;
   };
-  mockLocation.getForegroundPermissionsAsync.mockResolvedValue(granted);
-  await expect(fresh()(async () => false)).resolves.toBe(false);
   mockLocation.getForegroundPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: true });
-  const ask = jest.fn();
-  await expect(fresh()(ask)).resolves.toBe(false);
-  expect(ask).not.toHaveBeenCalled();
+  await expect(fresh()()).resolves.toBeNull();
+  expect(mockLocation.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
   expect(mockLocation.getCurrentPositionAsync).not.toHaveBeenCalled();
   expect(mockSet).not.toHaveBeenCalled();
+
+  mockLocation.getForegroundPermissionsAsync.mockResolvedValue(granted);
+  mockSet.mockResolvedValue({ applied: false, reason: 'location_known', name: 'Ndenderu', latitude: -1.193, longitude: 36.744 });
+  await expect(fresh()()).resolves.toBeNull();
 });
 
 describe('a pinned home', () => {

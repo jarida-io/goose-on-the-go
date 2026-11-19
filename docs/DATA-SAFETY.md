@@ -278,9 +278,11 @@ for. It is read for three things in the foreground, and one in the background:
   (`PUT /api/v1/location/device`). It does so only while the app reaches the Pond on its local
   network (`connectionState === 'local'`), and the Pond refuses a fix from anywhere else
   (`not_on_home_network`), so a phone away from home never moves the household. Unasked, the app
-  only offers it, in a snackbar at most once per launch, while the Pond's location is still a guess
-  and with a location grant the user already gave; nothing is read or sent unless the user takes
-  the offer (`app/_layout.tsx`, `HomeLocationSync`). Find my location in Settings
+  sends it at most once per launch, while the Pond's location is still a guess and only with a
+  location grant the user already gave, then says where the Pond now is; it never asks for the
+  grant to do this, and without one nothing is read or sent (`app/_layout.tsx`,
+  `HomeLocationSync`). Until 2026-11-18 it asked in a snackbar first, on every launch, which the
+  user asked to stop: the grant is the answer, as for every other permission. Find my location in Settings
   asks for permission and replaces whatever the Pond had. The Pond stores the place rounded to
   about 110 m. Nothing is kept on the phone.
 - **Where the phone is**, by name. Tell Goose where this phone is (Settings, off until the user

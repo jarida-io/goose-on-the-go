@@ -177,9 +177,10 @@ directly; it does not pass through us, and your phone does not keep it after the
 
 **Where home is.** Your Pond has no GPS, so on its own it only knows the city its time zone
 names. When your phone reaches your Pond on your home network, and you have already allowed
-the app to use your location, the app offers to tell your Pond where home is if your Pond's
-location is still only a guess, and does so only if you accept. You can also ask for it with Find
-my location in the app. Your phone names the place using its own map service (Google's on
+the app to use your location, the app tells your Pond where home is if your Pond's location is
+still only a guess, and then says where your Pond now is. It does not ask again: allowing the app
+your location is the answer. It never asks for location to do this, and never replaces a place
+you set. You can also ask for it with Find my location in the app. Your phone names the place using its own map service (Google's on
 Android, Apple's on iPhone), which is the same service that gives your phone its location. Your Pond keeps the place to about
 110 metres, which is enough for the weather and nearby results, and not your exact house. Your
 Pond refuses this from a phone that is not on your home network, so a phone away from home can
