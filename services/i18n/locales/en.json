@@ -6353,6 +6353,8 @@
       "refresh": "New ideas",
       "refreshLabel": "Ask Goose for new ideas",
       "making": "Goose is finding new ideas",
+      "waiting_one": "Goose is finishing {{count}} thing first",
+      "waiting_other": "Goose is finishing {{count}} things first",
       "empty": "No ideas yet. Ask Goose for some.",
       "loading": "Reading your ideas",
       "found": "What Goose found",
