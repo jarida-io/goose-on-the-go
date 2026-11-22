@@ -155,7 +155,7 @@ Releases are `npm run build`; version and build numbers are in [docs/RELEASING.m
 | [Internationalisation](docs/I18N.md) | Copy rules and the lint that enforces them |
 | [Development](docs/development.md) | Development build or Expo Go, and troubleshooting |
 | [Testing](docs/TESTING.md) | Commands and what to test |
-| [Releasing](docs/RELEASING.md) and [Android signing](docs/ANDROID-SIGNING.md) | Version numbers and the upload key |
+| [Releasing](docs/RELEASING.md) and [Android signing](docs/ANDROID-SIGNING.md) | Version numbers, the iOS signing team, and the upload key |
 | [Privacy screen](docs/PRIVACY-SCREEN.md) and [data safety](docs/DATA-SAFETY.md) | The evidence behind each privacy claim, and the store forms |
 | [Licences](docs/LICENSES.md) | The documents the app shows, and the open-source notices |
 | [Phone context](docs/PHONE-CONTEXT.md) | Proposal: what the phone could share with its Pond |
