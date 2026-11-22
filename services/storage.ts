@@ -19,6 +19,8 @@ const KEYS = {
   hapticsEnabled: '@goose/haptics-enabled',
   /** Whether this phone keeps its notification stream open in the background (Android). Not a secret. */
   stayConnected: '@goose/stay-connected',
+  /** The Pond outage this phone last told about in the background, as `kind:since`. Not a secret. */
+  pondOfflineTold: '@goose/pond-offline-told',
   replyNotices: '@goose/reply-notices',
   /** Whether this phone tells Goose where it is with each message. Not a place: on or off. */
   phonePlace: '@goose/phone-place',

@@ -218,6 +218,26 @@ prerequisite), or dropping the service and relying on the push wake-up alone. Th
 default; Play does not forbid that, but the ongoing notification and the setting's description
 have to make the cost plain, which they do.
 
+## When the Pond itself is offline (2026-11-22)
+
+Every path above starts at the Pond, so none of them can say that the Pond is down. Before
+2026-11-22 a power cut or a dead home line reached the household only as a line in the connection
+strip, on a screen somebody had open; a 10-hour overnight power cut on 2026-11-21 told nobody.
+
+`services/pond-offline-watch.ts` closes that gap. The OS runs a background check no more often than
+every 15 minutes (`expo-background-task`: WorkManager on Android, BGTaskScheduler on iOS; a phone
+saving battery runs it less often). It asks the remote-access coordinator with the status grant the
+Pond signed for this phone (`services/pond-status.ts`) and, the first time it hears of an outage,
+puts one `alert` in the shade: "Your Pond is offline", with the strip's own sentence as the body
+(power cut or home internet, turned off, or the Pond stopped). Each outage is told once, keyed by
+the kind and the coordinator's own start time (`@goose/pond-offline-told`).
+
+It says nothing while the app is open (the strip says it), for a restart (over before the next
+check), or after the Pond is back: the Pond then sends `pond_lost_power` or `pond_lost_internet`
+itself, with how long it was out. The check is registered once this phone holds a grant, from the
+same place the grant is renewed (`view-models/use-pond-offline-reason.ts`). Logs:
+`kind=pond_offline_watch` with the outcome of each check.
+
 ## iOS
 
 iOS has no foreground services. The Settings row explains that instead of offering a switch, the

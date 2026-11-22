@@ -4,6 +4,8 @@
 import './services/background-notifications';
 // The geofence task, for a to-do that waits on arriving at or leaving a place, is defined the same way.
 import './services/geofence';
+// So is the check that tells the household, with the app closed, that the Pond went offline and why.
+import './services/pond-offline-watch';
 import 'expo-router/entry';
 
 import { AppRegistry } from 'react-native';

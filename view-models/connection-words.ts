@@ -11,6 +11,7 @@ import {
   type NextCheck,
   type UnreachableReason,
 } from '@/models/connection';
+import type { PondOfflineReason } from '@/models/pond-status';
 import i18n from '@/services/i18n';
 
 export function connectionTitle(phase: ConnectionPhase, state: ConnectionState): string {
@@ -60,6 +61,28 @@ export function nextCheckWords(next: NextCheck): string | null {
 export function lastConnectedWords(at: number): string {
   const time = new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   return i18n.t('connection.lastConnected', { time });
+}
+
+/** A time the Pond went offline: the time alone on the same day, else with the weekday. */
+function offlineSince(at: number, now: number): string {
+  const sameDay = new Date(at).toDateString() === new Date(now).toDateString();
+  return new Date(at).toLocaleString(undefined, sameDay
+    ? { hour: '2-digit', minute: '2-digit' }
+    : { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/** Why the Pond is offline as the coordinator saw it: "Your Pond is restarting for an update." */
+export function pondOfflineWords(why: PondOfflineReason, now: number): string {
+  switch (why.kind) {
+    case 'restarting':
+      return why.reason === 'update' ? i18n.t('connection.why.update') : i18n.t('connection.why.restart');
+    case 'turned_off':
+      return i18n.t('connection.why.turnedOff', { time: offlineSince(why.since, now) });
+    case 'stopped_without_warning':
+      return i18n.t('connection.why.withoutWarning', { time: offlineSince(why.since, now) });
+    case 'pond_stopped':
+      return i18n.t('connection.why.pondStopped', { time: offlineSince(why.since, now) });
+  }
 }
 
 export interface ConnectionWords {
