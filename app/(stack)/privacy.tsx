@@ -74,7 +74,7 @@ export default function PrivacyScreen() {
       {/* What happens to the data, where it is handled: this phone, the Pond, beyond the home. */}
       {PRIVACY_GROUPS.map((g) => (
         <View key={g.id} style={styles.group}>
-          <InkTitle level={3}>{t(g.headingKey)}</InkTitle>
+          <InkTitle level={3} style={styles.groupHeading}>{t(g.headingKey)}</InkTitle>
           {g.sections.map((s) => (
             <ExpandableSection key={s.id} section={s} extra={s.id === 'network' ? townLine : null} />
           ))}
@@ -84,7 +84,7 @@ export default function PrivacyScreen() {
       {/* Choices. Statements, not buttons: these rows used to be Pressables with a chevron and no
           handler, offering five rights of which none worked. Each now names where it is done. */}
       <View style={styles.group}>
-        <InkTitle level={3}>{t('privacy.rightsHeading')}</InkTitle>
+        <InkTitle level={3} style={styles.groupHeading}>{t('privacy.rightsHeading')}</InkTitle>
         <View style={styles.card}>
           {DATA_RIGHTS.map((r, i) => (
             <View key={r.key} style={[styles.rightRow, i < DATA_RIGHTS.length - 1 && styles.divider]}>
@@ -100,7 +100,7 @@ export default function PrivacyScreen() {
       {/* The full documents. The summary above is what a household needs at a glance; these are
           what the stores and the law ask for, in full, and every open-source licence. */}
       <View style={styles.group}>
-        <InkTitle level={3}>{t('privacy.documentsHeading')}</InkTitle>
+        <InkTitle level={3} style={styles.groupHeading}>{t('privacy.documentsHeading')}</InkTitle>
         <View style={styles.card}>
           {PRIVACY_DOCUMENTS.map((d, i) => (
             <GPressable
@@ -139,6 +139,9 @@ const makeStyles = (c: ThemeColors) =>
       lineHeight: FontSize.sm * 1.6,
     },
     group: { marginTop: Spacing.lg },
+    /* The heading names the cards under it, so it sits nearer them than the group above, but
+       not on them: with no space of its own, "On your Pond" touched its first card's border. */
+    groupHeading: { marginBottom: Spacing.md },
 
     /* Expandable sections */
     section: {
