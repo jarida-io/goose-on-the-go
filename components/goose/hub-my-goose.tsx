@@ -44,7 +44,7 @@ import { useContentState } from '@/view-models/use-content-state';
 import { useGooseActivity } from '@/view-models/use-goose-activity';
 import { useIdeaCards, type UseIdeaCards } from '@/view-models/use-idea-cards';
 import { AddIdeaSheet } from './idea-cards';
-import { ideaKindKey } from '@/models/idea-cards';
+import { ideaKindKey, makingWords } from '@/models/idea-cards';
 import { useMyGooseHub, type UseMyGooseHub } from '@/view-models/use-my-goose';
 import { useListen, useStoryActions } from '@/view-models/use-news';
 import { usePullToRefresh } from '@/view-models/use-pull-to-refresh';
@@ -329,13 +329,14 @@ function IdeaCards({ cards }: { cards: UseIdeaCards }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const [adding, setAdding] = useState(false);
+  const waiting = makingWords(cards.data.set);
   const rows = [...cards.fresh, ...cards.saved];
   if (cards.loading && rows.length === 0) return null;
   const open = () => go('/(stack)/goose-cards');
   return (
     <View style={styles.section}>
       <SectionHead
-        fact={cards.making ? t('goose.ideaCards.making') : null}
+        fact={cards.making ? t(waiting.key, { count: waiting.count }) : null}
         title={t('goose.ideaCards.title')}
         subtitle={t('goose.ideaCards.subtitle')}
         onOpen={open}

@@ -8,7 +8,7 @@ import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { router } from 'expo-router';
 
-import { askMessage, factLines, readIdeaCard, readIdeaCardSet, type IdeaCard } from '@/models/idea-cards';
+import { askMessage, factLines, makingWords, readIdeaCard, readIdeaCardSet, type IdeaCard } from '@/models/idea-cards';
 import { readHub } from '@/models/hub';
 import { ApiError, api } from '@/services/api-client';
 import { currentSnackbar, resetSnackbar } from '@/services/snackbar';
@@ -113,8 +113,17 @@ describe('reading cards', () => {
   it('keeps a card only with its why and a source', () => {
     const set = readIdeaCardSet(wire);
     expect(set.cards.map((c) => c.id)).toEqual(['c1', 'c2']);
-    expect(set.set).toEqual({ state: 'ready', madeAt: '2026-11-17T06:00:00Z' });
+    expect(set.set).toEqual({ state: 'ready', madeAt: '2026-11-17T06:00:00Z', ahead: null });
     expect(set.cards[1].anchor).toEqual({ id: 'a1', title: 'Diani trip' });
+  });
+
+  // 2026-11-18: a refresh behind ten jobs showed only a spinner, and read as stuck.
+  it('says how many jobs a queued set waits behind, and only then', () => {
+    const queued = readIdeaCardSet({ cards: [], set: { state: 'queued', made_at: null, ahead: 10 } }).set;
+    expect(makingWords(queued)).toEqual({ key: 'goose.ideaCards.waiting', count: 10 });
+    expect(makingWords({ ...queued, ahead: 0 })).toEqual({ key: 'goose.ideaCards.making' });
+    expect(makingWords({ ...queued, state: 'making' })).toEqual({ key: 'goose.ideaCards.making' });
+    expect(readIdeaCardSet({ set: { state: 'queued', ahead: -2 } }).set.ahead).toBeNull();
   });
 
   it('draws when and where, then cost and effort, as two lines', () => {
