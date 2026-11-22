@@ -31,3 +31,33 @@ of the release, so the number in the store always matches a commit on `main`.
 Taking it from the CI run number instead was considered and not chosen for now. CI does not build
 release artefacts today, and a number assigned outside the repository cannot be traced back to
 the commit that produced it. Revisit this if releases move to CI or EAS Build.
+
+## iOS signing team
+
+`app.json`'s `ios.appleTeamId` is written into the generated Xcode project as `DEVELOPMENT_TEAM`.
+`ios/` is not tracked, so `app.json` is the only place it lives; setting it in Xcode does not survive
+the next prebuild.
+
+It must name the team that owns the `io.jarida.gooseonthego` App ID — **Jarida One Ltd**,
+`SFQ286WG2U`. An App ID belongs to one team, so no other team can register or sign it, and a Mac
+holding certificates for a second team will happily build against the wrong one. The failure names
+neither the team nor `app.json`:
+
+```text
+No profiles for 'io.jarida.gooseonthego' were found: Xcode couldn't find any iOS App Development
+provisioning profiles matching 'io.jarida.gooseonthego'.
+```
+
+Setting `appleTeamId` at all has a second consequence. `expo run:ios` configures signing only when
+the project has no team yet, and `-allowProvisioningUpdates` is passed on that same path — so with a
+team pinned, Xcode will neither fetch nor create a profile and can use only what is already
+installed. To see what that is:
+
+```sh
+for f in ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/*.mobileprovision; do
+  security cms -D -i "$f" | plutil -extract Name raw -
+done
+```
+
+If the profile is missing, open `ios/GooseOnTheGo.xcworkspace` in Xcode once and let it download one;
+the device must be in the profile's device list, which is why a new phone needs that round trip.
