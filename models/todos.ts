@@ -254,6 +254,66 @@ export function priorityKey(priority: TodoPriority): TranslationKey {
   }
 }
 
+/**
+ * Which hook a saved to-do's editor opens on: its only one, when that is a time or a repeat, so the
+ * picker shows the time it was saved with. With several, or a place or an event, none: the member
+ * picks the one they mean.
+ */
+export function hookToOpen(hooks: Hook[]): number | null {
+  if (hooks.length !== 1) return null;
+  const kind = pickerSeedOf(hooks[0])?.kind;
+  return kind === 'time' || kind === 'repeat' ? 0 : null;
+}
+
+/**
+ * The hooks with the one at `index` changed. The replacement carries no Pond sentence, so the row
+ * reads the new choice rather than the old one's label until the Pond sends its own on save.
+ */
+export function replaceHook(hooks: Hook[], index: number, hook: Hook): Hook[] {
+  return hooks.map((h, i) => (i === index ? { ...hook, label: '' } : h));
+}
+
+/** The picker's fields for a hook being changed, read back from its spec. A kind leaves out what it does not use. */
+export interface HookPickerSeed {
+  kind: 'time' | 'repeat' | 'place' | 'event';
+  date?: { year: number; month: number; day: number };
+  time?: { hour: number; minute: number };
+  every?: RepeatEvery;
+  days?: number[];
+  transition?: Transition;
+}
+
+/**
+ * What the picker opens on when the member taps a hook to change it, or null for a kind this phone
+ * cannot write (it can only be removed). A time is read in the phone's own zone, as it was set.
+ */
+export function pickerSeedOf(hook: Hook): HookPickerSeed | null {
+  const spec = hook.spec;
+  switch (spec.kind) {
+    case 'time': {
+      const at = new Date(spec.at);
+      if (Number.isNaN(at.getTime())) return { kind: 'time' };
+      return {
+        kind: 'time',
+        date: { year: at.getFullYear(), month: at.getMonth() + 1, day: at.getDate() },
+        time: { hour: at.getHours(), minute: at.getMinutes() },
+      };
+    }
+    case 'repeat': {
+      const [hour, minute] = spec.at.split(':').map((n) => Number.parseInt(n, 10));
+      const clock = Number.isFinite(hour) && Number.isFinite(minute) ? { time: { hour, minute } } : {};
+      return { kind: 'repeat', every: spec.every, days: spec.days, ...clock };
+    }
+    case 'place':
+      return { kind: 'place', transition: spec.transition };
+    case 'event':
+    case 'connector':
+      return { kind: 'event' };
+    case 'other':
+      return null;
+  }
+}
+
 /** Goose has asked about this one and is waiting on an answer: open, asked, and not snoozed. */
 export function isAsking(todo: Todo, now: Date): boolean {
   if (todo.state !== 'open' || !todo.ask || todo.asked < 1 || !todo.lastAskedAt) return false;
