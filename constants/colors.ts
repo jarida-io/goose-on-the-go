@@ -3,7 +3,7 @@
  * Source: Jarida Brand Heuristics + Goose In A Pond design bundle
  */
 
-import { createTheme } from '@jarida/ink';
+import { ACCENT_NAMES, createTheme, type AccentName, type InkTheme } from '@jarida/ink';
 
 export const JaridaPurple = {
   50: '#F4ECFF',
@@ -156,8 +156,8 @@ export interface ThemeColors {
  * different colour, worst in dark, where the stack header was grey above a
  * purple page. Deriving them means a screen and the Ink components on it agree.
  */
-function fromInk(scheme: 'light' | 'dark'): ThemeColors {
-  const c = createTheme({ scheme, accent: 'Purple' }).color;
+function fromInk(scheme: 'light' | 'dark', accent: AccentName): ThemeColors {
+  const c = createTheme({ scheme, accent }).color;
   return {
     background: c.bg,
     backgroundSecondary: c.content,
@@ -190,11 +190,54 @@ function fromInk(scheme: 'light' | 'dark'): ThemeColors {
   };
 }
 
-export const LightColors: ThemeColors = fromInk('light');
+/** The accents the member can choose, the same five the Pond's dashboard offers. */
+export const THEME_ACCENTS: readonly AccentName[] = ACCENT_NAMES;
+export type ThemeAccent = AccentName;
 
-export const DarkColors: ThemeColors = fromInk('dark');
+/** Ink lists its brand accent, Purple, first: the app's colour until the member picks another. */
+export const DEFAULT_THEME_ACCENT: ThemeAccent = ACCENT_NAMES[0];
+
+export const LightColors: ThemeColors = fromInk('light', DEFAULT_THEME_ACCENT);
+
+export const DarkColors: ThemeColors = fromInk('dark', DEFAULT_THEME_ACCENT);
+
+export function isThemeAccent(value: string | null): value is ThemeAccent {
+  return value !== null && (ACCENT_NAMES as string[]).includes(value);
+}
+
+const built = new Map<string, ThemeColors>();
+
+/** The app's colours for a scheme and an accent, built once each. */
+export function themeColors(scheme: 'light' | 'dark', accent: ThemeAccent): ThemeColors {
+  const key = `${scheme}:${accent}`;
+  let colors = built.get(key);
+  if (!colors) {
+    colors = fromInk(scheme, accent);
+    built.set(key, colors);
+  }
+  return colors;
+}
 
 export const Colors = {
   light: LightColors,
   dark: DarkColors,
 } as const;
+
+function mixHex(a: string, b: string, weight: number): string {
+  const channel = (hex: string, i: number) => Number.parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const mixed = [0, 1, 2].map((i) => Math.round(channel(a, i) * (1 - weight) + channel(b, i) * weight));
+  return `#${mixed.map((v) => v.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+}
+
+/**
+ * Ink's theme for a scheme and accent, with its `ink` (the colour of every raised control's offset
+ * edge) following the accent. Ink keeps `ink` at the brand purple whatever the accent, so a Teal app
+ * drew purple edges under its teal buttons. Purple keeps the brand's own values; another accent
+ * takes the same relation to its fill: its pressed shade in light, a lighter tint of it in dark.
+ */
+export function inkTheme(scheme: 'light' | 'dark', accent: ThemeAccent): InkTheme {
+  const theme = createTheme({ scheme, accent });
+  if (accent === DEFAULT_THEME_ACCENT) return theme;
+  const ink = scheme === 'dark' ? mixHex(theme.color.accent, '#FFFFFF', 0.45) : theme.color.accentPressed;
+  return { ...theme, color: { ...theme.color, ink } };
+}

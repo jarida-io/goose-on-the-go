@@ -815,6 +815,7 @@
       "phoneNotifications": "How this phone hears from your Pond when the app is closed."
     },
     "section": {
+      "accent": "Theme colour",
       "nameAndManner": "Name and manner",
       "writingStyle": "Writing style",
       "standingInstructions": "Standing instructions",
@@ -880,6 +881,7 @@
       "quietHours": "Goose stays quiet between these times, even when it has news.",
       "retention": "Zero keeps things for good.",
       "haptics": "Small taps you feel when you flip a switch or finish something.",
+      "accent": "The colour buttons, highlights and links are drawn in, across the whole app.",
       "replyNotices": "Nothing extra while you are reading the conversation. Your phone's own settings can still silence these.",
       "engine": "Where Goose runs. Leave these alone unless you run models somewhere other than your Pond.",
       "cost": "What a cloud service would charge, so your Pond can show what it saved you.",
@@ -1632,6 +1634,14 @@
       "label": "Household profile",
       "hint": "The main person this Pond belongs to.",
       "none": "Nobody chosen"
+    },
+    "accent": {
+      "label": "Theme colour",
+      "purple": "Purple",
+      "blue": "Blue",
+      "teal": "Teal",
+      "coral": "Coral",
+      "magenta": "Magenta"
     },
     "theme": {
       "system": "Match this phone",

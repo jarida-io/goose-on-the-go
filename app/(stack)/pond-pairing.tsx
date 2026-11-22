@@ -19,9 +19,10 @@ import {
 
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { GIcon } from '@/components/ui/g-icon';
+import { AccentIcon } from '@/components/ui/accent-icon';
 import { GPressable } from '@/components/ui/g-pressable';
 import { GKeyboardView, useFocusedInputReveal } from '@/components/ui/g-keyboard-view';
-import { JaridaPurple, Brand } from '@/constants/colors';
+import { Brand } from '@/constants/colors';
 import { FontSize, face } from '@/constants/typography';
 import { Spacing } from '@/constants/spacing';
 import { Radii } from '@/constants/radii';
@@ -137,7 +138,7 @@ function ScanLink({ onPress }: { onPress: () => void }) {
   const { t } = useTranslation();
   return (
     <GPressable onPress={onPress} hitSlop={8} style={styles.scanLink}>
-      <GIcon name="camera" size={16} color={JaridaPurple[500]} />
+      <AccentIcon name="camera" size={16} />
       <Text style={styles.scanLinkText}>{t('pairing.scanQr')}</Text>
     </GPressable>
   );
@@ -219,7 +220,7 @@ function DiscoverStep({
       {data.phase === 'searching' ? (
         <InkSpinner label={t('pairing.searching')} size={28} />
       ) : (
-        <GIcon name="search" size={28} color={JaridaPurple[500]} />
+        <AccentIcon name="search" size={28} />
       )}
 
       <InkTitle level={2}>
@@ -245,7 +246,7 @@ function DiscoverStep({
           style={styles.pondRow}
           onPress={() => pick(pond)}
         >
-          <GIcon name="wifi" size={18} color={JaridaPurple[500]} />
+          <AccentIcon name="wifi" size={18} />
           <View style={styles.pondInfo}>
             <Text style={styles.pondName} numberOfLines={1}>
               {pond.name}
@@ -475,7 +476,7 @@ function ServerStep({
   if (confirming) {
     return (
       <StepBody>
-        <GIcon name="shield" size={28} color={JaridaPurple[500]} />
+        <AccentIcon name="shield" size={28} />
         <InkTitle level={2}>{t('pairing.fingerprintConfirmTitle')}</InkTitle>
         <Text style={styles.stepDesc}>{t('pairing.fingerprintConfirmDesc')}</Text>
         {confirming.choices.map((choice) => (
@@ -505,7 +506,7 @@ function ServerStep({
 
   return (
     <StepBody>
-      <GIcon name="search" size={28} color={JaridaPurple[500]} />
+      <AccentIcon name="search" size={28} />
       <InkTitle level={2}>{t('pairing.addressTitle')}</InkTitle>
       <InkFormField
         label={t('pairing.addressLabel')}
@@ -615,7 +616,7 @@ function PairingCodeStep({
   if (credential === 'setup') {
     return (
       <StepBody>
-        <GIcon name="key" size={28} color={JaridaPurple[500]} />
+        <AccentIcon name="key" size={28} />
         <InkTitle level={2}>{t('pairing.setupCodeTitle')}</InkTitle>
         <Text style={styles.stepDesc}>{t('pairing.setupCodeBody')}</Text>
         <InkFormField
@@ -650,7 +651,7 @@ function PairingCodeStep({
 
   return (
     <StepBody>
-      <GIcon name="wifi" size={28} color={JaridaPurple[500]} />
+      <AccentIcon name="wifi" size={28} />
       <InkTitle level={2}>{t('pairing.codeTitle')}</InkTitle>
       <Text style={styles.stepDesc}>
         {spoken.data.phase === 'spoken' ? t('pairing.spokenSaid') : t('pairing.codeBody')}
@@ -719,7 +720,7 @@ function CompleteStep({
   if (state === 'waiting' && held) {
     return (
       <StepBody>
-        <GIcon name="lock" size={28} color={JaridaPurple[500]} />
+        <AccentIcon name="lock" size={28} />
         <InkTitle level={2}>{t('pairingLock.wait.title')}</InkTitle>
         <PairingWait held={held} {...wait} onAgain={onRetry} onCancel={onRetry} />
       </StepBody>
@@ -1130,7 +1131,7 @@ const makeStyles = (c: ThemeColors) =>
       justifyContent: 'center',
       marginBottom: 6,
     },
-    stepDotActive: { backgroundColor: JaridaPurple[500] },
+    stepDotActive: { backgroundColor: c.tint },
     stepDotDone: { backgroundColor: c.success },
     stepNumber: {
       ...face('display', 'bold'),

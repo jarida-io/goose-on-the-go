@@ -20,30 +20,21 @@ import React, {
   type PropsWithChildren,
 } from 'react';
 
-import { Colors, type ThemeColors } from '@/constants/colors';
+import { DEFAULT_THEME_ACCENT, isThemeAccent, themeColors, type ThemeAccent, type ThemeColors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Storage } from '@/services/storage';
 
 export type ColorScheme = 'light' | 'dark';
 export type ThemePreference = 'system' | 'light' | 'dark';
-export type AccentName = 'Purple' | 'Blue' | 'Teal' | 'Coral' | 'Magenta';
-
-export const ACCENT_OPTIONS: ReadonlyArray<{ name: AccentName; hex: string }> = [
-  { name: 'Purple', hex: '#7C3AED' },
-  { name: 'Blue', hex: '#2563EB' },
-  { name: 'Teal', hex: '#0D9488' },
-  { name: 'Coral', hex: '#F97316' },
-  { name: 'Magenta', hex: '#DB2777' },
-];
-
 interface ThemeContextValue {
   colors: ThemeColors;
   colorScheme: ColorScheme;
   isDark: boolean;
   preference: ThemePreference;
   setPreference: (next: ThemePreference) => void;
-  accent: AccentName;
-  setAccent: (next: AccentName) => void;
+  /** The colour the whole app is drawn in, as the Pond's dashboard lets its user choose. */
+  accent: ThemeAccent;
+  setAccent: (next: ThemeAccent) => void;
   /** False until the stored preference has been read back. */
   hydrated: boolean;
 }
@@ -54,23 +45,19 @@ function isPreference(value: string | null): value is ThemePreference {
   return value === 'system' || value === 'light' || value === 'dark';
 }
 
-function isAccentName(value: string | null): value is AccentName {
-  return ACCENT_OPTIONS.some((o) => o.name === value);
-}
-
 export function ThemeProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
-  const [accent, setAccentState] = useState<AccentName>('Purple');
+  const [accent, setAccentState] = useState<ThemeAccent>(DEFAULT_THEME_ACCENT);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     let active = true;
     void Promise.all([Storage.get('themePreference'), Storage.get('accentPreference')])
-      .then(([storedTheme, storedAccent]) => {
+      .then(([stored, storedAccent]) => {
         if (!active) return;
-        if (isPreference(storedTheme)) setPreferenceState(storedTheme);
-        if (isAccentName(storedAccent)) setAccentState(storedAccent);
+        if (isPreference(stored)) setPreferenceState(stored);
+        if (isThemeAccent(storedAccent)) setAccentState(storedAccent);
       })
       .finally(() => {
         if (active) setHydrated(true);
@@ -85,7 +72,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     void Storage.set('themePreference', next);
   }, []);
 
-  const setAccent = useCallback((next: AccentName) => {
+  const setAccent = useCallback((next: ThemeAccent) => {
     setAccentState(next);
     void Storage.set('accentPreference', next);
   }, []);
@@ -96,7 +83,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<ThemeContextValue>(
     () => ({
-      colors: Colors[colorScheme],
+      colors: themeColors(colorScheme, accent),
       colorScheme,
       isDark: colorScheme === 'dark',
       preference,

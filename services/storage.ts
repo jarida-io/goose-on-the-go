@@ -14,6 +14,7 @@ const KEYS = {
   settings: '@goose/settings',
   devScreenModes: '@goose/dev-screen-modes',
   themePreference: '@goose/theme-preference',
+  /** The accent colour the whole app is drawn in. A preference of this phone, never sent to the Pond. */
   accentPreference: '@goose/accent-preference',
   /** Whether this phone plays haptic feedback. A preference of the phone, not of the Pond. */
   hapticsEnabled: '@goose/haptics-enabled',

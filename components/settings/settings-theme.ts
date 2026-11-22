@@ -22,6 +22,9 @@ export interface SettingsColors {
   textTertiary: string;
   accent: string;
   accentSoft: string;
+  /** A filled badge in the accent, and the mark or letter drawn on it (dark on Teal and Coral). */
+  accentFill: string;
+  onAccentFill: string;
   danger: string;
   success: string;
 }
@@ -73,6 +76,8 @@ export function useSettingsColors(): SettingsColors {
       textTertiary: color.textTertiary,
       accent: isDark ? color.accentLine : color.accent,
       accentSoft: color.brandSoft,
+      accentFill: color.accent,
+      onAccentFill: color.textOnAccent,
       danger: color.dangerFg,
       success: color.successFg,
     }),

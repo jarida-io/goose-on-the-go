@@ -25,7 +25,6 @@ import {
 } from '@/components/settings/settings-theme';
 import { GIcon } from '@/components/ui/g-icon';
 import { APP_VERSION } from '@/constants/app';
-import { Brand, JaridaPurple } from '@/constants/colors';
 import { ACCOUNT_ROUTE, PROFILE_NAV } from '@/constants/navigation';
 import { Spacing } from '@/constants/spacing';
 import type { SummaryId } from '@/models/pond-settings';
@@ -77,7 +76,7 @@ function AccountRow({ onPress }: { onPress: () => void }) {
     >
       <InkEdge state={pressed ? 'pressed' : 'rest'} contentStyle={styles.account}>
       <View style={styles.avatar}>
-        {initial ? <Text style={styles.avatarText}>{initial}</Text> : <GIcon name="home" size={26} color={Brand.white} />}
+        {initial ? <Text style={styles.avatarText}>{initial}</Text> : <GIcon name="home" size={26} color={colors.onAccentFill} />}
       </View>
       <View style={styles.accountText}>
         <Text style={styles.accountName} numberOfLines={1}>
@@ -327,11 +326,11 @@ const makeStyles = (c: SettingsColors, type: SettingsType, m: SettingsMetrics) =
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: JaridaPurple[500],
+    backgroundColor: c.accentFill,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  avatarText: { ...type.heading, fontSize: 24, lineHeight: 30, color: Brand.white },
+  avatarText: { ...type.heading, fontSize: 24, lineHeight: 30, color: c.onAccentFill },
   accountText: { flex: 1, gap: 2 },
   accountName: { ...type.heading, fontSize: 20, lineHeight: 25 },
   accountSub: type.description,

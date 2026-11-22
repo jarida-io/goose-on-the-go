@@ -15,8 +15,7 @@ import { useReduceMotion } from '@/components/ui/ink';
 
 import { BackButton, BackTitle, StackHeader } from '@/components/navigation/back-button';
 import { ConnectionStatus } from '@/components/patterns/connection-status';
-import { ACCENT_OPTIONS, useTheme } from '@/providers/theme-provider';
-import { JaridaPurple } from '@/constants/colors';
+import { useTheme } from '@/providers/theme-provider';
 import { face } from '@/constants/typography';
 
 /**
@@ -34,8 +33,7 @@ function ScreenWithStatus({ route, children }: { route: { name: string }; childr
 }
 
 export default function StackLayout() {
-  const { colors, accent } = useTheme();
-  const accentHex = ACCENT_OPTIONS.find((o) => o.name === accent)?.hex ?? JaridaPurple[500];
+  const { colors } = useTheme();
   const { t } = useTranslation();
   const reduced = useReduceMotion();
   const modalRise = reduced ? 'none' : ('fade_from_bottom' as const);
@@ -47,7 +45,7 @@ export default function StackLayout() {
         headerShown: true,
         header: (props) => <StackHeader {...props} />,
         headerStyle: { backgroundColor: colors.background },
-        headerTintColor: accentHex,
+        headerTintColor: colors.textBrand,
         headerTitleAlign: 'center',
         headerTitleStyle: {
           color: colors.text,
