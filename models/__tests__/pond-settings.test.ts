@@ -145,6 +145,11 @@ describe('reading the record', () => {
     expect(s.network_mode).toBe(SAMPLE_SETTINGS.network_mode);
   });
 
+  // 2026-11-18: dropped as unknown, so a Pond holding a phone's fix was read as a guess on every start.
+  it('keeps where the home location came from', () => {
+    expect(readSettings({ weather_location_source: 'device' }).weather_location_source).toBe('device');
+  });
+
   it('answers the defaults for something that is not a record', () => {
     expect(readSettings(null)).toEqual(SAMPLE_SETTINGS);
     expect(readSettings('settings')).toEqual(SAMPLE_SETTINGS);
