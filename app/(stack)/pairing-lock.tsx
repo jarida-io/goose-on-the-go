@@ -120,7 +120,7 @@ export default function PairingLockScreen() {
       return;
     }
     if (code !== draftPin) {
-      setLocalError('Passcodes do not match. Try again.');
+      setLocalError(t('pairingLock.pinMismatch'));
       setDigits('');
       return;
     }

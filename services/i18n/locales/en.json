@@ -6411,6 +6411,7 @@
     "pinNew": "Set a PIN",
     "pinChange": "Change the PIN",
     "pinInvalid": "A PIN is 6 to 12 digits.",
+    "pinMismatch": "The two PINs are not the same. Type them again.",
     "pinSaved": "The recovery PIN is set.",
     "pinRemove": "Remove the PIN",
     "pinRemoveTitle": "Remove the recovery PIN?",
