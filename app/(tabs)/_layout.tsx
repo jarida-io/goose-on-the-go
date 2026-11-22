@@ -20,6 +20,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect, Tabs, useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { NowListening } from '@/components/patterns/now-listening';
 import {
   useReduceMotion,
   useInkTheme,
@@ -150,6 +151,7 @@ function AppTabBar({ state, navigation }: TabBarProps) {
       }}
       style={[styles.barWrap, { paddingBottom: bottomPad }]}
     >
+      <NowListening placement="bar" />
       <Animated.View
         pointerEvents={collapsed ? 'none' : 'auto'}
         accessibilityRole="tablist"

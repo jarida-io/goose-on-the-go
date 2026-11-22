@@ -194,8 +194,85 @@ export async function requestMicrophone(): Promise<MicPermission> {
  */
 export async function beginVoiceSession(): Promise<void> {
   if (!audio) return;
+  voiceTakesOver();
   await audio.setAudioModeAsync(VOICE_MODE);
 }
+
+const takeovers = new Set<() => void>();
+
+/**
+ * Asks to hear when a conversation takes the speaker, so something playing on its own (the news
+ * read aloud in the background) can step aside rather than fight it for the audio session.
+ */
+export function whenVoiceTakesOver(listener: () => void): void {
+  takeovers.add(listener);
+}
+
+function voiceTakesOver(): void {
+  takeovers.forEach((listener) => listener());
+}
+
+/**
+ * Background listening: allowed to keep playing when the app is not on screen, and not asking for
+ * the microphone, so the phone treats it as media rather than a call.
+ */
+const LISTEN_MODE = {
+  allowsRecording: false,
+  playsInSilentMode: true,
+  shouldPlayInBackground: true,
+  shouldRouteThroughEarpiece: false,
+  interruptionMode: 'doNotMix',
+} as const;
+
+export interface NewsAudio {
+  pause: () => void;
+  play: () => void;
+  release: () => void;
+}
+
+/**
+ * Plays a WAV as media that outlives the screen that started it, with the phone's lock-screen and
+ * notification controls showing `title`. `onPlaying` follows those controls as well as this app's
+ * own buttons; `onEnd` fires once when it plays out. Null where expo-audio has no native half.
+ */
+export const newsAudio: ((uri: string, meta: { title: string; artist: string; onPlaying: (playing: boolean) => void; onEnd: () => void }) => NewsAudio) | null = audio
+  ? (uri, meta) => {
+      const a = audio;
+      let player: Player | null = a.createAudioPlayer({ uri });
+      let ended = false;
+      let wasPlaying = false;
+      const sub = player.addListener('playbackStatusUpdate', (status) => {
+        if (status.didJustFinish && !ended) {
+          ended = true;
+          meta.onEnd();
+          return;
+        }
+        if (status.playing !== wasPlaying) {
+          wasPlaying = status.playing;
+          meta.onPlaying(status.playing);
+        }
+      });
+      a.setAudioModeAsync(LISTEN_MODE)
+        .catch((e: unknown) => console.warn('[listen] could not set up background playback', e instanceof Error ? e.message : e))
+        .then(() => {
+          if (!player) return;
+          player.setActiveForLockScreen(true, { title: meta.title, artist: meta.artist });
+          player.play();
+        });
+      return {
+        pause: () => player?.pause(),
+        play: () => player?.play(),
+        release: () => {
+          if (!player) return;
+          sub.remove();
+          player.clearLockScreenControls();
+          player.pause();
+          player.remove();
+          player = null;
+        },
+      };
+    }
+  : null;
 
 const VOICE_MODE = {
   allowsRecording: true,
@@ -241,6 +318,7 @@ export function playFile(
 ): { done: Promise<void>; stop: () => void } {
   if (!audio) return { done: Promise.resolve(), stop: () => {} };
   const a = audio;
+  voiceTakesOver();
   let player: Player | null = a.createAudioPlayer({ uri }, { updateInterval: 50 });
   let settle: () => void = () => {};
   const done = new Promise<void>((resolve) => {

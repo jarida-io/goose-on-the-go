@@ -31,10 +31,10 @@ export default function GooseDigestScreen() {
   const { t } = useTranslation();
   const ago = useAgo();
   const digest = useDigest(id);
-  const listen = useListen();
   const speaker = useSpeakDigest();
   const pull = usePullToRefresh(digest.reload);
   const d = digest.data;
+  const listen = useListen(d);
   const state = useContentState({ loading: digest.loading, failed: digest.failed, hasContent: !!d });
   const title = inkText(theme, { role: 'display', size: '3xl', weight: 700, tracking: 'title', leading: 'tight', color: theme.color.text }).style;
   const heading = inkText(theme, { role: 'display', size: 'xl', weight: 700, tracking: 'tight', leading: 'snug', color: theme.color.text }).style;
@@ -54,7 +54,7 @@ export default function GooseDigestScreen() {
             </Text>
             {d.intro ? <InkText size="lg">{d.intro}</InkText> : null}
             <View style={styles.actions}>
-              <ListenButton state={listen.state} disabled={!d.listen} onPlay={() => d.listen && void listen.play(d.listen)} onStop={listen.stop} />
+              <ListenButton listen={listen} disabled={!d.listen} />
               <InkButton size="sm" variant="quiet" icon="speaker" loading={speaker.asking} onPress={() => void speaker.speak(d.id)}>
                 {t('goose.digest.onSpeaker')}
               </InkButton>
@@ -111,7 +111,7 @@ export default function GooseDigestScreen() {
 
 const styles = StyleSheet.create({
   top: { gap: Spacing.sm },
-  actions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs },
   section: { gap: Spacing.md },
   figure: { gap: 6 },
   picture: { width: '100%', aspectRatio: 16 / 9 },

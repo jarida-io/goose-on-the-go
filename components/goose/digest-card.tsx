@@ -1,6 +1,6 @@
 /**
  * The day's digest as one card: what it is, its two-sentence opening, the interests it covers, and
- * Listen, which plays it on the phone in the Pond's voice.
+ * Listen, which plays it on the phone in the Pond's voice and keeps playing when the member leaves.
  */
 
 import React from 'react';
@@ -13,7 +13,7 @@ import { GPressable } from '@/components/ui/g-pressable';
 import { Spacing } from '@/constants/spacing';
 import type { Digest } from '@/models/news';
 import { selectionTick } from '@/services/haptics';
-import type { ListenState } from '@/view-models/use-news';
+import type { Listen } from '@/view-models/use-news';
 import { useAgo } from './hub-parts';
 
 export function openDigest(id: string) {
@@ -21,23 +21,30 @@ export function openDigest(id: string) {
   router.push({ pathname: '/(stack)/goose-digest', params: { id } });
 }
 
-export function ListenButton({ state, onPlay, onStop, disabled }: { state: ListenState; onPlay: () => void; onStop: () => void; disabled?: boolean }) {
+/** Listen; once playing, Pause or Resume beside Stop. */
+export function ListenButton({ listen, disabled }: { listen: Listen; disabled?: boolean }) {
   const { t } = useTranslation();
-  if (state === 'playing') {
+  if (listen.state === 'playing' || listen.state === 'paused') {
+    const playing = listen.state === 'playing';
     return (
-      <InkButton size="sm" variant="primary" icon="stop" onPress={onStop}>
-        {t('goose.digest.stop')}
-      </InkButton>
+      <View style={styles.listening}>
+        <InkButton size="sm" variant="primary" icon={playing ? 'pause' : 'play'} onPress={playing ? listen.pause : listen.resume}>
+          {playing ? t('goose.digest.pause') : t('goose.digest.resume')}
+        </InkButton>
+        <InkButton size="sm" variant="quiet" icon="stop" onPress={listen.stop}>
+          {t('goose.digest.stop')}
+        </InkButton>
+      </View>
     );
   }
   return (
-    <InkButton size="sm" variant="primary" icon="listen" loading={state === 'loading'} disabled={disabled} onPress={onPlay}>
+    <InkButton size="sm" variant="primary" icon="listen" loading={listen.state === 'loading'} disabled={disabled} onPress={listen.play}>
       {t('goose.digest.listen')}
     </InkButton>
   );
 }
 
-export function DigestCard({ digest, listen, onPlay, onStop }: { digest: Digest; listen: ListenState; onPlay: () => void; onStop: () => void }) {
+export function DigestCard({ digest, listen }: { digest: Digest; listen: Listen }) {
   const { t } = useTranslation();
   const ago = useAgo();
   const topics = digest.sections.map((s) => s.interest?.topic ?? s.heading).filter(Boolean);
@@ -62,7 +69,7 @@ export function DigestCard({ digest, listen, onPlay, onStop }: { digest: Digest;
         ) : null}
       </GPressable>
       <View style={styles.actions}>
-        <ListenButton state={listen} onPlay={onPlay} onStop={onStop} disabled={!digest.listen} />
+        <ListenButton listen={listen} disabled={!digest.listen} />
         <InkButton size="sm" variant="quiet" onPress={() => openDigest(digest.id)}>
           {t('goose.digest.read')}
         </InkButton>
@@ -73,5 +80,6 @@ export function DigestCard({ digest, listen, onPlay, onStop }: { digest: Digest;
 
 const styles = StyleSheet.create({
   words: { gap: 4 },
-  actions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
+  listening: { flexDirection: 'row', gap: Spacing.sm },
 });
