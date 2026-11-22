@@ -200,7 +200,9 @@ export default function HomeScreen() {
   // while that list is unknown.
   const devicesKnown = devicesState === 'ready' || devicesState === 'empty';
   // Quiet is said above the board, by the Pond's own line; the widget is for suggestions.
-  const hasIdeas = engine.cardsOn && engine.cards.fresh.length + engine.cards.saved.length > 0;
+  // Home is for what is new: a saved card never fades, so it waits on the cards screen until it is
+  // done or taken off, and Home shows the widget only while there is something new or being made.
+  const hasIdeas = engine.cardsOn && (engine.cards.fresh.length > 0 || engine.cards.making);
 
   // Built in the saved order; a widget with nothing to say is left out rather than drawn empty.
   const widgets = useMemo(() => {
@@ -249,7 +251,7 @@ export default function HomeScreen() {
             frame: 'plain',
             title: t('home.ideas.title'),
             icon: 'sparkle',
-            node: <IdeaCardSetView vm={engine.cards} limit={HOME_CARD_LIMIT} onSeeAll={() => router.push('/(stack)/goose-cards')} />,
+            node: <IdeaCardSetView vm={engine.cards} cards={engine.cards.fresh} limit={HOME_CARD_LIMIT} onSeeAll={() => router.push('/(stack)/goose-cards')} />,
           }
         : null,
       ask: {
